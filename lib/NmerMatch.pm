@@ -4,6 +4,10 @@ require Exporter;
 @EXPORT_OK = qw(read_fasta build_db);
 
 use Bio::SeqIO;
+use Storable qw(nstore retrieve);
+
+#TODO: test saving & loading of db_catalog & unique_nmer_id versus storing in DB & retrieval
+#      I suspect the latter will be faster for the db_catalog, even for sqlite
 
 our $VERSION = '0.01';
 

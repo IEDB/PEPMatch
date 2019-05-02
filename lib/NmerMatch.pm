@@ -1,12 +1,15 @@
 package NmerMatch;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK = qw(read_fasta build_catalog retrieve_catalog);
+@EXPORT_OK = qw(read_fasta build_catalog retrieve_catalog get_catalog_info read_query_file);
 
 use strict;
 use warnings;
+use Data::Dumper;
 use Bio::SeqIO;
 use Storable qw(nstore retrieve);
+use JSON::XS;
+use POSIX qw(strftime);
 use Inline 'C';
 use Inline (C => Config =>
             OPTIMIZE => '-O3',
@@ -21,12 +24,49 @@ our $VERSION = '0.01';
 # the backend for the protein peptide catalog
 # by default it is an in-memory hash, but can be changed
 my $catalog_backend = 'memory';
+my $catalog_source; # this will be set when the input fasta file is read so that it can be
+                    # saved when the catalog is built
+my $catalog_info;   # this will become a hashref of metadata about the catalog upon build/restore
+
+# given the name of a query file containing a list (or fasta)
+# of peptides, return an array reference to the peptides
+sub read_query_file {
+
+	my $input_file = shift;
+
+	my @peptides;
+	my $peptide_length;
+	open my $INF, '<', $input_file or die "Can't open input file ($input_file) for reading: $!";
+	while (<$INF>) {
+		chomp;
+		push @peptides, $_;
+		my $cur_peptide_length = length($peptides[-1]);
+		# set the peptide length to the length of the first peptide_length
+		# all subsequent peptides are checked that they match in length
+		if (!defined $peptide_length) {
+			$peptide_length = $cur_peptide_length;
+		}
+		if ($cur_peptide_length ne $peptide_length) {
+			die "Peptides of different lengths ($peptide_length and $cur_peptide_length) found in query file: $input_file";
+		}
+	}
+	close $INF;
+
+	if ($peptide_length ne $catalog_info->{peptide_length}) {
+		die "Peptide length ($peptide_length) differs from catalog peptide length (" . $catalog_info->{peptide_length} . ')';
+	}
+
+	return \@peptides;
+}
 
 # given the name of a fasta file
 # return a reference to a an array of hashrefs of sequences {id => 1, seq=>DFDSFSDF}
 sub read_fasta {
 
 	my $fasta = shift;
+
+	# setting the catalog source globally
+	$catalog_source = $fasta;
 
 	my $seqin = Bio::SeqIO->new(-file => $fasta, '-format' => 'Fasta');
 
@@ -93,7 +133,7 @@ sub build_catalog {
 
 	# now serialize the uniqe nmers & nmer_catalog, and include a description
 	# TODO: this should be refactored and dependent upon the backend
-	my ($unique_nmers_file, $protein_peptides_file) = get_catalog_file_names($catalog_name);
+	my ($unique_nmers_file, $protein_peptides_file, $catalog_info_file) = get_catalog_file_names($catalog_name);
 
 	if (!-d $catalog_name) {
 		print "Creating directory for catalog: $catalog_name\n";
@@ -106,8 +146,44 @@ sub build_catalog {
 	print "Serializing protein peptides to: $protein_peptides_file\n";
 	nstore \%nmer_catalog, $protein_peptides_file;
 	print "Done\n";
+	print "Storing catalog info in: $catalog_info_file\n";
+	$catalog_info =    { catalog_name   => $catalog_name,
+		                 data_source    => $catalog_source,
+	                     peptide_length => $peptide_length,
+	                     build_date     => strftime "%F %R", localtime,
+	                   };
+	my $catalog_json = JSON::XS->new
+	                           ->utf8
+	                           ->pretty(1)
+	                           ->canonical(1)
+	                           ->encode($catalog_info);
+	open my $CAT, '>', $catalog_info_file or die "Can't open catalog info file ($catalog_info_file): $!";
+	print $CAT $catalog_json, "\n";
+	close $CAT;
 
 	return (\%unique_nmer_id, \%nmer_catalog);
+
+}
+
+# read in the catalog info file & return a hashref
+sub get_catalog_info {
+
+	my $catalog_name = shift;
+
+	my ($unique_nmers_file, $protein_peptides_file, $catalog_info_file) = get_catalog_file_names($catalog_name);
+
+	my $catalog_info_string;
+	print "Reading catalog info from: $catalog_info_file\n";
+	open my $CAT, '<', $catalog_info_file or die "Can't open catalog info file ($catalog_info_file): $!";
+	while (<$CAT>) {
+		$catalog_info_string .= $_;
+	}
+	close $CAT;
+	$catalog_info = JSON::XS->new->utf8->decode($catalog_info_string);
+	print "Catalog info\n";
+	print Dumper $catalog_info;
+
+	return $catalog_info;
 
 }
 
@@ -120,8 +196,9 @@ sub get_catalog_file_names {
 
 	my $unique_nmers_file = $catalog_name . '/unique_nmers.store';
 	my $protein_peptides_file = $catalog_name . '/protein_peptides.store';
+	my $catalog_info_file = $catalog_name . '/catalog_info.json';
 
-	return ($unique_nmers_file, $protein_peptides_file);
+	return ($unique_nmers_file, $protein_peptides_file, $catalog_info_file);
 }
 
 

@@ -16,6 +16,18 @@ use Inline (C => Config =>
             #CCFLAGSEX => '-march=x86-64',
             );
 
+# Workflow for searching
+# 1. get catalog info to set the CATALOG_NAME
+# 2. read in the query sequences
+# 3. read in the catalog (UNIQUE_NMER_ID)
+# 4. add unique nmers from query seqs to UNIQUE_NMER_ID
+# 5. encode each nmer as an integer ID (UNIQUE_NMER) pointing to the sequence
+# 6. create list of catalog nmer IDs
+# 7. create list of query nmer IDs
+# 8. determine which ones need to be compared
+
+
+
 #TODO: think about the functionality that should be available outside this package
 #      versus inside and potentially wrap up some functions
 #TODO: similarly, think about some of the variables that should be globally set rather
@@ -31,12 +43,13 @@ my $CATALOG_BACKEND = 'memory';
 my $CATALOG_NAME;
 my $CATALOG_SOURCE; # this will be set when the input fasta file is read so that it can be
                     # saved when the catalog is built
-my @CATALOG_SEQS;   # the sequences to be cataloguded
+my @CATALOG_SEQS;   # the sequences to be cataloguged
 my @QUERY_PEPTIDES; # a list of peptides to query
-my $CATALOG_INFO;   # this will become a hashref of metadata about the catalog upon build/restore
+my $CATALOG_INFO;   # this will become a hashref of metadata about the catalog upon build/restore/get_catalog_info
 my $PEPTIDE_LENGTH;
-my $MAX_MISMATCHES:
-
+my $MAX_MISMATCHES;
+my %UNIUQE_NMER_ID; # nmer sequence => ID
+my %NMER_CATALOG;   # nmer_ID => sequence ID => position
 
 # given:
 # a list of query peptides
@@ -54,7 +67,6 @@ my $MAX_MISMATCHES:
 }
 sub query_vs_catalog {
 
-	my $catalog_name = shift;
 	my $max_mismatches = shift;
 
 	if (defined $MAX_MISMATCHES) {
@@ -62,8 +74,14 @@ sub query_vs_catalog {
 	}
 	$MAX_MISMATCHES = $max_mismatches;
 
-	# read in the catalog
-	my ($unique_nmer_ref, $catalog_ref) = retrieve_catalog($catalog_name);
+	# read in the catalog; setting the %UNIUQE_NMER_ID and %NMER_CATALOG hashes
+	retrieve_catalog();
+
+	# update the unique_nmer_id hash to include any new nmers found in the query peptides
+	update_unique_nmers(\@QUERY_PEPTIDES);
+
+	# determine the offsets, given the number of mismatches
+	my @offsets = determine_offsets();
 
 	# determine the comparisons that need to be made by breaking the
 	# query & catalog peptides into non-overlapping segments
@@ -73,7 +91,99 @@ sub query_vs_catalog {
 
 
 
+
 }
+
+# given a list of peptides, assign IDs to them
+sub update_unique_nmers {
+
+	my $peptide_list = shift;
+
+	# get the maximum nmer id
+	my $nmer_id = pop (sort {$UNIUQE_NMER_ID{$a} <=> $UNIUQE_NMER_ID{$b}});
+
+	foreach my $p (@$peptide_list) {
+		if (!defined $UNIUQE_NMER_ID{$p}) {
+			$UNIUQE_NMER_ID{$p} = ++$nmer_id;
+		}
+	}
+
+}
+
+sub determine_comparisons {
+        
+    my $num_comparisons=0;
+ 
+    my $t0 = Benchmark->new();
+    
+    my $offset_start = 0;
+    
+    foreach my $offset (@OFFSETS) {
+
+    	$offset_start = $offset->{start};
+    	my $word_length = $offset->{length};
+
+        print "\tworking on offset ", $offset_start, " length: ", $word_length, "\n";
+        my $num_checked =0;
+        
+        my $t1 = Benchmark->new;
+        
+        my %query_index = create_hash($word_length, $offset_start, \@QUERY_PEPTIDES);
+        my %catalog_index = create_hash($word_length, $offset_start, \@peptides2);
+        
+        my $to_check = (keys %index1);
+        print "Nmers to check for offset $offset_start: $to_check\n";
+        my %tb_myco;
+        foreach my $sub_peptide1 (keys %index1) {
+
+            $num_checked++;
+            if ($num_checked % 1000 == 0) {
+                print "Checking $num_checked of $to_check\n";
+            }
+
+            # moving on if there are no myco peptides that also begin with this sub peptide
+            # skip if complete
+
+            $num_checked++;
+            if ($num_checked % 1000 == 0) {
+                print "Checking $num_checked of $to_check\n";
+            }
+
+            next unless ($index2{$sub_peptide1});
+            
+            # moving on if we've don this comparison already
+            #my $done_key = $offset_start . $sub_peptide1;
+            #next if ($done{$done_key});
+            # loopeing through all peptides from list 1 that start ith this subpeptide
+            foreach my $id1 (@{$index1{$sub_peptide1}}) {
+                # this tb sub peptide must be compared to all myco peptides that also contain this sub ppeptide
+                do_comparisons($id1, $index2{$sub_peptide1},$offset);
+                $num_comparisons+= @{$index2{$sub_peptide1}};
+                #do the comparison and print output...we can uniquify later
+
+            }
+            # mark this sub peptide comparison as complte
+            #$done{$done_key} = 1;
+
+        }
+        
+        my $t2 = Benchmark->new;
+        
+        my $td = timediff($t2, $t1);
+        my $tds = timediff($t2, $t0);
+        
+        print "Time for loop: ", timestr($td), "\n";
+        print "Time since start: ", timestr($tds), "\n";
+
+        print "Total comparisons after offset $offset_start: ", format_number($num_comparisons,0,0), "\n";
+
+    
+    }
+    
+    return $num_comparisons;
+    
+}
+
 
 # given:
 # the hashref returned from query_vs_catalong
@@ -177,6 +287,7 @@ sub build_catalog {
 	}
 	$CATALOG_NAME = $catalog_name;
 
+	# the first nmer ID will be 0 so we can store them efficiently in an array
 	my $nmer_id = 0;
 
 	my @nmer_ids;
@@ -192,7 +303,7 @@ sub build_catalog {
 			# TODO: Here is where we branch depending on the catlog backend
 			# if we find the current nmer in the unique nmers, use the ID, otherwise create a new id
 			if (!exists $UNIUQE_NMER_ID{$s}) {
-				$UNIUQE_NMER_ID{$s} = ++$nmer_id;
+				$UNIUQE_NMER_ID{$s} = $nmer_id++;
 			}
 			my $cur_nmer_id = $UNIUQE_NMER_ID{$s};
 
@@ -236,12 +347,17 @@ sub build_catalog {
 }
 
 # read in the catalog info file & return a hashref
-# TODO: potentially set the catalog name globally here
+# set potentially set the CATALOG_NAME globally here
 sub get_catalog_info {
 
 	my $catalog_name = shift;
 
-	my ($unique_nmers_file, $protein_peptides_file, $catalog_info_file) = get_catalog_file_names($catalog_name);
+	if (defined $CATALOG_NAME) {
+		die "Catalog name already set to $CATALOG_NAME; Cannot set to $catalog_name";
+	}
+	$CATALOG_NAME = $catalog_name;
+
+	my ($unique_nmers_file, $protein_peptides_file, $catalog_info_file) = get_catalog_file_names($CATALOG_NAME);
 
 	my $catalog_info_string;
 	print "Reading catalog info from: $catalog_info_file\n";
@@ -250,11 +366,11 @@ sub get_catalog_info {
 		$catalog_info_string .= $_;
 	}
 	close $CAT;
-	$catalog_info = JSON::XS->new->utf8->decode($catalog_info_string);
+	$CATALOG_INFO = JSON::XS->new->utf8->decode($catalog_info_string);
 	print "Catalog info\n";
-	print Dumper $catalog_info;
+	print Dumper $CATALOG_INFO;
 
-	return $catalog_info;
+	return $CATALOG_INFO;
 
 }
 
@@ -279,13 +395,6 @@ sub get_catalog_file_names {
 # retrieve the catalog and return references to the uniqe nmer ids and nmer_catalog
 # depending upon the backend
 sub retrieve_catalog {
-
-	my $catalog_name = shift;
-
-	if (defined $CATALOG_NAME) {
-		die "Catalog name already set to $CATALOG_NAME; Cannot set to $catalog_name";
-	}
-	$CATALOG_NAME = $catalog_name;
 
 	# TODO: the functionlity will change depending on the backend
 	my ($unique_nmers_file, $protein_peptides_file) = get_catalog_file_names($CATALOG_NAME);
@@ -329,9 +438,9 @@ sub break_protein {
 # witih the terminal block being only 1 or 2 residues
 sub determine_offsets {
 	
-	my $num_offsets = $MAX_MISMATCH + 1;
+	my $num_offsets = $MAX_MISMATCHES + 1;
 	
-	my $avg_block_length = $LENGTH / $num_offsets;
+	my $avg_block_length = $PEPTIDE_LENGTH / $num_offsets;
 	my $large_block_length = ceil($avg_block_length);
 	my $small_block_length = floor($avg_block_length);
 	

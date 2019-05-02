@@ -22,7 +22,7 @@ use Data::Dumper;
 #   peptide length
 
 my $action;              # build or search
-my $nmer_length = 15;    # peptide length for the catalog
+my $nmer_length;         # peptide length for the catalog
 my $catalog_fasta;       # input fasta file to build the catalog
 my $catalog_name;        # name of the catalog to build/use
                          # for now, this is a file, but it could be a reference
@@ -63,11 +63,11 @@ elsif ($action eq 'search') {
 	my $query_peptides_ref = read_query_file($query_input);
 
 	# read the database
-	my ($unique_nmer_ref, $catalog_ref) = retrieve_catalog($catalog_name);
 	#print Dumper $unique_nmer_ref;
 	#print Dumper $catalog_ref;
 
 	# compare & output
+	#query_vs_catalog($query_peptides_ref, $catalog_name);
 
 }
 else {

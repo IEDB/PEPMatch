@@ -16,6 +16,10 @@ use Inline (C => Config =>
             #CCFLAGSEX => '-march=x86-64',
             );
 
+#TODO: think about the functionality that should be available outside this package
+#      versus inside and potentially wrap up some functions
+#TODO: similarly, think about some of the variables that should be globally set rather
+#      than being passed from function to function
 #TODO: test saving & loading of db_catalog & unique_nmer_id versus storing in DB & retrieval
 #      I suspect the latter will be faster for the db_catalog, even for sqlite
 
@@ -23,10 +27,65 @@ our $VERSION = '0.01';
 
 # the backend for the protein peptide catalog
 # by default it is an in-memory hash, but can be changed
-my $catalog_backend = 'memory';
-my $catalog_source; # this will be set when the input fasta file is read so that it can be
+my $CATALOG_BACKEND = 'memory';
+my $CATALOG_NAME;
+my $CATALOG_SOURCE; # this will be set when the input fasta file is read so that it can be
                     # saved when the catalog is built
-my $catalog_info;   # this will become a hashref of metadata about the catalog upon build/restore
+my @CATALOG_SEQS;   # the sequences to be cataloguded
+my @QUERY_PEPTIDES; # a list of peptides to query
+my $CATALOG_INFO;   # this will become a hashref of metadata about the catalog upon build/restore
+my $PEPTIDE_LENGTH;
+my $MAX_MISMATCHES:
+
+
+# given:
+# a list of query peptides
+# a catalog name
+# max_mismatches
+# do:
+# identify the query peptides that have X or less mismatches in the catalog
+# return:
+# hashref indexed by query peptides, contianing arrays of hashrefs indicating
+# the matches
+# e.g,
+# GHSDHFAFH => [{ nmer_id => 454, num_mm => 1}, {nmer_id => 652, num_mm => 0}]  
+#{ }
+#
+}
+sub query_vs_catalog {
+
+	my $catalog_name = shift;
+	my $max_mismatches = shift;
+
+	if (defined $MAX_MISMATCHES) {
+		die "Max mismatches already set to $MAX_MISMATCHES; Cannot set to $max_mismatches";
+	}
+	$MAX_MISMATCHES = $max_mismatches;
+
+	# read in the catalog
+	my ($unique_nmer_ref, $catalog_ref) = retrieve_catalog($catalog_name);
+
+	# determine the comparisons that need to be made by breaking the
+	# query & catalog peptides into non-overlapping segments
+	# the number of segments is num_mm + 1
+	my %query_segments;
+	my %catalog_segments;
+
+
+
+}
+
+# given:
+# the hashref returned from query_vs_catalong
+# the protein_peptides hashrefs
+# a filename
+# output:
+# a TSV with the columns:
+# query_peptide	matching_peptide num_mm matching_proteins matching_positions
+sub output_matching_peptides {
+
+
+}
 
 # given the name of a query file containing a list (or fasta)
 # of peptides, return an array reference to the peptides
@@ -34,43 +93,45 @@ sub read_query_file {
 
 	my $input_file = shift;
 
-	my @peptides;
-	my $peptide_length;
 	open my $INF, '<', $input_file or die "Can't open input file ($input_file) for reading: $!";
 	while (<$INF>) {
 		chomp;
-		push @peptides, $_;
-		my $cur_peptide_length = length($peptides[-1]);
+		push @QUERY_PEPTIDES, $_;
+		my $cur_peptide_length = length($QUERY_PEPTIDES[-1]);
 		# set the peptide length to the length of the first peptide_length
 		# all subsequent peptides are checked that they match in length
-		if (!defined $peptide_length) {
-			$peptide_length = $cur_peptide_length;
+		if (!defined $PEPTIDE_LENGTH) {
+			$PEPTIDE_LENGTH = $cur_peptide_length;
 		}
-		if ($cur_peptide_length ne $peptide_length) {
+		if ($cur_peptide_length ne $PEPTIDE_LENGTH) {
 			die "Peptides of different lengths ($peptide_length and $cur_peptide_length) found in query file: $input_file";
 		}
 	}
 	close $INF;
 
-	if ($peptide_length ne $catalog_info->{peptide_length}) {
+	if ($PEPTIDE_LENGTH ne $catalog_info->{peptide_length}) {
 		die "Peptide length ($peptide_length) differs from catalog peptide length (" . $catalog_info->{peptide_length} . ')';
 	}
 
-	return \@peptides;
+	return \@QUERY_PEPTIDES;
 }
 
 # given the name of a fasta file
-# return a reference to a an array of hashrefs of sequences {id => 1, seq=>DFDSFSDF}
+# import all sequences into the global @CATALOG_SEQS
+# return a reference to this array hashrefs of sequences {id => 1, seq=>DFDSFSDF}
 sub read_fasta {
 
 	my $fasta = shift;
 
 	# setting the catalog source globally
-	$catalog_source = $fasta;
+	# die if it's already set
+	if (defined $CATALOG_SOURCE) {
+		die "Catalog source already set to $CATALOG_SOURCE; Cannot set to $fasta";
+	}
+	$CATALOG_SOURCE = $fasta;
 
 	my $seqin = Bio::SeqIO->new(-file => $fasta, '-format' => 'Fasta');
 
-	my @seqs;
 	my %seen_id;
 	my $seq_num = 1;
 	while (my $seq = $seqin->next_seq()) {
@@ -80,12 +141,12 @@ sub read_fasta {
 			warn "Appending number to id";
 			$seq_id .= ".$seq_num";
 		}
-		push @seqs, { id => $seq_id, seq => $seq->seq() };
+		push @CATALOG_SEQS, { id => $seq_id, seq => $seq->seq() };
 		$seen_id{$seq_id} = 1;
 		$seq_num++;
 	}
 
-	return \@seqs;
+	return \@CATALOG_SEQS;
 
 }
 
@@ -97,21 +158,30 @@ sub read_fasta {
 # catalog the proteins in the input file, recording the unique nmers and their positions
 # serialize the catalog according to the selected backend
 # return:
-# a reference to the unqiue nmer hash
-# a reference to the protein catalog (maybe this should be in an actual DB?)
+# a reference to the unqiue nmer hash (%UNIQUE_NMER_ID)
+# a reference to the protein catalog (maybe this should be in an actual DB?) (%NMER_CATALOG)
 sub build_catalog {
 
-	my $catalog_seq_ref = shift;
 	my $peptide_length = shift;
 	my $catalog_name = shift;
 
+	# set the catalog name & peptide length globally
+	# die if their already set
+	if (defined $PEPTIDE_LENGTH) {
+		die "Peptide length already set to $PEPTIDE_LENGTH; Cannot set to $peptide_length";
+	}
+	$PEPTIDE_LENGTH = $peptide_length;
+
+	if (defined $CATALOG_NAME) {
+		die "Catalog name already set to $CATALOG_NAME; Cannot set to $catalog_name";
+	}
+	$CATALOG_NAME = $catalog_name;
+
 	my $nmer_id = 0;
-	my %unique_nmer_id;
-	my %nmer_catalog; # indexed first by nmer_id, then sequence id, an array
-	                # of positions in that sequence in which the nmer occurs
+
 	my @nmer_ids;
     
-	foreach my $p (@$catalog_seq_ref) {
+	foreach my $p (@CATALOG_SEQS) {
 
 		my $protein_nmers_ref = break_protein($p->{seq}, $peptide_length);
 
@@ -121,35 +191,35 @@ sub build_catalog {
 
 			# TODO: Here is where we branch depending on the catlog backend
 			# if we find the current nmer in the unique nmers, use the ID, otherwise create a new id
-			if (!exists $unique_nmer_id{$s}) {
-				$unique_nmer_id{$s} = ++$nmer_id;
+			if (!exists $UNIUQE_NMER_ID{$s}) {
+				$UNIUQE_NMER_ID{$s} = ++$nmer_id;
 			}
-			my $cur_nmer_id = $unique_nmer_id{$s};
+			my $cur_nmer_id = $UNIUQE_NMER_ID{$s};
 
 		  	# add the position of the nmer onto an array
-		  	push @{$nmer_catalog{$cur_nmer_id}{$p->{id}}}, $start;
+		  	push @{$NMER_CATALOG{$cur_nmer_id}{$p->{id}}}, $start;
 	    }
 	}
 
 	# now serialize the uniqe nmers & nmer_catalog, and include a description
 	# TODO: this should be refactored and dependent upon the backend
-	my ($unique_nmers_file, $protein_peptides_file, $catalog_info_file) = get_catalog_file_names($catalog_name);
+	my ($unique_nmers_file, $protein_peptides_file, $catalog_info_file) = get_catalog_file_names($CATALOG_NAME);
 
-	if (!-d $catalog_name) {
-		print "Creating directory for catalog: $catalog_name\n";
-		mkdir $catalog_name or die "Failed creating directory for catalog: $!";
+	if (!-d $CATALOG_NAME) {
+		print "Creating directory for catalog: $CATALOG_NAME\n";
+		mkdir $CATALOG_NAME or die "Failed creating directory for catalog: $!";
 	}
 
 	print "Serializing uniqe nmers to: $unique_nmers_file\n";
-	nstore \%unique_nmer_id, $unique_nmers_file;
+	nstore \%UNIUQE_NMER_ID, $unique_nmers_file;
 	print "Done\n";
 	print "Serializing protein peptides to: $protein_peptides_file\n";
-	nstore \%nmer_catalog, $protein_peptides_file;
+	nstore \%NMER_CATALOG, $protein_peptides_file;
 	print "Done\n";
 	print "Storing catalog info in: $catalog_info_file\n";
-	$catalog_info =    { catalog_name   => $catalog_name,
-		                 data_source    => $catalog_source,
-	                     peptide_length => $peptide_length,
+	$catalog_info =    { catalog_name   => $CATALOG_NAME,
+		                 data_source    => $CATALOG_SOURCE,
+	                     peptide_length => $PEPTIDE_LENGTH,
 	                     build_date     => strftime "%F %R", localtime,
 	                   };
 	my $catalog_json = JSON::XS->new
@@ -161,11 +231,12 @@ sub build_catalog {
 	print $CAT $catalog_json, "\n";
 	close $CAT;
 
-	return (\%unique_nmer_id, \%nmer_catalog);
+	return (\%UNIUQE_NMER_ID, \%NMER_CATALOG);
 
 }
 
 # read in the catalog info file & return a hashref
+# TODO: potentially set the catalog name globally here
 sub get_catalog_info {
 
 	my $catalog_name = shift;
@@ -211,12 +282,19 @@ sub retrieve_catalog {
 
 	my $catalog_name = shift;
 
+	if (defined $CATALOG_NAME) {
+		die "Catalog name already set to $CATALOG_NAME; Cannot set to $catalog_name";
+	}
+	$CATALOG_NAME = $catalog_name;
+
 	# TODO: the functionlity will change depending on the backend
-	my ($unique_nmers_file, $protein_peptides_file) = get_catalog_file_names($catalog_name);
+	my ($unique_nmers_file, $protein_peptides_file) = get_catalog_file_names($CATALOG_NAME);
 
 	print "Restoring unique nmer reference from: $unique_nmers_file\n";
 	my $unique_nmers_ref = retrieve($unique_nmers_file);
 	print "Done\n";
+
+	#TODO: this can be done immediately befor the lookups are done for the output file
 	print "Restoring protein peptides reference from: $protein_peptides_file\n";
 	my $protein_peptides_ref = retrieve($protein_peptides_file);
 	print "Done\n";
@@ -245,24 +323,49 @@ sub break_protein {
 
 }
 
-# given:
-# 1. the name of a database containing unqiue nmers
-# do:
-# load it into a hash
-sub load_db {
-
-}
-
-## DO we need this?
-# given
-# 1. a pointer to a DB OR hash containing the db database
-# 2. a fasta file of peptides or list of peptides
-# do:
-# identify all unique peptides in the list
-# append them to the db if they do not already exist
-sub append_db {
-
-
+# this will determine the offsets based on the length of the nmers
+# and the maximium number of mismathces
+# TODO: enforce a minimum length for the blocks - we don't want to end up
+# witih the terminal block being only 1 or 2 residues
+sub determine_offsets {
+	
+	my $num_offsets = $MAX_MISMATCH + 1;
+	
+	my $avg_block_length = $LENGTH / $num_offsets;
+	my $large_block_length = ceil($avg_block_length);
+	my $small_block_length = floor($avg_block_length);
+	
+	my @offsets;
+	
+	my $num_large_blocks = $num_offsets;
+	my $num_small_blocks = 0;
+	
+	if ($large_block_length != $small_block_length) {
+		
+		$num_large_blocks = ($avg_block_length - $small_block_length) * $num_offsets;
+		$num_small_blocks = $num_offsets - $num_large_blocks;
+		
+	}
+	
+	my $offset = 0;
+	foreach my $i (1..$num_large_blocks) {
+		push @offsets, {
+			start => $offset,
+			length => $large_block_length
+		};
+		$offset += $large_block_length;
+	}
+	
+	foreach my $i (1..$num_small_blocks) {
+		push @offsets, {
+			start => $offset,
+			length => $small_block_length
+		};
+		$offset += $small_block_length;
+	}
+	
+	return @offsets;
+	
 }
 
 1;

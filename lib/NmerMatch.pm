@@ -47,14 +47,14 @@ sub read_fasta {
 # return:
 # a reference to the unqiue nmer hash
 # a reference to the protein catalog (maybe this should be in an actual DB?)
-sub build_db {
+sub build_catalog {
 
 	my $db_seq_ref = shift;
 	my $peptide_length = shift;
 
 	my $nmer_id = 0;
 	my %unique_nmer_id;
-	my %db_catalog; # indexed first by nmer_id, then sequence id, an array
+	my %nmer_catalog; # indexed first by nmer_id, then sequence id, an array
 	                # of positions in that sequence in which the nmer occurs
 	my @nmer_ids;
     
@@ -70,11 +70,11 @@ sub build_db {
 		  		$unique_nmer_id{$s} = ++$nmer_id;
 		  	}
 		  	# add the position of the nmer onto an array
-		  	push @{$db_catalog{$nmer_id}{$p->{id}}}, $start;
+		  	push @{$nmer_catalog{$nmer_id}{$p->{id}}}, $start;
 	    }
 	}
 
-	return (\%unique_nmer_id, \%db_catalog);
+	return (\%unique_nmer_id, \%nmer_catalog);
 
 }
 

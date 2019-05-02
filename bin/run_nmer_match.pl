@@ -22,28 +22,28 @@ use Data::Dumper;
 #   peptide length
 
 my $action;              # build or search
-my $nmer_length = 15;    # peptide length for the database
-my $db_fasta;            # input fasta file to build the database
-my $db_name;             # name of the database to build/use
+my $nmer_length = 15;    # peptide length for the catalog
+my $catalog_fasta;       # input fasta file to build the catalog
+my $catalog_name;        # name of the catalog to build/use
                          # for now, this is a file, but it could be a reference
                          # to a schema in a database
 my $nmer_fasta;          # fasta of peptides to search against the databse
 
-GetOptions ("action|a=s"       => \$action,
-	        "nmer-length|l=i"  => \$nmer_length,
-            "db-fasta|d=s"     => \$db_fasta,
-            "db-name|b=s"      => \$db_name,
-            "nmer-fasta|n=s"   => \$nmer_fasta);
+GetOptions ("action|a=s"        => \$action,
+	        "nmer-length|l=i"   => \$nmer_length,
+            "catalog-fasta|d=s" => \$catalog_fasta,
+            "catalog-name|c=s"  => \$catalog_name,
+            "nmer-fasta|n=s"    => \$nmer_fasta);
 
 if ($action eq 'build') {
 
 	# read in the db fasta file
 	print "Reading fasta: $db_fasta\n";
-	my $db_seq_ref = read_fasta($db_fasta);
+	my $catalog_seq_ref = read_fasta($catalog_fasta);
 
 	# catalog the input sequences by unique nmer
 	print "Cataloging sequences\n";
-	my ($unique_nmer_ref, $db_catalog_ref) = build_db($db_seq_ref, $nmer_length);
+	my ($unique_nmer_ref, $catalog_ref) = build_catalog($catalog_seq_ref, $nmer_length);
 
 	print "Done cataloging - sleeping!\n";
 	while (1) {

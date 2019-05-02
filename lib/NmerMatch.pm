@@ -1,15 +1,26 @@
 package NmerMatch;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK = qw(read_fasta build_db);
+@EXPORT_OK = qw(read_fasta build_catalog retrieve_catalog);
 
+use strict;
+use warnings;
 use Bio::SeqIO;
 use Storable qw(nstore retrieve);
+use Inline 'C';
+use Inline (C => Config =>
+            OPTIMIZE => '-O3',
+            #CCFLAGSEX => '-march=x86-64',
+            );
 
 #TODO: test saving & loading of db_catalog & unique_nmer_id versus storing in DB & retrieval
 #      I suspect the latter will be faster for the db_catalog, even for sqlite
 
 our $VERSION = '0.01';
+
+# the backend for the protein peptide catalog
+# by default it is an in-memory hash, but can be changed
+my $catalog_backend = 'memory';
 
 # given the name of a fasta file
 # return a reference to a an array of hashrefs of sequences {id => 1, seq=>DFDSFSDF}
@@ -24,7 +35,7 @@ sub read_fasta {
 	my $seq_num = 1;
 	while (my $seq = $seqin->next_seq()) {
 		my $seq_id = $seq->display_id();
-		if ($seen{$seq_id}) {
+		if ($seen_id{$seq_id}) {
 			warn "Multiple sequences with same identifier: $seq_id";
 			warn "Appending number to id";
 			$seq_id .= ".$seq_num";
@@ -44,13 +55,15 @@ sub read_fasta {
 # do:
 # find all unique nmer sequences
 # catalog the proteins in the input file, recording the unique nmers and their positions
+# serialize the catalog according to the selected backend
 # return:
 # a reference to the unqiue nmer hash
 # a reference to the protein catalog (maybe this should be in an actual DB?)
 sub build_catalog {
 
-	my $db_seq_ref = shift;
+	my $catalog_seq_ref = shift;
 	my $peptide_length = shift;
+	my $catalog_name = shift;
 
 	my $nmer_id = 0;
 	my %unique_nmer_id;
@@ -58,7 +71,7 @@ sub build_catalog {
 	                # of positions in that sequence in which the nmer occurs
 	my @nmer_ids;
     
-	foreach my $p (@$db_seq_ref) {
+	foreach my $p (@$catalog_seq_ref) {
 
 		my $protein_nmers_ref = break_protein($p->{seq}, $peptide_length);
 
@@ -66,15 +79,72 @@ sub build_catalog {
 	    
 			my $s = $protein_nmers_ref->[$start];
 
-	    	if (!exists $unique_nmer_id{$s}) {
-		  		$unique_nmer_id{$s} = ++$nmer_id;
-		  	}
+			# TODO: Here is where we branch depending on the catlog backend
+			# if we find the current nmer in the unique nmers, use the ID, otherwise create a new id
+			if (!exists $unique_nmer_id{$s}) {
+				$unique_nmer_id{$s} = ++$nmer_id;
+			}
+			my $cur_nmer_id = $unique_nmer_id{$s};
+
 		  	# add the position of the nmer onto an array
-		  	push @{$nmer_catalog{$nmer_id}{$p->{id}}}, $start;
+		  	push @{$nmer_catalog{$cur_nmer_id}{$p->{id}}}, $start;
 	    }
 	}
 
+	# now serialize the uniqe nmers & nmer_catalog, and include a description
+	# TODO: this should be refactored and dependent upon the backend
+	my ($unique_nmers_file, $protein_peptides_file) = get_catalog_file_names($catalog_name);
+
+	if (!-d $catalog_name) {
+		print "Creating directory for catalog: $catalog_name\n";
+		mkdir $catalog_name or die "Failed creating directory for catalog: $!";
+	}
+
+	print "Serializing uniqe nmers to: $unique_nmers_file\n";
+	nstore \%unique_nmer_id, $unique_nmers_file;
+	print "Done\n";
+	print "Serializing protein peptides to: $protein_peptides_file\n";
+	nstore \%nmer_catalog, $protein_peptides_file;
+	print "Done\n";
+
 	return (\%unique_nmer_id, \%nmer_catalog);
+
+}
+
+
+# given a catalog name, return the names of the unique nmers & protein peptides
+# files
+sub get_catalog_file_names {
+
+	my $catalog_name = shift;
+
+	my $unique_nmers_file = $catalog_name . '/unique_nmers.store';
+	my $protein_peptides_file = $catalog_name . '/protein_peptides.store';
+
+	return ($unique_nmers_file, $protein_peptides_file);
+}
+
+
+# given:
+# a catalog name
+# do:
+# retrieve the catalog and return references to the uniqe nmer ids and nmer_catalog
+# depending upon the backend
+sub retrieve_catalog {
+
+	my $catalog_name = shift;
+
+	# TODO: the functionlity will change depending on the backend
+	my ($unique_nmers_file, $protein_peptides_file) = get_catalog_file_names($catalog_name);
+
+	print "Restoring unique nmer reference from: $unique_nmers_file\n";
+	my $unique_nmers_ref = retrieve($unique_nmers_file);
+	print "Done\n";
+	print "Restoring protein peptides reference from: $protein_peptides_file\n";
+	my $protein_peptides_ref = retrieve($protein_peptides_file);
+	print "Done\n";
+
+	return ($unique_nmers_ref, $protein_peptides_ref);
 
 }
 
@@ -119,3 +189,21 @@ sub append_db {
 }
 
 1;
+
+__DATA__
+__C__
+  
+  /* count mismatches in a string */
+int count_mismatches(char* x, char* y, int max_mm) {                                           
+    int i;
+    int mismatches = 0;                                                                                                                                
+    for(i=0; x[i] && y[i]; ++i) {                                               
+      if(x[i] != y[i]) {                                                        
+          mismatches++;
+          if(mismatches > max_mm) {
+            return max_mm + 1;
+          }
+      }                                                                         
+    }                                                                           
+    return mismatches;                                                         
+ }

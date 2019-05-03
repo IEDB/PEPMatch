@@ -1,7 +1,7 @@
 package NmerMatch;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK = qw(read_fasta build_catalog retrieve_catalog get_catalog_info read_query_file);
+@EXPORT_OK = qw(read_fasta build_catalog retrieve_catalog get_catalog_info read_query_file query_vs_catalog);
 
 use strict;
 use warnings;
@@ -10,6 +10,7 @@ use Bio::SeqIO;
 use Storable qw(nstore retrieve);
 use JSON::XS;
 use POSIX qw(strftime);
+use POSIX qw(floor ceil);
 use Inline 'C';
 use Inline (C => Config =>
             OPTIMIZE => '-O3',
@@ -48,10 +49,11 @@ my @QUERY_PEPTIDES; # a list of peptides to query
 my $CATALOG_INFO;   # this will become a hashref of metadata about the catalog upon build/restore/get_catalog_info
 my $PEPTIDE_LENGTH;
 my $MAX_MISMATCHES;
-my %UNIUQE_NMER_ID; # nmer sequence => nmer ID
-my @NMER_CATALOG;   # [nmer_ID] => {sequence ID} => [positions]
-my @SEQ_NAMES_CATALOG; # [sequence ID] => sequence name
+my $UNIQUE_NMER_ID; # nmer sequence => nmer ID
+my $NMER_CATALOG;   # [nmer_ID] => {sequence ID} => [positions]
+my $SEQ_NAMES_CATALOG; # [sequence ID] => sequence name
 my $CATALOG_MAX_NMER_ID;  # the maximum nmer ID that is in the catalog
+my %NUM_MISMATCHES;  # {query nmer ID}{catalog nmer ID} => number of mismatches
 
 # given:
 # a list of query peptides
@@ -66,7 +68,6 @@ my $CATALOG_MAX_NMER_ID;  # the maximum nmer ID that is in the catalog
 # GHSDHFAFH => [{ nmer_id => 454, num_mm => 1}, {nmer_id => 652, num_mm => 0}]  
 #{ }
 #
-}
 sub query_vs_catalog {
 
 	my $max_mismatches = shift;
@@ -74,6 +75,7 @@ sub query_vs_catalog {
 	if (defined $MAX_MISMATCHES) {
 		die "Max mismatches already set to $MAX_MISMATCHES; Cannot set to $max_mismatches";
 	}
+
 	$MAX_MISMATCHES = $max_mismatches;
 
 	# read in the catalog; setting the %UNIUQE_NMER_ID and %NMER_CATALOG hashes
@@ -90,11 +92,11 @@ sub query_vs_catalog {
 	# the number of segments is num_mm + 1
 	foreach my $o (@offsets) {
 
-		my ($query_word_hash_ref, $query_nmers_ref) = create_query_word_hash($o->{length}, $o->{offset});
-		my ($catalog_word_hash_ref, $catalog_nmers_ref) = create_catalog_word_hash($o->{length}, $o->{offset}, \%query_word_hash);
+		my ($query_word_hash_ref, $query_nmers_ref) = create_query_word_hash($o->{length}, $o->{start});
+		my ($catalog_word_hash_ref, $catalog_nmers_ref) = create_catalog_word_hash($o->{length}, $o->{start}, $query_word_hash_ref);
 
 		# now make the comparisons
-		foreach my $sub_peptide keys (%$query_word_hash_ref) {
+		foreach my $sub_peptide (keys %$query_word_hash_ref) {
 			foreach my $query_nmer_id (@{$query_word_hash_ref->{$sub_peptide}}) {
 				foreach my $catalog_nmer_id (@{$query_word_hash_ref->{$sub_peptide}}) {
 					# if 0 mismatches, no need to compare
@@ -129,8 +131,8 @@ sub create_query_word_hash {
     # pushing the IDs of the unique peptides starting with this substring onto
     # the index
     foreach my $query_p (@QUERY_PEPTIDES) {
-    	$id_to_nmer{$UNIQUE_NMER_ID{$query_p}} = $query_p;
-        push @{$word_index{substr $query_p, $offset, $length}}, $UNIQUE_NMER_ID{$query_p};
+    	$id_to_nmer{$UNIQUE_NMER_ID->{$query_p}} = $query_p;
+        push @{$word_index{substr $query_p, $offset, $length}}, $UNIQUE_NMER_ID->{$query_p};
     }
     
     return (\%word_index, \%id_to_nmer);
@@ -147,15 +149,16 @@ sub create_catalog_word_hash {
 	my $query_hash_ref = shift;
 
     my %word_index;
+    my %id_to_nmer;
     
     # pushing the IDs of the unique peptides starting with this substring onto
     # the index
-    foreach my $catalog_p (sort {$UNIQUE_NMER_ID{$a} <=> $UNIQUE_NMER_ID{$b}} keys %UNIQUE_NMER_ID) {
-    	last if $UNIQUE_NMER_ID{$catalog_p} > $CATALOG_MAX_NMER_ID;
+    foreach my $catalog_p (sort {$UNIQUE_NMER_ID->{$a} <=> $UNIQUE_NMER_ID->{$b}} keys %$UNIQUE_NMER_ID) {
+    	last if $UNIQUE_NMER_ID->{$catalog_p} > $CATALOG_MAX_NMER_ID;
     	my $sub_peptide = substr $catalog_p, $offset, $length;
-    	next if (!defined $query_hash_ref{$sub_peptide});
-    	$id_to_nmer{$UNIQUE_NMER_ID{$catalog_p}} = $catalog_p;
-        push @{$word_index{$sub_peptide}}, $UNIQUE_NMER_ID{$catalog_p};
+    	next if (!defined $query_hash_ref->{$sub_peptide});
+    	$id_to_nmer{$UNIQUE_NMER_ID->{$catalog_p}} = $catalog_p;
+        push @{$word_index{$sub_peptide}}, $UNIQUE_NMER_ID->{$catalog_p};
     }
     
     return (\%word_index, \%id_to_nmer);
@@ -171,87 +174,12 @@ sub update_unique_nmers {
 	my $nmer_id = $CATALOG_MAX_NMER_ID;
 
 	foreach my $p (@$peptide_list) {
-		if (!defined $UNIUQE_NMER_ID{$p}) {
-			$UNIUQE_NMER_ID{$p} = ++$nmer_id;
+		if (!defined $UNIQUE_NMER_ID->{$p}) {
+			$UNIQUE_NMER_ID->{$p} = ++$nmer_id;
 		}
 	}
 
 }
-
-sub determine_comparisons {
-        
-    my $num_comparisons=0;
- 
-    my $t0 = Benchmark->new();
-    
-    my $offset_start = 0;
-    
-    foreach my $offset (@OFFSETS) {
-
-    	$offset_start = $offset->{start};
-    	my $word_length = $offset->{length};
-
-        print "\tworking on offset ", $offset_start, " length: ", $word_length, "\n";
-        my $num_checked =0;
-        
-        my $t1 = Benchmark->new;
-        
-        my %query_index = create_hash($word_length, $offset_start, \@QUERY_PEPTIDES);
-        my %catalog_index = create_hash($word_length, $offset_start, \@peptides2);
-        
-        my $to_check = (keys %index1);
-        print "Nmers to check for offset $offset_start: $to_check\n";
-        my %tb_myco;
-        foreach my $sub_peptide1 (keys %index1) {
-
-            $num_checked++;
-            if ($num_checked % 1000 == 0) {
-                print "Checking $num_checked of $to_check\n";
-            }
-
-            # moving on if there are no myco peptides that also begin with this sub peptide
-            # skip if complete
-
-            $num_checked++;
-            if ($num_checked % 1000 == 0) {
-                print "Checking $num_checked of $to_check\n";
-            }
-
-            next unless ($index2{$sub_peptide1});
-            
-            # moving on if we've don this comparison already
-            #my $done_key = $offset_start . $sub_peptide1;
-            #next if ($done{$done_key});
-            # loopeing through all peptides from list 1 that start ith this subpeptide
-            foreach my $id1 (@{$index1{$sub_peptide1}}) {
-                # this tb sub peptide must be compared to all myco peptides that also contain this sub ppeptide
-                do_comparisons($id1, $index2{$sub_peptide1},$offset);
-                $num_comparisons+= @{$index2{$sub_peptide1}};
-                #do the comparison and print output...we can uniquify later
-
-            }
-            # mark this sub peptide comparison as complte
-            #$done{$done_key} = 1;
-
-        }
-        
-        my $t2 = Benchmark->new;
-        
-        my $td = timediff($t2, $t1);
-        my $tds = timediff($t2, $t0);
-        
-        print "Time for loop: ", timestr($td), "\n";
-        print "Time since start: ", timestr($tds), "\n";
-
-        print "Total comparisons after offset $offset_start: ", format_number($num_comparisons,0,0), "\n";
-
-    
-    }
-    
-    return $num_comparisons;
-    
-}
-
 
 # given:
 # the hashref returned from query_vs_catalong
@@ -282,13 +210,13 @@ sub read_query_file {
 			$PEPTIDE_LENGTH = $cur_peptide_length;
 		}
 		if ($cur_peptide_length ne $PEPTIDE_LENGTH) {
-			die "Peptides of different lengths ($peptide_length and $cur_peptide_length) found in query file: $input_file";
+			die "Peptides of different lengths ($PEPTIDE_LENGTH and $cur_peptide_length) found in query file: $input_file";
 		}
 	}
 	close $INF;
 
-	if ($PEPTIDE_LENGTH ne $catalog_info->{peptide_length}) {
-		die "Peptide length ($peptide_length) differs from catalog peptide length (" . $catalog_info->{peptide_length} . ')';
+	if ($PEPTIDE_LENGTH ne $CATALOG_INFO->{peptide_length}) {
+		die "Peptide length ($PEPTIDE_LENGTH) differs from catalog peptide length (" . $CATALOG_INFO->{peptide_length} . ')';
 	}
 
 	return \@QUERY_PEPTIDES;
@@ -336,7 +264,7 @@ sub read_fasta {
 # catalog the proteins in the input file, recording the unique nmers and their positions
 # serialize the catalog according to the selected backend
 # return:
-# a reference to the unqiue nmer hash (%UNIQUE_NMER_ID)
+# a reference to the unqiue nmer hash (%$UNIQUE_NMER_ID)
 # a reference to the protein catalog (maybe this should be in an actual DB?) (%NMER_CATALOG)
 sub build_catalog {
 
@@ -363,7 +291,7 @@ sub build_catalog {
     
 	foreach my $p (@CATALOG_SEQS) {
 
-		$SEQ_NAMES_CATALOG[$seq_id] = $p->{id};
+		$SEQ_NAMES_CATALOG->[$seq_id] = $p->{id};
 
 		my $protein_nmers_ref = break_protein($p->{seq}, $peptide_length);
 
@@ -373,13 +301,13 @@ sub build_catalog {
 
 			# TODO: Here is where we branch depending on the catlog backend
 			# if we find the current nmer in the unique nmers, use the ID, otherwise create a new id
-			if (!exists $UNIUQE_NMER_ID{$s}) {
-				$UNIUQE_NMER_ID{$s} = $nmer_id++;
+			if (!exists $UNIQUE_NMER_ID->{$s}) {
+				$UNIQUE_NMER_ID->{$s} = $nmer_id++;
 			}
-			my $cur_nmer_id = $UNIUQE_NMER_ID{$s};
+			my $cur_nmer_id = $UNIQUE_NMER_ID->{$s};
 
 		  	# add the position of the nmer onto an array
-		  	push @{$NMER_CATALOG[$cur_nmer_id]{$seq_id}, $start;
+		  	push @{$NMER_CATALOG->[$cur_nmer_id]{$seq_id}}, $start;
 	    }
 
 	    $seq_id++;
@@ -394,14 +322,19 @@ sub build_catalog {
 		mkdir $CATALOG_NAME or die "Failed creating directory for catalog: $!";
 	}
 
-	print "Serializing uniqe nmers to: $unique_nmers_file\n";
-	nstore \%UNIUQE_NMER_ID, $unique_nmers_file;
+	print "Serializing unique nmers to: $unique_nmers_file\n";
+	#print Dumper $UNIQUE_NMER_ID;
+	#exit;
+	nstore \%$UNIQUE_NMER_ID, $unique_nmers_file;
 	print "Done\n";
 	print "Serializing protein peptides to: $protein_peptides_file\n";
-	nstore \@NMER_CATALOG, $protein_peptides_file;
+	nstore \@$NMER_CATALOG, $protein_peptides_file;
+	print "Done\n";
+	print "Serializing protein names to: $protein_names_file\n";
+	nstore \@$SEQ_NAMES_CATALOG, $protein_names_file;
 	print "Done\n";
 	print "Storing catalog info in: $catalog_info_file\n";
-	$catalog_info =    { catalog_name   => $CATALOG_NAME,
+	$CATALOG_INFO =    { catalog_name   => $CATALOG_NAME,
 		                 data_source    => $CATALOG_SOURCE,
 	                     peptide_length => $PEPTIDE_LENGTH,
 	                     build_date     => strftime "%F %R", localtime,
@@ -410,12 +343,10 @@ sub build_catalog {
 	                           ->utf8
 	                           ->pretty(1)
 	                           ->canonical(1)
-	                           ->encode($catalog_info);
+	                           ->encode($CATALOG_INFO);
 	open my $CAT, '>', $catalog_info_file or die "Can't open catalog info file ($catalog_info_file): $!";
 	print $CAT $catalog_json, "\n";
 	close $CAT;
-
-	return (\%UNIUQE_NMER_ID, \%NMER_CATALOG);
 
 }
 
@@ -474,19 +405,22 @@ sub retrieve_catalog {
 	my ($unique_nmers_file, $protein_peptides_file, $protein_names_file) = get_catalog_file_names($CATALOG_NAME);
 
 	print "Restoring unique nmer reference from: $unique_nmers_file\n";
-	\%UNIQUE_NMER_ID = retrieve($unique_nmers_file);
+	$UNIQUE_NMER_ID = retrieve($unique_nmers_file);
 	print "Done\n";
 
 	# set the maximum nmer id
-	$CATALOG_MAX_NMER_ID = pop (sort {$UNIQUE_NMER_ID{$a} <=> $UNIQUE_NMER_ID{$b}} keys %UNIQUE_NMER_ID);
+	my @nmers_sorted_by_id = (sort {$UNIQUE_NMER_ID->{$a} <=> $UNIQUE_NMER_ID->{$b}} keys %$UNIQUE_NMER_ID);
+	my $nmer_with_max_id = pop @nmers_sorted_by_id;
+	$CATALOG_MAX_NMER_ID = $UNIQUE_NMER_ID->{$nmer_with_max_id};
+	undef @nmers_sorted_by_id;
 
 	#TODO: this can be done immediately befor the lookups are done for the output file
 	print "Restoring protein peptides reference from: $protein_peptides_file\n";
-	\@NMER_CATALOG = retrieve($protein_peptides_file);
+	$NMER_CATALOG = retrieve($protein_peptides_file);
 	print "Done\n";
 
 	print "Restoring protein names reference from: $protein_names_file\n";
-	\@SEQ_NAMES_CATALOG = retrieve($protein_names_file);
+	$SEQ_NAMES_CATALOG = retrieve($protein_names_file);
 	print "Done\n";
 
 }

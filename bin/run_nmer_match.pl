@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Getopt::Long qw(GetOptions);
-use NmerMatch qw(read_fasta build_catalog retrieve_catalog get_catalog_info read_query_file);
+use NmerMatch qw(read_fasta build_catalog retrieve_catalog get_catalog_info read_query_file query_vs_catalog);
 use Data::Dumper;
 
 # actions:
@@ -45,7 +45,7 @@ if ($action eq 'build') {
 
 	# catalog the input sequences by unique nmer
 	print "Cataloging sequences\n";
-	build_catalog($catalog_seq_ref, $nmer_length, $catalog_name);
+	build_catalog($nmer_length, $catalog_name);
 
 	#print Dumper $unique_nmer_ref;
 	#print Dumper $catalog_ref;

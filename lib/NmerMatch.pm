@@ -150,8 +150,6 @@ sub query_vs_catalog {
 
 	}
 
-	print Dumper %NUM_MISMATCHES;
-
 	my $num_query_peptides = @QUERY_PEPTIDES;
 	my $possible_comparisions = $CATALOG_INFO->{num_nmers} * $num_query_peptides;
 	print "Possible comparisons: $possible_comparisions\n";
@@ -183,7 +181,6 @@ sub create_query_word_hash {
     
 }
 
-#TODO: START HERE AND THINK ABOUT HOW WE NEED TO TRANSLATE TO IDS
 # similar to the query word hash, create a hash of the catalog words,
 # skipping those that do not contain substrings observed in the query word hash
 sub create_catalog_word_hash {
@@ -235,7 +232,7 @@ sub update_unique_nmers {
 # a filename
 # output:
 # a TSV with the columns:
-# query_peptide	matching_peptide num_mm matching_proteins matching_positions
+# query_peptide	matching_peptide num_mm num_protein_matches matching_proteins matching_positions
 sub output_matching_peptides {
 
 

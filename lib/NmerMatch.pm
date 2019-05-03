@@ -11,6 +11,7 @@ use Storable qw(nstore retrieve);
 use JSON::XS;
 use POSIX qw(strftime);
 use POSIX qw(floor ceil);
+use Benchmark;
 use Inline 'C';
 use Inline (C => Config =>
             OPTIMIZE => '-O3',
@@ -55,6 +56,9 @@ my $SEQ_NAMES_CATALOG; # [sequence ID] => sequence name
 my $CATALOG_MAX_NMER_ID;  # the maximum nmer ID that is in the catalog
 my %NUM_MISMATCHES;  # {query nmer ID}{catalog nmer ID} => number of mismatches
 
+my $t0 = Benchmark->new;
+
+
 # given:
 # a list of query peptides
 # a catalog name
@@ -90,7 +94,13 @@ sub query_vs_catalog {
 	# determine the comparisons that need to be made by breaking the
 	# query & catalog peptides into non-overlapping segments
 	# the number of segments is num_mm + 1
+
+	# TODO: Track the comparisons that were done so we don't need to redo
+
+	my $num_comparisons_done = 0;
 	foreach my $o (@offsets) {
+
+		my $t1 = Benchmark->new;
 
 		print "Working on offset:\n";
 		print Dumper $o;
@@ -102,6 +112,7 @@ sub query_vs_catalog {
 		foreach my $sub_peptide (keys %$query_word_hash_ref) {
 			foreach my $query_nmer_id (@{$query_word_hash_ref->{$sub_peptide}}) {
 				foreach my $catalog_nmer_id (@{$catalog_word_hash_ref->{$sub_peptide}}) {
+					$num_comparisons_done++;
 					# if 0 mismatches, no need to compare
 					if ($query_nmer_id ne $catalog_nmer_id) {
 						my $num_mm = count_mismatches($query_nmers_ref->{$query_nmer_id}, 
@@ -116,9 +127,23 @@ sub query_vs_catalog {
 				}
 			}
 		}
+
+        my $t2 = Benchmark->new;
+        
+        my $td = timediff($t2, $t1);
+        my $tds = timediff($t2, $t0);
+        
+        print "Time for loop: ", timestr($td), "\n";
+        print "Time since start: ", timestr($tds), "\n";
+
 	}
 
 	print Dumper %NUM_MISMATCHES;
+
+	my $num_query_peptides = @QUERY_PEPTIDES;
+	my $possible_comparisions = $CATALOG_INFO->{num_nmers} * $num_query_peptides;
+	print "Possible comparisons: $possible_comparisions\n";
+	print "Comparisons done: $num_comparisons_done\n";
 
 }
 
@@ -347,8 +372,8 @@ sub build_catalog {
 	$CATALOG_INFO =    { catalog_name   => $CATALOG_NAME,
 		                 data_source    => $CATALOG_SOURCE,
 	                     peptide_length => $PEPTIDE_LENGTH,
+                         num_nmers      => $nmer_id + 1,
 	                     build_date     => strftime "%F %R", localtime,
-	                     num_nmers      => $nmer_id + 1,
 	                   };
 	my $catalog_json = JSON::XS->new
 	                           ->utf8

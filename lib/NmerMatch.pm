@@ -110,12 +110,23 @@ sub query_vs_catalog {
 
 		# now make the comparisons
 		foreach my $sub_peptide (keys %$query_word_hash_ref) {
+			#print "Sub-peptide: $sub_peptide\n";
 			foreach my $query_nmer_id (@{$query_word_hash_ref->{$sub_peptide}}) {
+				#print "Query:\n";
+				#print Dumper @{$query_word_hash_ref->{$sub_peptide}};
+
+				my $query_p = $query_nmers_ref->{$query_nmer_id};
+
 				foreach my $catalog_nmer_id (@{$catalog_word_hash_ref->{$sub_peptide}}) {
+					#print "Catalog:\n";
+					#print Dumper @{$catalog_word_hash_ref->{$sub_peptide}};
 					$num_comparisons_done++;
+					#print "Comparison:\n";
+					#print $query_nmers_ref->{$query_nmer_id}, "\n";
+					#print $catalog_nmers_ref->{$catalog_nmer_id}, "\n"; 
 					# if 0 mismatches, no need to compare
 					if ($query_nmer_id ne $catalog_nmer_id) {
-						my $num_mm = count_mismatches($query_nmers_ref->{$query_nmer_id}, 
+						my $num_mm = count_mismatches($query_p, 
 							                          $catalog_nmers_ref->{$catalog_nmer_id},
 							                          $MAX_MISMATCHES);
 						if ($num_mm <= $MAX_MISMATCHES) {
@@ -124,6 +135,7 @@ sub query_vs_catalog {
 					} else {
 						$NUM_MISMATCHES{$query_nmer_id}{$catalog_nmer_id} = 0;
 					}
+					#print "Mismatches: $NUM_MISMATCHES{$query_nmer_id}{$catalog_nmer_id}\n\n";
 				}
 			}
 		}
@@ -161,6 +173,8 @@ sub create_query_word_hash {
     # pushing the IDs of the unique peptides starting with this substring onto
     # the index
     foreach my $query_p (@QUERY_PEPTIDES) {
+    	# we only want to push the the peptide into the array once
+    	next if (defined $id_to_nmer{$UNIQUE_NMER_ID->{$query_p}});
     	$id_to_nmer{$UNIQUE_NMER_ID->{$query_p}} = $query_p;
         push @{$word_index{substr $query_p, $offset, $length}}, $UNIQUE_NMER_ID->{$query_p};
     }
@@ -183,10 +197,14 @@ sub create_catalog_word_hash {
     
     # pushing the IDs of the unique peptides starting with this substring onto
     # the index
-    foreach my $catalog_p (sort {$UNIQUE_NMER_ID->{$a} <=> $UNIQUE_NMER_ID->{$b}} keys %$UNIQUE_NMER_ID) {
-    	last if $UNIQUE_NMER_ID->{$catalog_p} > $CATALOG_MAX_NMER_ID;
+    foreach my $catalog_p (keys %$UNIQUE_NMER_ID) {
+    	# skip if it's not part of the catalog nmers
+    	next if $UNIQUE_NMER_ID->{$catalog_p} > $CATALOG_MAX_NMER_ID;
     	my $sub_peptide = substr $catalog_p, $offset, $length;
+    	# skip if the subpeptide is not included in the query
     	next if (!defined $query_hash_ref->{$sub_peptide});
+    	# we only want to push the the peptide into the array once
+    	next if (defined $id_to_nmer{$UNIQUE_NMER_ID->{$catalog_p}});
     	$id_to_nmer{$UNIQUE_NMER_ID->{$catalog_p}} = $catalog_p;
         push @{$word_index{$sub_peptide}}, $UNIQUE_NMER_ID->{$catalog_p};
     }

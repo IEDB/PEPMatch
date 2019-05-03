@@ -92,6 +92,9 @@ sub query_vs_catalog {
 	# the number of segments is num_mm + 1
 	foreach my $o (@offsets) {
 
+		print "Working on offset:\n";
+		print Dumper $o;
+
 		my ($query_word_hash_ref, $query_nmers_ref) = create_query_word_hash($o->{length}, $o->{start});
 		my ($catalog_word_hash_ref, $catalog_nmers_ref) = create_catalog_word_hash($o->{length}, $o->{start}, $query_word_hash_ref);
 
@@ -288,8 +291,6 @@ sub build_catalog {
 	# the first nmer ID will be 0 so we can store them efficiently in an array
 	my $nmer_id = 0;
 	my $seq_id = 0;
-
-	my @nmer_ids;
     
 	foreach my $p (@CATALOG_SEQS) {
 
@@ -335,11 +336,19 @@ sub build_catalog {
 	print "Serializing protein names to: $protein_names_file\n";
 	nstore \@$SEQ_NAMES_CATALOG, $protein_names_file;
 	print "Done\n";
+
+	# set the maximum nmer id
+	my @nmers_sorted_by_id = (sort {$UNIQUE_NMER_ID->{$a} <=> $UNIQUE_NMER_ID->{$b}} keys %$UNIQUE_NMER_ID);
+	my $nmer_with_max_id = pop @nmers_sorted_by_id;
+	$CATALOG_MAX_NMER_ID = $UNIQUE_NMER_ID->{$nmer_with_max_id};
+	undef @nmers_sorted_by_id;
+
 	print "Storing catalog info in: $catalog_info_file\n";
 	$CATALOG_INFO =    { catalog_name   => $CATALOG_NAME,
 		                 data_source    => $CATALOG_SOURCE,
 	                     peptide_length => $PEPTIDE_LENGTH,
 	                     build_date     => strftime "%F %R", localtime,
+	                     num_nmers      => $nmer_id + 1,
 	                   };
 	my $catalog_json = JSON::XS->new
 	                           ->utf8
@@ -411,10 +420,7 @@ sub retrieve_catalog {
 	print "Done\n";
 
 	# set the maximum nmer id
-	my @nmers_sorted_by_id = (sort {$UNIQUE_NMER_ID->{$a} <=> $UNIQUE_NMER_ID->{$b}} keys %$UNIQUE_NMER_ID);
-	my $nmer_with_max_id = pop @nmers_sorted_by_id;
-	$CATALOG_MAX_NMER_ID = $UNIQUE_NMER_ID->{$nmer_with_max_id};
-	undef @nmers_sorted_by_id;
+	$CATALOG_MAX_NMER_ID = $CATALOG_INFO->{num_nmers} - 1;
 
 	#TODO: this can be done immediately befor the lookups are done for the output file
 	print "Restoring protein peptides reference from: $protein_peptides_file\n";

@@ -98,7 +98,7 @@ sub query_vs_catalog {
 		# now make the comparisons
 		foreach my $sub_peptide (keys %$query_word_hash_ref) {
 			foreach my $query_nmer_id (@{$query_word_hash_ref->{$sub_peptide}}) {
-				foreach my $catalog_nmer_id (@{$query_word_hash_ref->{$sub_peptide}}) {
+				foreach my $catalog_nmer_id (@{$catalog_word_hash_ref->{$sub_peptide}}) {
 					# if 0 mismatches, no need to compare
 					if ($query_nmer_id ne $catalog_nmer_id) {
 						my $num_mm = count_mismatches($query_nmers_ref->{$query_nmer_id}, 
@@ -114,6 +114,8 @@ sub query_vs_catalog {
 			}
 		}
 	}
+
+	print Dumper %NUM_MISMATCHES;
 
 }
 

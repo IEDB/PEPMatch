@@ -1,7 +1,7 @@
 FROM perl:5.28
 
 # install perl dependencies
-RUN cpanm JSON::XS Inline::C Bio::Perl
+RUN cpanm JSON::XS Inline::C Bio::Perl Test::More
 
 # copy the code
 ADD . /app/nmer-match

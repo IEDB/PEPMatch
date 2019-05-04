@@ -1,9 +1,8 @@
-#!perl -T
 use 5.006;
 use strict;
 use warnings;
-use Findbin::Bin;
-use lib "$Findbin::Bin/../lib";
+use FindBin;
+use lib "$FindBin::Bin/../lib";
 use Test::More;
 
 plan tests => 1;

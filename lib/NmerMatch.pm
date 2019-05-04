@@ -55,6 +55,8 @@ my $NMER_CATALOG;   # [nmer_ID] => {sequence ID} => [positions]
 my $SEQ_NAMES_CATALOG; # [sequence ID] => sequence name
 my $CATALOG_MAX_NMER_ID;  # the maximum nmer ID that is in the catalog
 my %NUM_MISMATCHES;  # {query nmer ID}{catalog nmer ID} => number of mismatches
+my %NMER_ID2SEQ;     # captures the nmer IDs that will need to be reported later
+                     # and stores their sequence
 
 my $t0 = Benchmark->new;
 
@@ -125,16 +127,25 @@ sub query_vs_catalog {
 					#print $query_nmers_ref->{$query_nmer_id}, "\n";
 					#print $catalog_nmers_ref->{$catalog_nmer_id}, "\n"; 
 					# if 0 mismatches, no need to compare
+					my $num_mm;
 					if ($query_nmer_id ne $catalog_nmer_id) {
-						my $num_mm = count_mismatches($query_p, 
-							                          $catalog_nmers_ref->{$catalog_nmer_id},
-							                          $MAX_MISMATCHES);
-						if ($num_mm <= $MAX_MISMATCHES) {
-							$NUM_MISMATCHES{$query_nmer_id}{$catalog_nmer_id} = $num_mm;
-						} 
+						$num_mm = count_mismatches($query_p, 
+							                       $catalog_nmers_ref->{$catalog_nmer_id},
+							                       $MAX_MISMATCHES);
 					} else {
-						$NUM_MISMATCHES{$query_nmer_id}{$catalog_nmer_id} = 0;
+						$num_mm = 0;
 					}
+					if ($num_mm <= $MAX_MISMATCHES) {
+						$NUM_MISMATCHES{$query_nmer_id}{$catalog_nmer_id} = $num_mm;
+						# now store the sequences by their ID in the NMER_ID2SEQ hash
+						# so we can recall them later
+						if (!defined $NMER_ID2SEQ{$query_nmer_id}) {
+							$NMER_ID2SEQ{$query_nmer_id} = $query_p;
+						}
+						if (!defined $NMER_ID2SEQ{$catalog_nmer_id}) {
+							$NMER_ID2SEQ{$catalog_nmer_id} = $catalog_nmers_ref->{$catalog_nmer_id};
+						}
+					} 
 					#print "Mismatches: $NUM_MISMATCHES{$query_nmer_id}{$catalog_nmer_id}\n\n";
 				}
 			}
@@ -154,6 +165,8 @@ sub query_vs_catalog {
 	my $possible_comparisions = $CATALOG_INFO->{num_nmers} * $num_query_peptides;
 	print "Possible comparisons: $possible_comparisions\n";
 	print "Comparisons done: $num_comparisons_done\n";
+
+	output_matching_peptides();
 
 }
 
@@ -187,7 +200,7 @@ sub create_catalog_word_hash {
 
 	my $length = shift;
 	my $offset = shift;
-	my $query_hash_ref = shift;
+	my $query_hash_ref = shift; # a reference to the query subpeptide hash
 
     my %word_index;
     my %id_to_nmer;
@@ -232,10 +245,35 @@ sub update_unique_nmers {
 # a filename
 # output:
 # a TSV with the columns:
-# query_peptide	matching_peptide num_mm num_protein_matches matching_proteins matching_positions
+# query_peptide	matching_peptide num_mm num_protein_matches matching_proteins_and_positions
 sub output_matching_peptides {
 
+	my @header_fields = qw(query_peptide	matching_peptide num_mm num_protein_matches matching_proteins_and_positions);
+	print join("\t", @header_fields), "\n";
 
+	foreach my $query_nmer_id (keys %NUM_MISMATCHES) {
+		my $query_p = $NMER_ID2SEQ{$query_nmer_id};
+		foreach my $catalog_nmer_id (keys %{$NUM_MISMATCHES{$query_nmer_id}}) {
+			my $catalog_p = $NMER_ID2SEQ{$catalog_nmer_id};
+			my $catalog_matches = $NMER_CATALOG->[$catalog_nmer_id];
+			my @matching_protein_ids = (keys %$catalog_matches);
+			my $num_protein_matches = @matching_protein_ids;
+			my @matching_proteins_and_positions;
+			foreach my $seq_id (@matching_protein_ids) {
+				foreach my $position (@{$catalog_matches->{$seq_id}}) {
+					push @matching_proteins_and_positions, $SEQ_NAMES_CATALOG->[$seq_id] . ':' . $position;
+				}
+			}
+
+			my $num_mm = $NUM_MISMATCHES{$query_nmer_id}{$catalog_nmer_id};
+			my $matching_prots_and_pos_string = join '; ', @matching_proteins_and_positions;
+			my @output_fields = ($query_p, $catalog_p, $num_mm, $num_protein_matches,
+				$matching_prots_and_pos_string);
+
+			print join("\t", @output_fields), "\n";
+
+		}
+	}
 }
 
 # given the name of a query file containing a list (or fasta)

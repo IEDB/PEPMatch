@@ -1,0 +1,9 @@
+image: gitlab.lji.org:4567/jgbaum/nmer-match:latest
+ 
+stages:
+  - test
+ 
+test:
+  stage: test
+  script:
+    - prove

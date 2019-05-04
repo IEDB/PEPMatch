@@ -1,0 +1,25 @@
+use 5.006;
+use strict;
+use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use NmerMatch qw(read_fasta);
+use Test::More;
+use Data::Dumper;
+use Data::Compare;
+
+plan tests => 1;
+
+my $catalog_fasta = "$FindBin::Bin/test_db.fasta";
+my $catalog_seq_ref = read_fasta($catalog_fasta);
+my $expected_result = [
+          {
+            'id' => 'sp|P31946|1433B_HUMAN',
+            'seq' => 'MTMDKSELVQKAKLAEQAERYDDMAAAMKAVTEQGHELSNEERNLLSVAYKNVVGARRSSWRVISSIEQKTERNEKKQQMGKEYREKIEAELQDICNDVLELLDKYLIPNATQPESKVFYLKMKGDYFRYLSEVASGDNKQTTVSNSQQAYQEAFEISKKEMQPTHPIRLGLALNFSVFYYEILNSPEKACSLAKTAFDEAIAELDTLNEESYKDSTLIMQLLRDNLTLWTSENQGDEGDAGEGEN'
+          },
+          {
+            'id' => 'sp|P62258|1433E_HUMAN',
+            'seq' => 'MDDREDLVYQAKLAEQAERYDEMVESMKKVAGMDVELTVEERNLLSVAYKNVIGARRASWRIISSIEQKEENKGGEDKLKMIREYRQMVETELKLICCDILDVLDKHLIPAANTGESKVFYYKMKGDYHRYLAEFATGNDRKEAAENSLVAYKAASDIAMTELPPTHPIRLGLALNFSVFYYEILNSPDRACRLAKAAFDDAIAELDTLSEESYKDSTLIMQLLRDNLTLWTSDMQGDGEEQNKEALQDVEDENQ'
+          }
+        ];
+ok(Compare($catalog_seq_ref, $expected_result), 'catalog fasta import');

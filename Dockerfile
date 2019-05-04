@@ -6,5 +6,9 @@ RUN cpanm JSON::XS Inline::C Bio::Perl Test::More
 # copy the code
 ADD . /app/nmer-match
 
-# define the entrypoint
-ENTRYPOINT perl /app/nmer-match/bin/run_nmer_match.pl
+# copy & define the entrypoint
+COPY ./docker_entrypoint.sh /
+ENTRYPOINT ["/docker_entrypoint.sh"]
+
+# define default arguments
+#CMD []

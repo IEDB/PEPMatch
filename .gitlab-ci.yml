@@ -1,6 +1,6 @@
 image:
   name: gitlab.lji.org:4567/jgbaum/nmer-match:latest
-  entrypoint: /bin/sh -c
+  entrypoint: ["/bin/sh -c"]
 
 stages:
   - test

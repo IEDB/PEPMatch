@@ -1,7 +1,7 @@
 package NmerMatch;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK = qw(read_fasta build_catalog retrieve_catalog get_catalog_info read_query_file query_vs_catalog);
+@EXPORT_OK = qw(read_fasta build_catalog retrieve_catalog get_catalog_info read_query_file query_vs_catalog output_matching_peptides);
 
 use strict;
 use warnings;
@@ -166,7 +166,7 @@ sub query_vs_catalog {
 	print "Possible comparisons: $possible_comparisions\n";
 	print "Comparisons done: $num_comparisons_done\n";
 
-	output_matching_peptides();
+	return \%NUM_MISMATCHES;
 
 }
 
@@ -437,6 +437,8 @@ sub build_catalog {
 	print $CAT $catalog_json, "\n";
 	close $CAT;
 
+	return($UNIQUE_NMER_ID, $NMER_CATALOG, $SEQ_NAMES_CATALOG, $CATALOG_INFO)
+
 }
 
 # read in the catalog info file & return a hashref
@@ -508,6 +510,8 @@ sub retrieve_catalog {
 	print "Restoring protein names reference from: $protein_names_file\n";
 	$SEQ_NAMES_CATALOG = retrieve($protein_names_file);
 	print "Done\n";
+
+	return($UNIQUE_NMER_ID, $NMER_CATALOG, $SEQ_NAMES_CATALOG);
 
 }
 

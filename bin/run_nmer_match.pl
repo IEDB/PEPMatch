@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Getopt::Long qw(GetOptions);
-use NmerMatch qw(read_fasta build_catalog retrieve_catalog get_catalog_info read_query_file query_vs_catalog);
+use NmerMatch qw(read_fasta build_catalog get_catalog_info read_query_file query_vs_catalog output_matching_peptides);
 use Data::Dumper;
 
 # actions:
@@ -70,6 +70,7 @@ elsif ($action eq 'search') {
 
 	# compare & output
 	query_vs_catalog($max_mismatches);
+	output_matching_peptides();
 
 }
 else {

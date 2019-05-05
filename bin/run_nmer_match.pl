@@ -47,14 +47,6 @@ if ($action eq 'build') {
 	print "Cataloging sequences\n";
 	build_catalog($nmer_length, $catalog_name);
 
-	#print Dumper $unique_nmer_ref;
-	#print Dumper $catalog_ref;
-
-	#print "Done cataloging - sleeping!\n";
-	#while (1) {
-    #
-	#};
-
 }
 elsif ($action eq 'search') {
 

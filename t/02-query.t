@@ -12,7 +12,7 @@ plan tests => 2;
 
 my $expected_results = get_expected_results();
 
-my $catalog_name = 'catalogs/test1';
+my $catalog_name = "$FindBin::Bin/test_cat1";
 my $query_input = "$FindBin::Bin/test_mm.lst";
 my $max_mismatches = 1;
 

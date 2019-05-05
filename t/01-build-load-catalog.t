@@ -17,7 +17,7 @@ my $catalog_seq_ref = read_fasta($catalog_fasta);
 ok(Compare($catalog_seq_ref, $expected_results->{catalog_seq_ref}), 'catalog fasta import');
 
 my $nmer_length = 15;
-my $catalog_name = 'catalogs/test1';
+my $catalog_name = "$FindBin::Bin/test_cat1";
 my ($unique_nmer_id, $nmer_catalog,
 	$seq_names_catalog, $catalog_info) = build_catalog($nmer_length, $catalog_name);
 

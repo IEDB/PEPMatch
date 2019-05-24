@@ -29,13 +29,16 @@ my $catalog_name;        # name of the catalog to build/use
                          # to a schema in a database
 my $query_input;         # fasta/list of peptides to search against the databse
 my $max_mismatches;      # the maximum mismatches for a search
+my $output_file;
 
 GetOptions ("action|a=s"         => \$action,
 	        "nmer-length|l=i"    => \$nmer_length,
             "catalog-fasta|s=s"  => \$catalog_fasta,
             "catalog-name|c=s"   => \$catalog_name,
             "nmer-query|q=s"     => \$query_input,
-            "max_mismatches|m=i" => \$max_mismatches);
+            "max_mismatches|m=i" => \$max_mismatches,
+            "output-file|o=s"    => \$output_file,
+            );
 
 if ($action eq 'build') {
 
@@ -62,7 +65,7 @@ elsif ($action eq 'search') {
 
 	# compare & output
 	query_vs_catalog($max_mismatches);
-	output_matching_peptides();
+	output_matching_peptides($output_file);
 
 }
 else {

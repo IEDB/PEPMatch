@@ -248,8 +248,11 @@ sub update_unique_nmers {
 # query_peptide	matching_peptide num_mm num_protein_matches matching_proteins_and_positions
 sub output_matching_peptides {
 
+	my $outfile = shift;
+
+	open my $OUTF, '>', $outfile or croak("Can't open ($outfile) for writing: $!");
 	my @header_fields = qw(query_peptide	matching_peptide num_mm num_protein_matches matching_proteins_and_positions);
-	print join("\t", @header_fields), "\n";
+	print $OUTF join("\t", @header_fields), "\n";
 
 	foreach my $query_nmer_id (keys %NUM_MISMATCHES) {
 		my $query_p = $NMER_ID2SEQ{$query_nmer_id};
@@ -270,10 +273,11 @@ sub output_matching_peptides {
 			my @output_fields = ($query_p, $catalog_p, $num_mm, $num_protein_matches,
 				$matching_prots_and_pos_string);
 
-			print join("\t", @output_fields), "\n";
+			print $OUTF join("\t", @output_fields), "\n";
 
 		}
 	}
+	close $OUTF;
 }
 
 # given the name of a query file containing a list (or fasta)

@@ -22,7 +22,7 @@ This will proceed to break up all protein sequences in the database file (-s) in
 ### Searching for matches
 Now that you have the database built, you are ready to search for matches.  Currenty, the tool supports a _query_ peptide file that is simply a _list_ (not FASTA) of peptides ([example query list](t/test_mm.lst)).  To search this list for peptides in the database file that match with up to 3 mismatches:
 
-```
+```bash
 perl run_nmer_match.pl -a search -c catalogs/test -q t/test_mm.lst -o output.tsv
 ```
 
@@ -36,8 +36,10 @@ This will search the query file (-q) against the catalog built in the previous s
 ## Docker container
 
 To run the script from the docker container, you'll need to give it access to the directory where you have your input files with the -v option, e.g.:
+
 ```bash
 docker run -v $PWD:/scratch -w /scratch IMAGE_ID -a build -l 15 -s test_data/human.fasta -c catalogs/humb1
+
 ```
 
 Simply replace the 'perl run\_nmer\_match.pl' from the above commands with:
@@ -49,9 +51,14 @@ Replace IMAGE_ID with the docker image ID (e.g., gitlab.lji.org:4567/jgbaum/nmer
 
 ### To validate tests are passing
 To validate tests are passing in the container:
+
 ```bash
 docker run --entrypoint "prove" -it IMAGE_ID /app/nmer-match/t
 ```
+
+### Container issues
+
+* The Docker container results in ~25% performance hit in terms of time, in limited testing.
 
 ## Test datasets
 

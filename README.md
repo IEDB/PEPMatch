@@ -5,6 +5,16 @@
 * Perl modules in [requirements-notest.txt](requirements-notext.txt) (installed with cpanm -n)
 * Perl modules in [requirements.txt](requirements.txt) (installed with cpanm)
 
+## Installation
+Installation is as easy as installing the required perl modules.  I recommend using [perlbrew](https://perlbrew.pl) to manage your perl environment and cpanm to install packages.  The required packages should be installed in two steps, as one of the dependencies of BioPerl is currently failing tests.  To install the requirements in your perl installation:
+
+```bash
+$ cat requirements-notest.txt | xargs -I {} cpanm -n {}
+$ cat requirements.txt | xargs -I {} cpanm {}
+```
+
+Alternatively, you can use the Docker container, described below, that has all requierements installed.
+
 ## Usage
 Identifying matches in a set of peptide sequences and a set of proteins (this can also work for sets of nucleotide sequences) is divided into two phases, __catalog building__ and __searching__.
 

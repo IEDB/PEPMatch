@@ -1,0 +1,5 @@
+JSON::XS
+Inline::C
+Bio::Perl
+Test::More
+Data::Compare

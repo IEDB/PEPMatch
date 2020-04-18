@@ -249,10 +249,18 @@ sub update_unique_nmers {
 sub output_matching_peptides {
 
 	my $outfile = shift;
+	my $long_outfile = shift;
 
 	open my $OUTF, '>', $outfile or croak("Can't open ($outfile) for writing: $!");
 	my @header_fields = qw(query_peptide	matching_peptide num_mm num_protein_matches matching_proteins_and_positions);
 	print $OUTF join("\t", @header_fields), "\n";
+
+	my $LNGF;
+	if (defined $long_outfile) {
+		open $LNGF, '>', $long_outfile or croak("Can't open ($long_outfile) for writing: $!");
+		my @long_header_fields = qw(query_peptide	matching_peptide num_mm matching_protein pos_start);
+		print $LNGF join("\t", @long_header_fields), "\n";
+	}
 
 	foreach my $query_nmer_id (keys %NUM_MISMATCHES) {
 		my $query_p = $NMER_ID2SEQ{$query_nmer_id};
@@ -275,9 +283,23 @@ sub output_matching_peptides {
 
 			print $OUTF join("\t", @output_fields), "\n";
 
+			# print a row per match, if the long outfile is defined
+			if (defined $long_outfile) {
+				foreach my $seq_id (@matching_protein_ids) {
+					foreach my $position (@{$catalog_matches->{$seq_id}}) {
+						my @long_output_fields = ($query_p, $catalog_p, $num_mm, 
+							$SEQ_NAMES_CATALOG->[$seq_id], $position);
+						print $LNGF join("\t", @long_output_fields), "\n";
+					}
+				}
+			}
+
 		}
 	}
 	close $OUTF;
+	if (defined $long_outfile) {
+		close $LNGF;
+	}
 }
 
 # given the name of a query file containing a list (or fasta)

@@ -13,7 +13,7 @@ use Data::Dumper;
 # run a search
 # input: 
 #   catalog name
-#   nmer fasta
+#   nmer list
 #
 # build a catalog
 # input:
@@ -29,7 +29,9 @@ my $catalog_name;        # name of the catalog to build/use
                          # to a schema in a database
 my $query_input;         # fasta/list of peptides to search against the databse
 my $max_mismatches;      # the maximum mismatches for a search
-my $output_file;
+my $output_file;         # short version of output file with 1 row summarizing all
+                         # matches for a given peptide
+my $long_output_file;    # a longer version of the output, with 1 row per match
 
 GetOptions ("action|a=s"         => \$action,
 	        "nmer-length|l=i"    => \$nmer_length,
@@ -38,6 +40,7 @@ GetOptions ("action|a=s"         => \$action,
             "nmer-query|q=s"     => \$query_input,
             "max_mismatches|m=i" => \$max_mismatches,
             "output-file|o=s"    => \$output_file,
+            "long-output-file|v=s" => \$long_output_file,
             );
 
 if ($action eq 'build') {
@@ -65,7 +68,7 @@ elsif ($action eq 'search') {
 
 	# compare & output
 	query_vs_catalog($max_mismatches);
-	output_matching_peptides($output_file);
+	output_matching_peptides($output_file, $long_output_file);
 
 }
 else {

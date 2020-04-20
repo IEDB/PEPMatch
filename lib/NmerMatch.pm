@@ -418,6 +418,9 @@ sub build_catalog {
 	    }
 
 	    $seq_id++;
+	    if ($seq_id % 1000 == 0) {
+	    	print "Catalogued $seq_id sequences\n";
+	    }
 	}
 
 	# now serialize the uniqe nmers & nmer_catalog, and include a description

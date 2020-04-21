@@ -5,7 +5,7 @@
 CREATE TABLE protein_peptide (
 	nmer_id integer,
 	protein_id integer,
-	position integer,
+	position integer
 );
 
 # indexing the nmer id & protein_id for fast lookups

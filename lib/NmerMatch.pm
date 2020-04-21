@@ -12,6 +12,7 @@ use JSON::XS;
 use POSIX qw(strftime);
 use POSIX qw(floor ceil);
 use Benchmark;
+use DBI;
 use Inline 'C';
 use Inline (C => Config =>
             OPTIMIZE => '-O3',
@@ -239,6 +240,40 @@ sub update_unique_nmers {
 
 }
 
+# retrieve the nmer catalog from the protein_peptides sql db
+# return only the peptides that were matched
+sub retreive_nmer_catalog_sql {
+
+	my ($unique_nmers_file, $protein_peptides_file,
+		$protein_names_file, $catalog_info_file,
+		$protein_peptides_csv) = get_catalog_file_names($CATALOG_NAME);
+
+	my $dbh = DBI->connect("dbi:SQLite:dbname=$protein_peptides_file","","");
+
+	my %ids_to_retrieve;
+
+	# build a list of IDs that we need to retrieve
+	foreach my $query_nmer_id (keys %NUM_MISMATCHES) {
+		%ids_to_retrieve = (%ids_to_retrieve, map {$_ => 1} keys %{$NUM_MISMATCHES{$query_nmer_id}});
+	}
+
+	my $id_string = join ',', keys %ids_to_retrieve;
+
+	my $query = "select * from protein_peptide where nmer_id IN ($id_string)";
+
+	print "executing: $query\n";
+
+	my $sth = $dbh->prepare($query);
+	$sth->execute();
+	while (my $row = $sth->fetch()) {
+		print Dumper $row;
+		push @{$NMER_CATALOG->{$row->[0]}{$row->[1]}}, $row->[2];
+	}
+	$sth->finish;
+	$dbh->disconnect;
+
+}
+
 # given:
 # the hashref returned from query_vs_catalong
 # the protein_peptides hashrefs
@@ -250,6 +285,13 @@ sub output_matching_peptides {
 
 	my $outfile = shift;
 	my $long_outfile = shift;
+
+	# if the NMER CATALOG is empty, retreive it from the db
+	if (! keys %{$NMER_CATALOG}) {
+		retreive_nmer_catalog_sql();
+	}
+
+	print Dumper $NMER_CATALOG;
 
 	open my $OUTF, '>', $outfile or croak("Can't open ($outfile) for writing: $!");
 	my @header_fields = qw(query_peptide	matching_peptide num_mm num_protein_matches matching_proteins_and_positions);
@@ -266,7 +308,7 @@ sub output_matching_peptides {
 		my $query_p = $NMER_ID2SEQ{$query_nmer_id};
 		foreach my $catalog_nmer_id (keys %{$NUM_MISMATCHES{$query_nmer_id}}) {
 			my $catalog_p = $NMER_ID2SEQ{$catalog_nmer_id};
-			my $catalog_matches = $NMER_CATALOG->[$catalog_nmer_id];
+			my $catalog_matches = $NMER_CATALOG->{$catalog_nmer_id};
 			my @matching_protein_ids = (keys %$catalog_matches);
 			my $num_protein_matches = @matching_protein_ids;
 			my @matching_proteins_and_positions;
@@ -549,9 +591,9 @@ sub retrieve_catalog {
 	$CATALOG_MAX_NMER_ID = $CATALOG_INFO->{num_nmers} - 1;
 
 	#TODO: this can be done immediately befor the lookups are done for the output file
-	print "Restoring protein peptides reference from: $protein_peptides_file\n";
-	$NMER_CATALOG = retrieve($protein_peptides_file);
-	print "Done\n";
+	#print "Restoring protein peptides reference from: $protein_peptides_file\n";
+	#$NMER_CATALOG = retrieve($protein_peptides_file);
+	#print "Done\n";
 
 	print "Restoring protein names reference from: $protein_names_file\n";
 	$SEQ_NAMES_CATALOG = retrieve($protein_names_file);

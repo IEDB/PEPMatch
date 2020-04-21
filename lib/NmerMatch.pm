@@ -257,23 +257,36 @@ sub retreive_nmer_catalog_sql {
 
 	my %ids_to_retrieve;
 
+	my $num_nmers_with_matches = (keys %NUM_MISMATCHES);
+	my $num_retrieved = 0;
+
 	# build a list of IDs that we need to retrieve
 	foreach my $query_nmer_id (keys %NUM_MISMATCHES) {
-		%ids_to_retrieve = (%ids_to_retrieve, map {$_ => 1} keys %{$NUM_MISMATCHES{$query_nmer_id}});
+		foreach my $match_nmer_id (keys %{$NUM_MISMATCHES{$query_nmer_id}}) {
+			$ids_to_retrieve{$match_nmer_id} = 1;
+		}
+		#%ids_to_retrieve = (%ids_to_retrieve, map {$_ => 1} keys %{$NUM_MISMATCHES{$query_nmer_id}});
+		if (++$num_retrieved % 100 == 0) {
+			print  "Retrieved $num_retrieved of $num_nmers_with_matches query peptides with matches\n";
+		}
 	}
 
 	# let's split this up into batches of 1000 so as to limit the size of the queries
 	my $batch_size = 1000;
-	my @ids_to_retrieve = (sort {$a <=> $b} keys %ids_to_retrieve);
+	my @ids_to_retrieve = (keys %ids_to_retrieve);
 	my $max_start = max(0,scalar @ids_to_retrieve - $batch_size);
 
-	print Dumper @ids_to_retrieve;
-	print "ms: $max_start\n";
+	#print Dumper @ids_to_retrieve;
+	my $num_ids = @ids_to_retrieve;
+	print "IDs to retrieve: $num_ids\n";
+	print "max start: $max_start\n";
 
+	my $prev_stop = 0;
 	my $start = 0;
-	while ($start <= $max_start) {
+	# this loop is controlled by the if/else block at the end
+	while (1) {
 
-		my $stop = $start + min($batch_size - 1,$#ids_to_retrieve);
+		my $stop = $prev_stop + min($batch_size,$#ids_to_retrieve);
 		print "Fetching batch from $start to $stop\n";
 		my @id_batch = @ids_to_retrieve[$start .. $stop];
 
@@ -281,7 +294,7 @@ sub retreive_nmer_catalog_sql {
 
 		my $query = "select * from protein_peptide where nmer_id IN ($id_string)";
 
-		print "executing: $query\n";
+		#print "executing: $query\n";
 
 		my $sth = $dbh->prepare($query);
 		$sth->execute();
@@ -289,7 +302,17 @@ sub retreive_nmer_catalog_sql {
 			push @{$NMER_CATALOG->{$row->[0]}{$row->[1]}}, $row->[2];
 		}
 		$sth->finish;
-		$start += $batch_size;
+
+		if ($start == $max_start) {
+			last;
+		}
+		else {
+			$start += $batch_size;
+			$prev_stop = $stop;
+			if ($start > $max_start) {
+				$start = $max_start;
+			}			
+		}
 	}
 	$dbh->disconnect;
 

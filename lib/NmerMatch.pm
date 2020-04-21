@@ -266,7 +266,7 @@ sub retreive_nmer_catalog_sql {
 			$ids_to_retrieve{$match_nmer_id} = 1;
 		}
 		#%ids_to_retrieve = (%ids_to_retrieve, map {$_ => 1} keys %{$NUM_MISMATCHES{$query_nmer_id}});
-		if (++$num_retrieved % 100 == 0) {
+		if (++$num_retrieved % 1000 == 0) {
 			print  "Retrieved $num_retrieved of $num_nmers_with_matches query peptides with matches\n";
 		}
 	}
@@ -274,19 +274,20 @@ sub retreive_nmer_catalog_sql {
 	# let's split this up into batches of 1000 so as to limit the size of the queries
 	my $batch_size = 1000;
 	my @ids_to_retrieve = (keys %ids_to_retrieve);
-	my $max_start = max(0,scalar @ids_to_retrieve - $batch_size);
+	my $num_ids = @ids_to_retrieve;
+	my $max_stop = $num_ids - 1;
+	my $max_start = $max_stop - $batch_size;
 
 	#print Dumper @ids_to_retrieve;
-	my $num_ids = @ids_to_retrieve;
 	print "IDs to retrieve: $num_ids\n";
-	print "max start: $max_start\n";
 
-	my $prev_stop = 0;
 	my $start = 0;
-	# this loop is controlled by the if/else block at the end
-	while (1) {
+	my $stop = 0;
 
-		my $stop = $prev_stop + min($batch_size,$#ids_to_retrieve);
+	while ($stop < $max_stop) {
+
+		$stop = min($start+$batch_size-1, $max_stop);
+
 		print "Fetching batch from $start to $stop\n";
 		my @id_batch = @ids_to_retrieve[$start .. $stop];
 
@@ -303,16 +304,8 @@ sub retreive_nmer_catalog_sql {
 		}
 		$sth->finish;
 
-		if ($start == $max_start) {
-			last;
-		}
-		else {
-			$start += $batch_size;
-			$prev_stop = $stop;
-			if ($start > $max_start) {
-				$start = $max_start;
-			}			
-		}
+		$start += $batch_size;
+
 	}
 	$dbh->disconnect;
 

@@ -1,16 +1,12 @@
-# A table mapping protein ids to names
-CREATE TABLE protein_name (
-	protein_id integer PRIMARY KEY,
-	protein_name text,
-);
+# NOTE that a given nmer can be at multiple positions in a protein,
+# so more than 1 row for a given nmer_id & protein_id may exist
 
 # A breakdown of each protein postion and the nmer ID at that position
 CREATE TABLE protein_peptide (
-	protein_id integer REFERENCES protein_name(protein_id) ON UPDATE CASCADE ON DELETE CASCADE,
-	position integer,
 	nmer_id integer,
+	protein_id integer,
+	position integer,
 );
 
-# indexing the nmer ID for fast lookups
-# TODO: potentially make this a covering index with all relevant fields
-CREATE INDEX nmer_idx ON protein_peptide(nmer_id);
+# indexing the nmer id & protein_id for fast lookups
+CREATE INDEX nmer_protein_idx ON protein_peptide(nmer_id, protein_id);

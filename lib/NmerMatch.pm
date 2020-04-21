@@ -392,6 +392,20 @@ sub build_catalog {
 	}
 	$CATALOG_NAME = $catalog_name;
 
+	if (!-d $CATALOG_NAME) {
+		print "Creating directory for catalog: $CATALOG_NAME\n";
+		mkdir $CATALOG_NAME or die "Failed creating directory for catalog: $!";
+	}
+
+	my ($unique_nmers_file, $protein_peptides_file,
+		$protein_names_file, $catalog_info_file,
+		$protein_peptides_csv) = get_catalog_file_names($CATALOG_NAME);
+
+	# create a temporary CSV for the protein_peptide data, that will
+	# eventually be loaded into a sqlite table
+	open my $CSV, '>', $protein_peptides_csv or die "Can't open CSV for writing: $!";
+	print $CSV join(',', qw(nmer_id protein_id position)), "\n";
+
 	# the first nmer ID will be 0 so we can store them efficiently in an array
 	my $nmer_id = 0;
 	my $seq_id = 0;
@@ -414,7 +428,8 @@ sub build_catalog {
 			my $cur_nmer_id = $UNIQUE_NMER_ID->{$s};
 
 		  	# add the position of the nmer onto an array
-		  	push @{$NMER_CATALOG->[$cur_nmer_id]{$seq_id}}, $start;
+		  	#push @{$NMER_CATALOG->[$cur_nmer_id]{$seq_id}}, $start;
+		  	print $CSV join(',', ($cur_nmer_id, $seq_id, $start)), "\n";
 	    }
 
 	    $seq_id++;
@@ -422,15 +437,10 @@ sub build_catalog {
 	    	print "Catalogued $seq_id sequences\n";
 	    }
 	}
+	close $CSV;
 
 	# now serialize the uniqe nmers & nmer_catalog, and include a description
 	# TODO: this should be refactored and dependent upon the backend
-	my ($unique_nmers_file, $protein_peptides_file, $protein_names_file, $catalog_info_file) = get_catalog_file_names($CATALOG_NAME);
-
-	if (!-d $CATALOG_NAME) {
-		print "Creating directory for catalog: $CATALOG_NAME\n";
-		mkdir $CATALOG_NAME or die "Failed creating directory for catalog: $!";
-	}
 
 	print "Serializing unique nmers to: $unique_nmers_file\n";
 	#print Dumper $UNIQUE_NMER_ID;
@@ -501,16 +511,23 @@ sub get_catalog_info {
 
 # given a catalog name, return the names of the unique nmers & protein peptides
 # files
+# TODO: fix this so that it returns a hashref
 sub get_catalog_file_names {
 
 	my $catalog_name = shift;
 
 	my $unique_nmers_file = $catalog_name . '/unique_nmers.store';
-	my $protein_peptides_file = $catalog_name . '/protein_peptides.store';
+	my $protein_peptides_file = $catalog_name . '/protein_peptides.db';
 	my $protein_names_file = $catalog_name . '/protein_names.store';
 	my $catalog_info_file = $catalog_name . '/catalog_info.json';
+	my $protein_peptides_csv = $catalog_name . '/protein_peptides.csv';
 
-	return ($unique_nmers_file, $protein_peptides_file, $protein_names_file, $catalog_info_file);
+
+	return ($unique_nmers_file, 
+		$protein_peptides_file, 
+		$protein_names_file, 
+		$catalog_info_file,
+		$protein_peptides_csv);
 }
 
 

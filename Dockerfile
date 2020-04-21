@@ -8,6 +8,9 @@ COPY requirements.txt .
 RUN cat requirements-notest.txt | xargs -I {} cpanm -n {}
 RUN cat requirements.txt | xargs -I {} cpanm {}
 
+# install sqlite
+RUN apt update && apt -y install sqlite3
+
 # copy the code
 ADD . /app/nmer-match
 WORKDIR /app/nmer-match

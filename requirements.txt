@@ -3,3 +3,6 @@ Inline::C
 Bio::Perl
 Test::More
 Data::Compare
+DBI
+Template::Toolkit
+List::Util

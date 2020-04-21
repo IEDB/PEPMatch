@@ -7,12 +7,15 @@ use strict;
 use warnings;
 use Data::Dumper;
 use Bio::SeqIO;
+use FindBin;
 use Storable qw(nstore retrieve);
 use JSON::XS;
 use POSIX qw(strftime);
 use POSIX qw(floor ceil);
 use Benchmark;
 use DBI;
+use Template;
+use List::Util qw(min max);
 use Inline 'C';
 use Inline (C => Config =>
             OPTIMIZE => '-O3',
@@ -248,6 +251,8 @@ sub retreive_nmer_catalog_sql {
 		$protein_names_file, $catalog_info_file,
 		$protein_peptides_csv) = get_catalog_file_names($CATALOG_NAME);
 
+	print "Retrieving nmer catalog from: $protein_peptides_file\n";
+
 	my $dbh = DBI->connect("dbi:SQLite:dbname=$protein_peptides_file","","");
 
 	my %ids_to_retrieve;
@@ -257,20 +262,38 @@ sub retreive_nmer_catalog_sql {
 		%ids_to_retrieve = (%ids_to_retrieve, map {$_ => 1} keys %{$NUM_MISMATCHES{$query_nmer_id}});
 	}
 
-	my $id_string = join ',', keys %ids_to_retrieve;
+	# let's split this up into batches of 1000 so as to limit the size of the queries
+	my $batch_size = 1000;
+	my @ids_to_retrieve = (sort {$a <=> $b} keys %ids_to_retrieve);
+	my $max_start = max(0,scalar @ids_to_retrieve - $batch_size);
 
-	my $query = "select * from protein_peptide where nmer_id IN ($id_string)";
+	print Dumper @ids_to_retrieve;
+	print "ms: $max_start\n";
 
-	print "executing: $query\n";
+	my $start = 0;
+	while ($start <= $max_start) {
 
-	my $sth = $dbh->prepare($query);
-	$sth->execute();
-	while (my $row = $sth->fetch()) {
-		print Dumper $row;
-		push @{$NMER_CATALOG->{$row->[0]}{$row->[1]}}, $row->[2];
+		my $stop = $start + min($batch_size - 1,$#ids_to_retrieve);
+		print "Fetching batch from $start to $stop\n";
+		my @id_batch = @ids_to_retrieve[$start .. $stop];
+
+		my $id_string = join ',', @id_batch;
+
+		my $query = "select * from protein_peptide where nmer_id IN ($id_string)";
+
+		print "executing: $query\n";
+
+		my $sth = $dbh->prepare($query);
+		$sth->execute();
+		while (my $row = $sth->fetch()) {
+			push @{$NMER_CATALOG->{$row->[0]}{$row->[1]}}, $row->[2];
+		}
+		$sth->finish;
+		$start += $batch_size;
 	}
-	$sth->finish;
 	$dbh->disconnect;
+
+	print "Done retreiving nmer catalog!\n";
 
 }
 
@@ -290,8 +313,6 @@ sub output_matching_peptides {
 	if (! keys %{$NMER_CATALOG}) {
 		retreive_nmer_catalog_sql();
 	}
-
-	print Dumper $NMER_CATALOG;
 
 	open my $OUTF, '>', $outfile or croak("Can't open ($outfile) for writing: $!");
 	my @header_fields = qw(query_peptide	matching_peptide num_mm num_protein_matches matching_proteins_and_positions);
@@ -489,24 +510,38 @@ sub build_catalog {
 	#exit;
 	nstore \%$UNIQUE_NMER_ID, $unique_nmers_file;
 	print "Done\n";
+	# print "Serializing protein peptides to: $protein_peptides_file\n";
+	# nstore \@$NMER_CATALOG, $protein_peptides_file;
+	# print "Done\n";
+
 	print "Serializing protein peptides to: $protein_peptides_file\n";
-	nstore \@$NMER_CATALOG, $protein_peptides_file;
+    my $tt = Template->new( { ABSOLUTE => 1, } );
+    my $sqlite_template = "$FindBin::Bin/../lib/sqlite.template.sql";
+    my $db_build_file = "$CATALOG_NAME/build_db.sql";
+    my $data = {protein_peptides_csv => $protein_peptides_csv};
+    $tt->process( $sqlite_template,
+                  $data,
+                  $db_build_file)
+        || die $tt->error();
+    # now we need to send the commands to sqlite
+    my $sqlite_CMD = qq(sqlite3 $protein_peptides_file < $db_build_file);
+    print "Executing: $sqlite_CMD\n";
+    system($sqlite_CMD) == 0 ||
+    die "Error building sqlite database: $?";
 	print "Done\n";
+
 	print "Serializing protein names to: $protein_names_file\n";
 	nstore \@$SEQ_NAMES_CATALOG, $protein_names_file;
 	print "Done\n";
 
 	# set the maximum nmer id
-	my @nmers_sorted_by_id = (sort {$UNIQUE_NMER_ID->{$a} <=> $UNIQUE_NMER_ID->{$b}} keys %$UNIQUE_NMER_ID);
-	my $nmer_with_max_id = pop @nmers_sorted_by_id;
-	$CATALOG_MAX_NMER_ID = $UNIQUE_NMER_ID->{$nmer_with_max_id};
-	undef @nmers_sorted_by_id;
+	$CATALOG_MAX_NMER_ID = $nmer_id - 1;
 
 	print "Storing catalog info in: $catalog_info_file\n";
 	$CATALOG_INFO =    { catalog_name   => $CATALOG_NAME,
 		                 data_source    => $CATALOG_SOURCE,
 	                     peptide_length => $PEPTIDE_LENGTH,
-                         num_nmers      => $nmer_id + 1,
+                         num_nmers      => $nmer_id,
 	                     build_date     => strftime "%F %R", localtime,
 	                   };
 	my $catalog_json = JSON::XS->new

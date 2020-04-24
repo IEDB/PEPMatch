@@ -2,6 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../local_lib/lib/perl5"; # install dependencies here
 use Getopt::Long qw(GetOptions);
 use NmerMatch qw(read_fasta build_catalog get_catalog_info read_query_file query_vs_catalog output_matching_peptides);
 use Data::Dumper;

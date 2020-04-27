@@ -1,7 +1,7 @@
 package NmerMatch;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK = qw(read_fasta build_catalog retrieve_catalog get_catalog_info read_query_file query_vs_catalog output_matching_peptides);
+@EXPORT_OK = qw(read_fasta break_protein build_catalog retrieve_catalog get_catalog_info read_query_file query_vs_catalog output_matching_peptides);
 
 use strict;
 use warnings;
@@ -685,7 +685,7 @@ sub determine_offsets {
 	my $avg_block_length = $PEPTIDE_LENGTH / $num_offsets;
 	my $large_block_length = ceil($avg_block_length);
 	my $small_block_length = floor($avg_block_length);
-	
+
 	my @offsets;
 	
 	my $num_large_blocks = $num_offsets;
@@ -697,17 +697,20 @@ sub determine_offsets {
 		$num_small_blocks = $num_offsets - $num_large_blocks;
 		
 	}
-	
+
 	my $offset = 0;
-	foreach my $i (1..$num_large_blocks) {
+	# NOTE, we should be able to do 1..$num_large_blocks, but
+	# this fails in certain situations, so we must do
+	# 0..$num_large_blocks-1
+	foreach my $i (0..$num_large_blocks-1) {
 		push @offsets, {
 			start => $offset,
 			length => $large_block_length
 		};
 		$offset += $large_block_length;
 	}
-	
-	foreach my $i (1..$num_small_blocks) {
+
+	foreach my $i (0..$num_small_blocks-1) {
 		push @offsets, {
 			start => $offset,
 			length => $small_block_length

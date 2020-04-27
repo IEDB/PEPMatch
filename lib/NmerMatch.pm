@@ -723,7 +723,7 @@ sub determine_offsets {
 	my %position_covered = map {$_ => 0} (0..$PEPTIDE_LENGTH-1);
 	foreach my $o (@offsets) {
 		foreach my $i ($o->{start}..$o->{start} + $o->{length}-1) {
-			if (defined $position_covered{$i}) {
+			if ($position_covered{$i}) {
 				warn "Error in offset calculations as position $i is covered by multiple offsets\n";
 				print "Offsets:\n";
 				print Dumper @offsets;
@@ -732,7 +732,7 @@ sub determine_offsets {
 			$position_covered{$i} = 1;
 		}
 	}
-	
+
 	foreach my $i (0..$PEPTIDE_LENGTH-1) {
 		if (!defined $position_covered{$i}) {
 			warn "Error in offset calculations as position $i is not covered by any offset\n";

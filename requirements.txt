@@ -1,8 +1,9 @@
-JSON::XS
-Inline::C
-Bio::Perl
-Test::More
 Data::Compare
+DBD::SQLite
 DBI
-Template::Toolkit
+FAST
+Inline::C
+JSON::XS
 List::Util
+Template::Toolkit
+Test::More

@@ -6,7 +6,7 @@ require Exporter;
 use strict;
 use warnings;
 use Data::Dumper;
-use Bio::SeqIO;
+use FAST::Bio::SeqIO;
 use FindBin;
 use Storable qw(nstore retrieve);
 use JSON::XS;
@@ -424,7 +424,7 @@ sub read_fasta {
 	}
 	$CATALOG_SOURCE = $fasta;
 
-	my $seqin = Bio::SeqIO->new(-file => $fasta, '-format' => 'Fasta');
+	my $seqin = FAST::Bio::SeqIO->new(-file => $fasta, '-format' => 'Fasta');
 
 	my %seen_id;
 	my $seq_num = 1;

@@ -1,15 +1,13 @@
 FROM perl:5.30.1
 
+# install sqlite
+RUN apt update && apt -y install sqlite3
+
 # install perl dependencies
 # the dependencies where we skip tests need to be installed
 # first
-COPY requirements-notest.txt .
 COPY requirements.txt .
-RUN cat requirements-notest.txt | xargs -I {} cpanm -n {}
 RUN cat requirements.txt | xargs -I {} cpanm {}
-
-# install sqlite
-RUN apt update && apt -y install sqlite3
 
 # copy the code
 ADD . /app/nmer-match

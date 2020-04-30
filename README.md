@@ -6,10 +6,9 @@
 * Perl modules in [requirements.txt](requirements.txt) (installed with cpanm)
 
 ## Installation
-Installation is as easy as installing the required perl modules.  I recommend using [perlbrew](https://perlbrew.pl) to manage your perl environment and cpanm to install packages.  The required packages should be installed in two steps, as one of the dependencies of BioPerl is currently failing tests.  To install the requirements in your perl installation:
+Installation is as easy as installing the required perl modules.  I recommend using [perlbrew](https://perlbrew.pl) to manage your perl environment and cpanm to install packages.  To install the requirements in your perl installation:
 
 ```bash
-$ cat requirements-notest.txt | xargs -I {} cpanm -n {}
 $ cat requirements.txt | xargs -I {} cpanm {}
 ```
 

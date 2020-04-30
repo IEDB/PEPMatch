@@ -57,7 +57,6 @@ my $MAX_MISMATCHES;
 my $UNIQUE_NMER_ID; # nmer sequence => nmer ID
 my $NMER_CATALOG;   # [nmer_ID] => {sequence ID} => [positions]
 my $SEQ_NAMES_CATALOG; # [sequence ID] => sequence name
-my $CATALOG_MAX_NMER_ID;  # the maximum nmer ID that is in the catalog
 my %NUM_MISMATCHES;  # {query nmer ID}{catalog nmer ID} => number of mismatches
 my %NMER_ID2SEQ;     # captures the nmer IDs that will need to be reported later
                      # and stores their sequence
@@ -209,11 +208,13 @@ sub create_catalog_word_hash {
     my %word_index;
     my %id_to_nmer;
     
+    my $catalog_max_nmer_id = $CATALOG_INFO->{max_nmer_id};
+
     # pushing the IDs of the unique peptides starting with this substring onto
     # the index
     foreach my $catalog_p (keys %$UNIQUE_NMER_ID) {
     	# skip if it's not part of the catalog nmers
-    	next if $UNIQUE_NMER_ID->{$catalog_p} > $CATALOG_MAX_NMER_ID;
+    	next if $UNIQUE_NMER_ID->{$catalog_p} > $catalog_max_nmer_id;
     	my $sub_peptide = substr $catalog_p, $offset, $length;
     	# skip if the subpeptide is not included in the query
     	next if (!defined $query_hash_ref->{$sub_peptide});
@@ -233,7 +234,7 @@ sub update_unique_nmers {
 	my $peptide_list = shift;
 
 	# get the maximum nmer id
-	my $nmer_id = $CATALOG_MAX_NMER_ID;
+	my $nmer_id = $CATALOG_INFO->{max_nmer_id};
 
 	foreach my $p (@$peptide_list) {
 		if (!defined $UNIQUE_NMER_ID->{$p}) {
@@ -522,13 +523,8 @@ sub build_catalog {
 	# TODO: this should be refactored and dependent upon the backend
 
 	print "Serializing unique nmers to: $unique_nmers_file\n";
-	#print Dumper $UNIQUE_NMER_ID;
-	#exit;
 	nstore \%$UNIQUE_NMER_ID, $unique_nmers_file;
 	print "Done\n";
-	# print "Serializing protein peptides to: $protein_peptides_file\n";
-	# nstore \@$NMER_CATALOG, $protein_peptides_file;
-	# print "Done\n";
 
 	print "Serializing protein peptides to: $protein_peptides_file\n";
     my $tt = Template->new( { ABSOLUTE => 1, } );
@@ -550,14 +546,12 @@ sub build_catalog {
 	nstore \@$SEQ_NAMES_CATALOG, $protein_names_file;
 	print "Done\n";
 
-	# set the maximum nmer id
-	$CATALOG_MAX_NMER_ID = $nmer_id - 1;
-
 	print "Storing catalog info in: $catalog_info_file\n";
 	$CATALOG_INFO =    { catalog_name   => $CATALOG_NAME,
 		                 data_source    => $CATALOG_SOURCE,
 	                     peptide_length => $PEPTIDE_LENGTH,
                          num_nmers      => $nmer_id,
+                         max_nmer_id    => $nmer_id - 1,
 	                     build_date     => strftime "%F %R", localtime,
 	                   };
 	my $catalog_json = JSON::XS->new
@@ -637,14 +631,6 @@ sub retrieve_catalog {
 	print "Restoring unique nmer reference from: $unique_nmers_file\n";
 	$UNIQUE_NMER_ID = retrieve($unique_nmers_file);
 	print "Done\n";
-
-	# set the maximum nmer id
-	$CATALOG_MAX_NMER_ID = $CATALOG_INFO->{num_nmers} - 1;
-
-	#TODO: this can be done immediately befor the lookups are done for the output file
-	#print "Restoring protein peptides reference from: $protein_peptides_file\n";
-	#$NMER_CATALOG = retrieve($protein_peptides_file);
-	#print "Done\n";
 
 	print "Restoring protein names reference from: $protein_names_file\n";
 	$SEQ_NAMES_CATALOG = retrieve($protein_names_file);

@@ -28,9 +28,9 @@ ok(Compare($num_mismatches_ref, $expected_results->{num_mismatches_ref}), 'resul
 
 # load the expected results to compare with what is generated
 sub get_expected_results {
-
+ 
 	my $query_pepties = ['MTMDKSELVQKAKLA','XTMDKSELVQKAKLA','MTMDKXELVQKAKLA','MTMDKSELVQKAKLX','GKEYREKIEAELQDI','XKEYREKXEAELQDI','XKEYREKIEAELQDX','GKEYREKIXAELXDI','MDDREDLVYQAKLAE','EQNKEALQDVEDENQ','EQNKEALQDVEDENX','EQNKXALQDVEDENQ','EQNKSDFASDADDSD'];
-	my $num_mm_ref = {'0' => {'0' => 0},'456' => {'0' => 1},'462' => {'453' => 1},'232' => {'232' => 0},'457' => {'0' => 1},'455' => {'0' => 1},'453' => {'453' => 0},'461' => {'453' => 1},'80' => {'80' => 0}};
+	my $num_mm_ref = {'0' => {'0' => 0},'456' => {'0' => 1},'460' => {'453' => 1},'232' => {'232' => 0},'454' => {'0' => 1},'455' => {'0' => 1},'453' => {'453' => 0},'461' => {'453' => 1},'80' => {'80' => 0}};
 
 	my $expected_results = {
 		query_peptides_ref => $query_pepties,

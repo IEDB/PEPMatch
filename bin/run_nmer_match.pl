@@ -34,6 +34,7 @@ my $max_mismatches;      # the maximum mismatches for a search
 my $output_file;         # short version of output file with 1 row summarizing all
                          # matches for a given peptide
 my $long_output_file;    # a longer version of the output, with 1 row per match
+my $force = 0;           # if --force specified, ignore warnings for large values of max-mismatches
 my $help = 0;
 
 GetOptions ("action|a=s"         => \$action,
@@ -44,6 +45,7 @@ GetOptions ("action|a=s"         => \$action,
             "max-mismatches|m=i" => \$max_mismatches,
             "output-file|o=s"    => \$output_file,
             "long-output-file|v=s" => \$long_output_file,
+            "force"              => $force,
             "help|h"             => \$help,
             );
 
@@ -71,6 +73,8 @@ my $USAGE = qq(
 	  --long-output-file|-v   output TSV file with one row per query sequence and
 	                          matching catalog sequence. This is the same content as
 	                          output-file, but may be easier to parse
+
+	  --force                 allow very large values of max-mismatches
 
 	  --help                  print this help
 );
@@ -158,6 +162,29 @@ elsif ($action eq 'search') {
 	# NOTE: this sets the 'QUERY_PEPTIDES' in the package, so no need to pass it
 	#       to the next function call
 	my $catalog_peptide_length = $catalog_info->{peptide_length};
+
+	if ($force) {
+		if ($max_mismatches >= $catalog_peptide_length) {
+			die "The max-mismatches of $max_mismatches is greater than or equal to the peptide length. Choose a value lower than the peptide length."
+		}
+	}
+	else {
+		# if max mimsmatches is 90% or more of the peptide length, quit
+		if ($max_mismatches >= 0.9 * $catalog_peptide_length) {
+			die "The max-mismatches of $max_mismatches is too high. Choose a value lower than 90% of the peptide length."
+		}
+
+		# if max mismatches is more than 60% of the peptide length, throw a warning
+		if ($max_mismatches >= 0.6 * $catalog_peptide_length) {
+			print "The max-mismatches of $max_mismatches is very high. Note that performance may suffer at high values of max-mismatches relative to peptide length.  Are you sure you want to continue? (Y/N): ";
+		    my $reply = <STDIN>;
+		    chomp $reply;
+		    if (uc($reply) ne 'Y') {
+		    	exit;
+		    }
+		}
+	}
+
 	my $query_peptides_ref = read_query_file($query_input, $catalog_peptide_length);
 
 	# compare & output

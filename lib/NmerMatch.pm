@@ -52,7 +52,6 @@ my $CATALOG_SOURCE; # this will be set when the input fasta file is read so that
 my @CATALOG_SEQS;   # the sequences to be cataloguged
 my @QUERY_PEPTIDES; # a list of peptides to query
 my $CATALOG_INFO;   # this will become a hashref of metadata about the catalog upon build/restore/get_catalog_info
-my $PEPTIDE_LENGTH;
 my $MAX_MISMATCHES;
 my $UNIQUE_NMER_ID; # nmer sequence => nmer ID
 my $NMER_CATALOG;   # [nmer_ID] => {sequence ID} => [positions]
@@ -387,26 +386,18 @@ sub output_matching_peptides {
 sub read_query_file {
 
 	my $input_file = shift;
+	my $expected_length = shift;
 
 	open my $INF, '<', $input_file or die "Can't open input file ($input_file) for reading: $!";
 	while (<$INF>) {
 		chomp;
 		push @QUERY_PEPTIDES, $_;
 		my $cur_peptide_length = length($QUERY_PEPTIDES[-1]);
-		# set the peptide length to the length of the first peptide_length
-		# all subsequent peptides are checked that they match in length
-		if (!defined $PEPTIDE_LENGTH) {
-			$PEPTIDE_LENGTH = $cur_peptide_length;
-		}
-		if ($cur_peptide_length ne $PEPTIDE_LENGTH) {
-			die "Peptides of different lengths ($PEPTIDE_LENGTH and $cur_peptide_length) found in query file: $input_file";
+		if ($cur_peptide_length ne $expected_length) {
+			die "Mismatch between catalog peptide length ($expected_length) and length of peptide ($cur_peptide_length - $_) on line $. of $input_file";
 		}
 	}
 	close $INF;
-
-	if ($PEPTIDE_LENGTH ne $CATALOG_INFO->{peptide_length}) {
-		die "Peptide length ($PEPTIDE_LENGTH) differs from catalog peptide length (" . $CATALOG_INFO->{peptide_length} . ')';
-	}
 
 	return \@QUERY_PEPTIDES;
 }
@@ -460,12 +451,7 @@ sub build_catalog {
 	my $peptide_length = shift;
 	my $catalog_name = shift;
 
-	# set the catalog name & peptide length globally
-	# die if their already set
-	if (defined $PEPTIDE_LENGTH) {
-		die "Peptide length already set to $PEPTIDE_LENGTH; Cannot set to $peptide_length";
-	}
-	$PEPTIDE_LENGTH = $peptide_length;
+	# set the catalog name globally
 
 	if (defined $CATALOG_NAME) {
 		die "Catalog name already set to $CATALOG_NAME; Cannot set to $catalog_name";
@@ -549,7 +535,7 @@ sub build_catalog {
 	print "Storing catalog info in: $catalog_info_file\n";
 	$CATALOG_INFO =    { catalog_name   => $CATALOG_NAME,
 		                 data_source    => $CATALOG_SOURCE,
-	                     peptide_length => $PEPTIDE_LENGTH,
+	                     peptide_length => $peptide_length,
                          num_nmers      => $nmer_id,
                          max_nmer_id    => $nmer_id - 1,
 	                     build_date     => strftime "%F %R", localtime,
@@ -668,7 +654,9 @@ sub determine_offsets {
 	
 	my $num_offsets = $MAX_MISMATCHES + 1;
 	
-	my $avg_block_length = $PEPTIDE_LENGTH / $num_offsets;
+	my $peptide_length = $CATALOG_INFO->{peptide_length};
+
+	my $avg_block_length = $peptide_length / $num_offsets;
 	my $large_block_length = ceil($avg_block_length);
 	my $small_block_length = floor($avg_block_length);
 
@@ -706,7 +694,7 @@ sub determine_offsets {
 
 
 	# validate that each position of the sequence is covered once
-	my %position_covered = map {$_ => 0} (0..$PEPTIDE_LENGTH-1);
+	my %position_covered = map {$_ => 0} (0..$peptide_length-1);
 	foreach my $o (@offsets) {
 		foreach my $i ($o->{start}..$o->{start} + $o->{length}-1) {
 			if ($position_covered{$i}) {
@@ -719,7 +707,7 @@ sub determine_offsets {
 		}
 	}
 
-	foreach my $i (0..$PEPTIDE_LENGTH-1) {
+	foreach my $i (0..$peptide_length-1) {
 		if (!defined $position_covered{$i}) {
 			warn "Error in offset calculations as position $i is not covered by any offset\n";
 			print "Offsets:\n";

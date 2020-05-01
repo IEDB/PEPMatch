@@ -18,7 +18,7 @@ my $max_mismatches = 1;
 
 my $catalog_info = get_catalog_info($catalog_name);
 
-my $query_peptides_ref = read_query_file($query_input);
+my $query_peptides_ref = read_query_file($query_input, 15);
 
 ok(Compare($query_peptides_ref, $expected_results->{query_peptides_ref}), 'query peptide import');
 

@@ -6,6 +6,7 @@ use lib "$FindBin::Bin/../local_lib/lib/perl5"; # install dependencies here
 use Getopt::Long qw(GetOptions);
 use NmerMatch qw(read_fasta build_catalog get_catalog_info read_query_file query_vs_catalog output_matching_peptides);
 use Data::Dumper;
+use Scalar::Util::Numeric qw(isint);
 
 # actions:
 #  1. run a search
@@ -33,18 +34,89 @@ my $max_mismatches;      # the maximum mismatches for a search
 my $output_file;         # short version of output file with 1 row summarizing all
                          # matches for a given peptide
 my $long_output_file;    # a longer version of the output, with 1 row per match
+my $help = 0;
 
 GetOptions ("action|a=s"         => \$action,
 	        "nmer-length|l=i"    => \$nmer_length,
             "catalog-fasta|s=s"  => \$catalog_fasta,
             "catalog-name|c=s"   => \$catalog_name,
             "nmer-query|q=s"     => \$query_input,
-            "max_mismatches|m=i" => \$max_mismatches,
+            "max-mismatches|m=i" => \$max_mismatches,
             "output-file|o=s"    => \$output_file,
             "long-output-file|v=s" => \$long_output_file,
+            "help|h"             => \$help,
             );
 
+my $USAGE = qq(
+	perl run_nmer_match.pl -a [build/search] -c [catalog name] [OPTIONS]
+	
+	  --action|-a             'build' or 'search' a catalog - required
+
+	  --catalog-name|-c       name of the catalog for building/searching - required
+
+	  --catalog-fasta|-s      fasta file for cataloging - required for 'build'
+
+	  --nmer-length|l         length of nmers to catalog - required for 'build'
+
+	  --nmer-query|-q         file containing list of nmers (one per line) for searching
+	                          against the catalog - required for 'search'
+
+	  --max-mismatches|-m     maximum number of mismatches for the query sequences
+	                          against the catalog - required for 'search'
+
+	  --output-file|-o        output TSV file containing one row per unique match and
+	                          with a consolidated list of catalog sequences and postions
+	                          containing the match - required for 'search'
+
+	  --long-output-file|-v   output TSV file with one row per query sequence and
+	                          matching catalog sequence. This is the same content as
+	                          output-file, but may be easier to parse
+
+	  --help                  print this help
+);
+
+if ($help) {
+	print $USAGE, "\n";
+	exit;
+}
+
+# check the parameters
+# action
+
+if (!defined $action) {
+	die "'action' must be specified\n\n$USAGE";
+}
+
+my %valid_actions = map { $_ => 1} qw(build search);
+if (!defined $valid_actions{$action}) {
+	die "\nSpecified action ($action) is invalid\n\n$USAGE\n";
+}
+
+# catalog name
+if (!defined $catalog_name) {
+	die "'catalog-name' must be specified\n\n$USAGE";
+}
+
 if ($action eq 'build') {
+
+	# check the parameters specific for build
+	# catalog fasta
+	if (!defined $catalog_fasta) {
+		die "'catalog-fasta' must be specified when building a catalog\n\n$USAGE";
+	}
+
+	# nmer length
+	if (!defined $nmer_length) {
+		die "'nmer-length' must be specified when building a catalog\n\n$USAGE";
+	}
+
+	if (!isint $nmer_length) {
+		die "'nmer-length' ($nmer_length) must be an integer\n\n$USAGE"
+	}
+
+	if ($nmer_length >= 50) {
+		warn "Long 'nmer-length' of $nmer_length may result in increased memory usage and poor performance.";
+	}
 
 	# read in the db fasta file
 	print "Reading fasta: $catalog_fasta\n";
@@ -57,6 +129,26 @@ if ($action eq 'build') {
 }
 elsif ($action eq 'search') {
 
+	# check the parameters specific for search
+	# query_input
+	if (!defined $query_input) {
+		die "'nmer-query' must be specified when searching against a catalog\n\n$USAGE";
+	}
+
+	# max_mismatches
+	if (!defined $max_mismatches) {
+		die "'max-mismatches' must be specified when searching against a catalog\n\n$USAGE";
+	}
+
+	if (!isint $max_mismatches) {
+		die "'max-mismatches' ($max_mismatches) must be an integer\n\n$USAGE"
+	}
+
+	# output file
+	if (!defined $output_file) {
+		die "'output-file' must be specified when searching against a catalog\n\n$USAGE";
+	}
+
 	# read in the catalog info only
 	# NOTE: this sets the 'CATALOG_NAME' global in the package, so no need to pass this
 	# later on
@@ -65,7 +157,8 @@ elsif ($action eq 'search') {
 	# read in the nmer query file (list format)
 	# NOTE: this sets the 'QUERY_PEPTIDES' in the package, so no need to pass it
 	#       to the next function call
-	my $query_peptides_ref = read_query_file($query_input);
+	my $catalog_peptide_length = $catalog_info->{peptide_length};
+	my $query_peptides_ref = read_query_file($query_input, $catalog_peptide_length);
 
 	# compare & output
 	query_vs_catalog($max_mismatches);

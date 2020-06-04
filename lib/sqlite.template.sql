@@ -13,4 +13,4 @@ CREATE TABLE protein_peptide (
 .import [% protein_peptides_csv %] protein_peptide
 
 -- indexing the nmer id & protein_id for fast lookups
-CREATE INDEX nmer_protein_idx ON protein_peptide(nmer_id, protein_id);
+CREATE INDEX nmer_idx ON protein_peptide(nmer_id);

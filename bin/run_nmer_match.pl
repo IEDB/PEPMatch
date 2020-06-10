@@ -4,7 +4,9 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../local_lib/lib/perl5"; # install dependencies here
 use Getopt::Long qw(GetOptions);
-use NmerMatch qw(read_fasta build_catalog get_catalog_info read_query_file query_vs_catalog output_matching_peptides);
+use NmerMatch qw(read_fasta build_catalog get_catalog_info
+	             read_query_file query_vs_catalog output_matching_peptides
+	             remove_matched_query_peptides retrieve_catalog);
 use Data::Dumper;
 use Scalar::Util::Numeric qw(isint);
 
@@ -52,7 +54,7 @@ GetOptions ("action|a=s"         => \$action,
 my $USAGE = qq(
 	perl run_nmer_match.pl -a [build/search] -c [catalog name] [OPTIONS]
 	
-	  --action|-a             'build' or 'search' a catalog - required
+	  --action|-a             'build', 'search', 'search-deep' - required
 
 	  --catalog-name|-c       name of the catalog for building/searching - required
 
@@ -61,14 +63,14 @@ my $USAGE = qq(
 	  --nmer-length|l         length of nmers to catalog - required for 'build'
 
 	  --nmer-query|-q         file containing list of nmers (one per line) for searching
-	                          against the catalog - required for 'search'
+	                          against the catalog - required for 'search/search-deep'
 
 	  --max-mismatches|-m     maximum number of mismatches for the query sequences
 	                          against the catalog - required for 'search'
 
 	  --output-file|-o        output TSV file containing one row per unique match and
 	                          with a consolidated list of catalog sequences and postions
-	                          containing the match - required for 'search'
+	                          containing the match - required for 'search/search-deep'
 
 	  --long-output-file|-v   output TSV file with one row per query sequence and
 	                          matching catalog sequence. This is the same content as
@@ -91,7 +93,7 @@ if (!defined $action) {
 	die "'action' must be specified\n\n$USAGE";
 }
 
-my %valid_actions = map { $_ => 1} qw(build search);
+my %valid_actions = map { $_ => 1} qw(build search search-deep);
 if (!defined $valid_actions{$action}) {
 	die "\nSpecified action ($action) is invalid\n\n$USAGE\n";
 }
@@ -131,7 +133,7 @@ if ($action eq 'build') {
 	build_catalog($nmer_length, $catalog_name);
 
 }
-elsif ($action eq 'search') {
+elsif (($action eq 'search') or ($action eq 'search-deep')) {
 
 	# check the parameters specific for search
 	# query_input
@@ -140,11 +142,11 @@ elsif ($action eq 'search') {
 	}
 
 	# max_mismatches
-	if (!defined $max_mismatches) {
+	if ($action eq 'search' && !defined $max_mismatches) {
 		die "'max-mismatches' must be specified when searching against a catalog\n\n$USAGE";
 	}
 
-	if (!isint $max_mismatches) {
+	if ($action eq 'search' && !isint $max_mismatches) {
 		die "'max-mismatches' ($max_mismatches) must be an integer\n\n$USAGE"
 	}
 
@@ -169,26 +171,46 @@ elsif ($action eq 'search') {
 		}
 	}
 	else {
-		# if max mimsmatches is 90% or more of the peptide length, quit
-		if ($max_mismatches >= 0.9 * $catalog_peptide_length) {
-			die "The max-mismatches of $max_mismatches is too high. Choose a value lower than 90% of the peptide length."
-		}
+		if ($action eq 'search') {
+			# if max mimsmatches is 90% or more of the peptide length, quit
+			if ($max_mismatches >= 0.9 * $catalog_peptide_length) {
+				die "The max-mismatches of $max_mismatches is too high. Choose a value lower than 90% of the peptide length."
+			}
 
-		# if max mismatches is more than 60% of the peptide length, throw a warning
-		if ($max_mismatches >= 0.6 * $catalog_peptide_length) {
-			print "The max-mismatches of $max_mismatches is very high. Note that performance may suffer at high values of max-mismatches relative to peptide length.  Are you sure you want to continue? (Y/N): ";
-		    my $reply = <STDIN>;
-		    chomp $reply;
-		    if (uc($reply) ne 'Y') {
-		    	exit;
-		    }
+			# if max mismatches is more than 60% of the peptide length, throw a warning
+			if ($max_mismatches >= 0.6 * $catalog_peptide_length) {
+				print "The max-mismatches of $max_mismatches is very high. Note that performance may suffer at high values of max-mismatches relative to peptide length.  Are you sure you want to continue? (Y/N): ";
+			    my $reply = <STDIN>;
+			    chomp $reply;
+			    if (uc($reply) ne 'Y') {
+			    	exit;
+			    }
+			}
 		}
 	}
 
 	my $query_peptides_ref = read_query_file($query_input, $catalog_peptide_length);
 
-	# compare & output
-	query_vs_catalog($max_mismatches);
+	my ($uid, $seq_names_cat) = retrieve_catalog();
+
+	if ($action eq 'search') {
+
+		# compare & output
+		query_vs_catalog($max_mismatches);
+
+
+	} elsif ($action eq 'search-deep') {
+
+		$max_mismatches = 0;
+		while (@$query_peptides_ref) {
+			query_vs_catalog($max_mismatches);
+			$query_peptides_ref = remove_matched_query_peptides();
+			$max_mismatches++;
+		}
+
+	}
+
+
 	output_matching_peptides($output_file, $long_output_file);
 
 }

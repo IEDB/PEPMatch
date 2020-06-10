@@ -1,7 +1,9 @@
 package NmerMatch;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK = qw(read_fasta break_protein build_catalog retrieve_catalog get_catalog_info read_query_file query_vs_catalog output_matching_peptides);
+@EXPORT_OK = qw(read_fasta break_protein build_catalog retrieve_catalog
+	            get_catalog_info read_query_file query_vs_catalog
+	            output_matching_peptides remove_matched_query_peptides);
 
 use strict;
 use warnings;
@@ -63,6 +65,14 @@ my %NMER_ID2SEQ;     # captures the nmer IDs that will need to be reported later
 my $t0 = Benchmark->new;
 
 
+sub stringify_offset {
+
+	my $offset = shift;
+
+	return "start: " . $offset->{start} . "\t length: " . $offset->{length};
+
+}
+
 # given:
 # a list of query peptides
 # a catalog name
@@ -80,14 +90,11 @@ sub query_vs_catalog {
 
 	my $max_mismatches = shift;
 
-	if (defined $MAX_MISMATCHES) {
-		die "Max mismatches already set to $MAX_MISMATCHES; Cannot set to $max_mismatches";
-	}
+	#if (defined $MAX_MISMATCHES) {
+	#	die "Max mismatches already set to $MAX_MISMATCHES; Cannot set to $max_mismatches";
+	#}
 
 	$MAX_MISMATCHES = $max_mismatches;
-
-	# read in the catalog; setting the %UNIUQE_NMER_ID and %NMER_CATALOG hashes
-	retrieve_catalog();
 
 	# update the unique_nmer_id hash to include any new nmers found in the query peptides
 	update_unique_nmers(\@QUERY_PEPTIDES);
@@ -106,8 +113,7 @@ sub query_vs_catalog {
 
 		my $t1 = Benchmark->new;
 
-		print "Working on offset:\n";
-		print Dumper $o;
+		print "Working on offset: " . stringify_offset($o) . "\n";
 
 		my ($query_word_hash_ref, $query_nmers_ref) = create_query_word_hash($o->{length}, $o->{start});
 		my ($catalog_word_hash_ref, $catalog_nmers_ref) = create_catalog_word_hash($o->{length}, $o->{start}, $query_word_hash_ref);
@@ -188,6 +194,10 @@ sub create_query_word_hash {
     foreach my $query_p (@QUERY_PEPTIDES) {
     	# we only want to push the the peptide into the array once
     	next if (defined $id_to_nmer{$UNIQUE_NMER_ID->{$query_p}});
+
+    	# skip if we've already found a match for this peptides (to support deep searching)
+    	next if (defined $NUM_MISMATCHES{$UNIQUE_NMER_ID->{$query_p}});
+
     	$id_to_nmer{$UNIQUE_NMER_ID->{$query_p}} = $query_p;
         push @{$word_index{substr $query_p, $offset, $length}}, $UNIQUE_NMER_ID->{$query_p};
     }
@@ -243,9 +253,27 @@ sub update_unique_nmers {
 
 }
 
+# remove matched nmers from the query peptide array
+# TODO: this is very ineffecient
+sub remove_matched_query_peptides {
+
+	my @temp_query_peptides;
+
+	while (my $p = pop @QUERY_PEPTIDES) {
+		my $nmer_id = $UNIQUE_NMER_ID->{$p};
+		if (!defined $NUM_MISMATCHES{$nmer_id}) {
+			push @temp_query_peptides, $p;
+		}
+	}
+
+    @QUERY_PEPTIDES = @temp_query_peptides;
+    return \@QUERY_PEPTIDES;
+
+}
+
 # retrieve the nmer catalog from the protein_peptides sql db
 # return only the peptides that were matched
-sub retreive_nmer_catalog_sql {
+sub retrieve_nmer_catalog_sql {
 
 	my ($unique_nmers_file, $protein_peptides_file,
 		$protein_names_file, $catalog_info_file,
@@ -258,16 +286,11 @@ sub retreive_nmer_catalog_sql {
 	my %ids_to_retrieve;
 
 	my $num_nmers_with_matches = (keys %NUM_MISMATCHES);
-	my $num_retrieved = 0;
 
 	# build a list of IDs that we need to retrieve
 	foreach my $query_nmer_id (keys %NUM_MISMATCHES) {
 		foreach my $match_nmer_id (keys %{$NUM_MISMATCHES{$query_nmer_id}}) {
 			$ids_to_retrieve{$match_nmer_id} = 1;
-		}
-		#%ids_to_retrieve = (%ids_to_retrieve, map {$_ => 1} keys %{$NUM_MISMATCHES{$query_nmer_id}});
-		if (++$num_retrieved % 1000 == 0) {
-			print  "Retrieved $num_retrieved of $num_nmers_with_matches query peptides with matches\n";
 		}
 	}
 
@@ -281,8 +304,9 @@ sub retreive_nmer_catalog_sql {
 	#print Dumper @ids_to_retrieve;
 	print "IDs to retrieve: $num_ids\n";
 
+	# TODO: ensure the batching is working properly
 	my $start = 0;
-	my $stop = 0;
+	my $stop = -1;
 
 	while ($stop < $max_stop) {
 
@@ -325,9 +349,9 @@ sub output_matching_peptides {
 	my $outfile = shift;
 	my $long_outfile = shift;
 
-	# if the NMER CATALOG is empty, retreive it from the db
+	# if the NMER CATALOG is empty, retrieve it from the db
 	if (! keys %{$NMER_CATALOG}) {
-		retreive_nmer_catalog_sql();
+		retrieve_nmer_catalog_sql();
 	}
 
 	open my $OUTF, '>', $outfile or croak("Can't open ($outfile) for writing: $!");
@@ -622,7 +646,7 @@ sub retrieve_catalog {
 	$SEQ_NAMES_CATALOG = retrieve($protein_names_file);
 	print "Done\n";
 
-	return($UNIQUE_NMER_ID, $NMER_CATALOG, $SEQ_NAMES_CATALOG);
+	return($UNIQUE_NMER_ID, $SEQ_NAMES_CATALOG);
 
 }
 

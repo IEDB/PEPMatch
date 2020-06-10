@@ -96,6 +96,11 @@ sub query_vs_catalog {
 
 	$MAX_MISMATCHES = $max_mismatches;
 
+	# ensure that the $UNIQUE_NMER_ID & $SEQ_NAMES_CATALOG are defined - otherwise, retrieve the catalog
+	if (!defined $UNIQUE_NMER_ID or !defined $SEQ_NAMES_CATALOG) {
+		retrieve_catalog();
+	}
+
 	# update the unique_nmer_id hash to include any new nmers found in the query peptides
 	update_unique_nmers(\@QUERY_PEPTIDES);
 
@@ -646,7 +651,7 @@ sub retrieve_catalog {
 	$SEQ_NAMES_CATALOG = retrieve($protein_names_file);
 	print "Done\n";
 
-	return($UNIQUE_NMER_ID, $SEQ_NAMES_CATALOG);
+	return($UNIQUE_NMER_ID, $NMER_CATALOG, $SEQ_NAMES_CATALOG);
 
 }
 

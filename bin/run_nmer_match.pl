@@ -191,7 +191,7 @@ elsif (($action eq 'search') or ($action eq 'search-deep')) {
 
 	my $query_peptides_ref = read_query_file($query_input, $catalog_peptide_length);
 
-	my ($uid, $seq_names_cat) = retrieve_catalog();
+	my ($uid, $nmer_cat, $seq_names_cat) = retrieve_catalog();
 
 	if ($action eq 'search') {
 

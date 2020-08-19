@@ -89,7 +89,6 @@ sub stringify_offset {
 sub query_vs_catalog {
 
 	my $max_mismatches = shift;
-	my $search_deep = shift || 0; # if we're doing a deep search, we need to adjust some parameters
 
 	#if (defined $MAX_MISMATCHES) {
 	#	die "Max mismatches already set to $MAX_MISMATCHES; Cannot set to $max_mismatches";
@@ -121,7 +120,7 @@ sub query_vs_catalog {
 
 		print "Working on offset: " . stringify_offset($o) . "\n";
 
-		my ($query_word_hash_ref, $query_nmers_ref, $search_deep) = create_query_word_hash($o->{length}, $o->{start});
+		my ($query_word_hash_ref, $query_nmers_ref) = create_query_word_hash($o->{length}, $o->{start});
 		my ($catalog_word_hash_ref, $catalog_nmers_ref) = create_catalog_word_hash($o->{length}, $o->{start}, $query_word_hash_ref);
 		# now make the comparisons
 		foreach my $sub_peptide (keys %$query_word_hash_ref) {
@@ -191,7 +190,6 @@ sub create_query_word_hash {
     
     my $length = shift;
     my $offset = shift;
-    my $search_deep = shift;
     
     my %word_index;
     my %id_to_nmer;  # a map of nmer_id to nmer so we can look up later
@@ -201,11 +199,6 @@ sub create_query_word_hash {
     foreach my $query_p (@QUERY_PEPTIDES) {
     	# we only want to push the the peptide into the array once
     	next if (defined $id_to_nmer{$UNIQUE_NMER_ID->{$query_p}});
-
-    	# skip if we've already found a match for this peptide (to support deep searching)
-    	if ($search_deep) {
-    		next if (defined $NUM_MISMATCHES{$UNIQUE_NMER_ID->{$query_p}});
-		}
 
     	$id_to_nmer{$UNIQUE_NMER_ID->{$query_p}} = $query_p;
         push @{$word_index{substr $query_p, $offset, $length}}, $UNIQUE_NMER_ID->{$query_p};

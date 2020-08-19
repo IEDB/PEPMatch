@@ -203,6 +203,9 @@ elsif (($action eq 'search') or ($action eq 'search-deep')) {
 
 		$max_mismatches = 0;
 		while (@$query_peptides_ref) {
+			print "mm: $max_mismatches\n";
+			print "qpr:\n";
+			print Dumper $query_peptides_ref;
 			query_vs_catalog($max_mismatches);
 			$query_peptides_ref = remove_matched_query_peptides();
 			$max_mismatches++;

@@ -62,8 +62,9 @@ my %NUM_MISMATCHES;  # {query nmer ID}{catalog nmer ID} => number of mismatches
 my %NMER_ID2SEQ;     # captures the nmer IDs that will need to be reported later
                      # and stores their sequence
 
-my $t0 = Benchmark->new;
+my %OFFSET_CHECKED;   # track the offsets that have been checked;
 
+my $t0 = Benchmark->new;
 
 sub stringify_offset {
 
@@ -105,7 +106,26 @@ sub query_vs_catalog {
 	update_unique_nmers(\@QUERY_PEPTIDES);
 
 	# determine the offsets, given the number of mismatches
-	my @offsets = determine_offsets();
+	my @initial_offsets = determine_offsets();
+	my $num_initial_offsets = scalar @initial_offsets;
+	print "Initial offsets to search: $num_initial_offsets\n";
+
+	# now remove any offsets that were previously searched
+	my @offsets;
+	foreach my $o (@initial_offsets) {
+		my $offset_id = $o->{start} . $o->{length};
+		if (!defined $OFFSET_CHECKED{$offset_id}) {
+			push @offsets, $o;
+		}
+	}
+
+	# throw an error if we get here and no offsets remain
+	my $num_offsets_remaining = scalar @offsets;
+	print "Offsets remaining after pruning: $num_offsets_remaining\n";
+
+	if ($num_offsets_remaining == 0) {
+		die "Error: no offsets remaining after pruning\n";
+	}
 
 	# determine the comparisons that need to be made by breaking the
 	# query & catalog peptides into non-overlapping segments
@@ -119,6 +139,10 @@ sub query_vs_catalog {
 		my $t1 = Benchmark->new;
 
 		print "Working on offset: " . stringify_offset($o) . "\n";
+
+		# add a record that this offset was searched
+		my $offset_id = $o->{start} . $o->{length};
+		$OFFSET_CHECKED{$offset_id} = 1;
 
 		my ($query_word_hash_ref, $query_nmers_ref) = create_query_word_hash($o->{length}, $o->{start});
 		my ($catalog_word_hash_ref, $catalog_nmers_ref) = create_catalog_word_hash($o->{length}, $o->{start}, $query_word_hash_ref);

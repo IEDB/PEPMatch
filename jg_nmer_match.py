@@ -217,15 +217,17 @@ class Benchmarker(object):
 def main():
     mismatches = 1
     algorithm_parameters = {
-        'nmer_match_path': '/Users/jgbaum/projects/nmer-match/bin/run_nmer_match.pl',
-        'perl_include_path': '/Users/jgbaum/perl_envs/nmer-match/perl5/lib'
+        'nmer_script_path': '/Users/jgbaum/projects/nmer-match/bin/run_nmer_match.pl',
+        'perl_include_path': '/Users/jgbaum/perl_envs/nmer_match/lib/perl5'
         }
+    # lengths are currently ignored, so we set it to empty
+    lengths=[]
     proteome_file = 'proteomes/tp.fa'
     query_file = 'queries/test_pep.fa'
 
-    tool = benchmark_jg_nmer_match(query_file, proteome_file, [15], mismatches, algorithm_parameters)
-    tool.preprocess_proteome()
+    tool = Benchmarker(query_file, proteome_file, lengths, mismatches, algorithm_parameters)
     tool.preprocess_query()
+    tool.preprocess_proteome()
     results = tool.search()
 
 if __name__ == "__main__":

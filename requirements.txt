@@ -1,0 +1,5 @@
+biopython
+numpy
+pandas
+python-Levenshtein
+openpyxl

@@ -1,0 +1,15 @@
+__pycache__/
+_Inline/
+bin/
+data/
+old_code/
+jupyter_notebooks/
+PEPMatch/__pycache__
+proteomes/*.pdb
+proteomes/*.phr
+proteomes/*.pin
+proteomes/*.pot
+proteomes/*.psq
+proteomes/*.ptf
+proteomes/*.pto
+proteomes/*.pickle

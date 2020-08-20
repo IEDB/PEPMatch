@@ -5,7 +5,7 @@ from collections import Counter
 from Levenshtein import hamming
 import _pickle as pickle
 import pandas as pd
-import os, sqlite3
+import os, glob, sqlite3
 
 splits = []
 
@@ -649,6 +649,10 @@ class Benchmarker(Matcher):
 
             all_matches.append(match_string)
 
-        os.remove(database)
+        try:
+            os.remove(database)
+        except FileNotFoundError:
+            for file in glob.glob(os.path.dirname(self.proteome) + '/*.pickle'):
+                os.remove(file)
 
         return all_matches

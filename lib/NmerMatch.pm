@@ -3,7 +3,8 @@ require Exporter;
 @ISA = qw(Exporter);
 @EXPORT_OK = qw(read_fasta break_protein build_catalog retrieve_catalog
 	            get_catalog_info read_query_file query_vs_catalog
-	            output_matching_peptides remove_matched_query_peptides);
+	            output_matching_peptides remove_matched_query_peptides
+	            filter_matches);
 
 use strict;
 use warnings;
@@ -339,6 +340,30 @@ sub retrieve_nmer_catalog_sql {
 	$dbh->disconnect;
 
 	print "Done retreiving nmer catalog!\n";
+
+}
+
+# filter the NUM_MISMATCHES hash to include
+# only the best matching peptides for each query
+# peptide
+sub filter_matches {
+
+	# print "nm_before:\n";
+	# print Dumper %NUM_MISMATCHES;
+
+	foreach my $query_p (keys %NUM_MISMATCHES) {
+		my @sorted_match_ids = sort {$NUM_MISMATCHES{$query_p}{$a} <=> $NUM_MISMATCHES{$query_p}{$b}} keys %{$NUM_MISMATCHES{$query_p}};
+		# now remove the peptides that have more than the minimum mm
+		my $min_mm = $NUM_MISMATCHES{$query_p}{$sorted_match_ids[0]};
+		foreach my $mid (@sorted_match_ids) {
+			if ($NUM_MISMATCHES{$query_p}{$mid} > $min_mm) {
+				delete $NUM_MISMATCHES{$query_p}{$mid};
+			}
+		}
+	}
+
+	# print "nm_after:\n";
+	# print Dumper %NUM_MISMATCHES;
 
 }
 

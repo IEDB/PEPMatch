@@ -3,10 +3,11 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../local_lib/lib/perl5"; # install dependencies here
+use POSIX qw(floor);
 use Getopt::Long qw(GetOptions);
 use NmerMatch qw(read_fasta build_catalog get_catalog_info
 	             read_query_file query_vs_catalog output_matching_peptides
-	             remove_matched_query_peptides retrieve_catalog);
+	             remove_matched_query_peptides retrieve_catalog filter_matches);
 use Data::Dumper;
 use Scalar::Util::Numeric qw(isint);
 
@@ -33,6 +34,7 @@ my $catalog_name;        # name of the catalog to build/use
                          # to a schema in a database
 my $query_input;         # fasta/list of peptides to search against the databse
 my $max_mismatches;      # the maximum mismatches for a search
+my $mm_start;            # the number of mismatches to start with for the search-deep option
 my $output_file;         # short version of output file with 1 row summarizing all
                          # matches for a given peptide
 my $long_output_file;    # a longer version of the output, with 1 row per match
@@ -45,6 +47,7 @@ GetOptions ("action|a=s"         => \$action,
             "catalog-name|c=s"   => \$catalog_name,
             "nmer-query|q=s"     => \$query_input,
             "max-mismatches|m=i" => \$max_mismatches,
+            "mm-start=i"         => \$mm_start,
             "output-file|o=s"    => \$output_file,
             "long-output-file|v=s" => \$long_output_file,
             "force"              => $force,
@@ -67,6 +70,9 @@ my $USAGE = qq(
 
 	  --max-mismatches|-m     maximum number of mismatches for the query sequences
 	                          against the catalog - required for 'search'
+
+	  --mm-start              for the 'search-deep' action, the number of mismatches to begin
+	                          with (default = floor(nmer_length/2))
 
 	  --output-file|-o        output TSV file containing one row per unique match and
 	                          with a consolidated list of catalog sequences and postions
@@ -165,6 +171,12 @@ elsif (($action eq 'search') or ($action eq 'search-deep')) {
 	#       to the next function call
 	my $catalog_peptide_length = $catalog_info->{peptide_length};
 
+	# mm-start (search-deep only)
+	if (!defined $mm_start) {
+		$mm_start = floor($catalog_peptide_length/2);
+	}
+
+
 	if ($force) {
 		if ($max_mismatches >= $catalog_peptide_length) {
 			die "The max-mismatches of $max_mismatches is greater than or equal to the peptide length. Choose a value lower than the peptide length."
@@ -201,7 +213,7 @@ elsif (($action eq 'search') or ($action eq 'search-deep')) {
 
 	} elsif ($action eq 'search-deep') {
 
-		$max_mismatches = 0;
+		$max_mismatches = $mm_start;
 		while (@$query_peptides_ref) {
 			my $num_query_peptides = scalar @$query_peptides_ref;
 			print "Searching $num_query_peptides remaining query peptides for max mismatches: $max_mismatches\n";
@@ -209,6 +221,10 @@ elsif (($action eq 'search') or ($action eq 'search-deep')) {
 			$query_peptides_ref = remove_matched_query_peptides();
 			$max_mismatches++;
 		}
+
+		# now filter the matching peptide lists for each query peptide
+		# to only include those matches with the lowest number of mm
+		filter_matches();
 
 	}
 

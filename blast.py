@@ -2,7 +2,7 @@
 
 from Bio import SeqIO
 from Bio.Blast.Applications import NcbiblastpCommandline
-import os
+import os, glob
 import pandas as pd
 import json
 
@@ -120,5 +120,10 @@ class Benchmarker(BLAST):
                     match_string += str(i) + ','
 
             all_matches.append(match_string)
+
+        for extension in ['pdb', 'phr', 'pin', 'psq', 'ptf', 'pot', 'pto']:
+            os.remove(glob.glob(os.path.dirname(self.proteome) + '/*.' + extension)[0])
+
+        os.remove('output.csv')
 
         return all_matches

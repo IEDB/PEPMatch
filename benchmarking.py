@@ -105,7 +105,7 @@ def benchmark_algorithms(benchmark_options):
         print('Preprocessing proteome...\n')
         try:
             preprocess_proteome_start = time.time()
-            # benchmark_tool.preprocess_proteome()
+            benchmark_tool.preprocess_proteome()
             preprocess_proteome_end = time.time()
             preprocess_proteome_time = preprocess_proteome_end - preprocess_proteome_start
             total_time += preprocess_proteome_time

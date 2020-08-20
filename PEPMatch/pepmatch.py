@@ -649,4 +649,6 @@ class Benchmarker(Matcher):
 
             all_matches.append(match_string)
 
+        os.remove(database)
+
         return all_matches

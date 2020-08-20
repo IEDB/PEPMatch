@@ -112,7 +112,9 @@ sub query_vs_catalog {
 	# query & catalog peptides into non-overlapping segments
 	# the number of segments is num_mm + 1
 
-	# TODO: Track the comparisons that were done so we don't need to redo
+	# TODO: Track the comparisons that were done so we don't need to redo;
+	#       maybe don't do this as it uses excessive RAM and the perfomence gain
+	#       is negligible
 
 	my $num_comparisons_done = 0;
 	foreach my $o (@offsets) {

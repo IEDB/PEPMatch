@@ -224,11 +224,12 @@ elsif (($action eq 'search') or ($action eq 'search-deep')) {
 
 		# now filter the matching peptide lists for each query peptide
 		# to only include those matches with the lowest number of mm
+		print "Filtering matches to include only the best hits for each peptide\n";
 		filter_matches();
 
 	}
 
-
+	print "Writing output files\n";
 	output_matching_peptides($output_file, $long_output_file);
 
 }

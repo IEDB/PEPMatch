@@ -179,8 +179,8 @@ sub query_vs_catalog {
 	print "Possible comparisons: $possible_comparisions\n";
 	print "Comparisons done: $num_comparisons_done\n";
 
-	print "nm:\n";
-	print Dumper %NUM_MISMATCHES;
+	#print "nm:\n";
+	#print Dumper %NUM_MISMATCHES;
 
 	return \%NUM_MISMATCHES;
 
@@ -683,7 +683,7 @@ sub determine_offsets {
 	
 	my $num_offsets = $MAX_MISMATCHES + 1;
 
-	print "no: $num_offsets\n";
+	#print "no: $num_offsets\n";
 	
 	my $peptide_length = $CATALOG_INFO->{peptide_length};
 
@@ -691,9 +691,9 @@ sub determine_offsets {
 	my $large_block_length = ceil($avg_block_length);
 	my $small_block_length = floor($avg_block_length);
 
-	print "abl: $avg_block_length\n";
-	print "lbl: $large_block_length\n";
-	print "sbl: $small_block_length\n";
+	# print "abl: $avg_block_length\n";
+	# print "lbl: $large_block_length\n";
+	# print "sbl: $small_block_length\n";
 
 	my @offsets;
 	
@@ -718,18 +718,18 @@ sub determine_offsets {
 		
 	}
 
-	print "nlb: $num_large_blocks\n";
-	print "nsb: $num_small_blocks\n";
+	# print "nlb: $num_large_blocks\n";
+	# print "nsb: $num_small_blocks\n";
 
 	my $offset = 0;
 	# NOTE, we should be able to do 1..$num_large_blocks, but
 	# this fails in certain situations, so we must do
 	# 0..$num_large_blocks-1
 	my $max_large_i = $num_large_blocks - 1;
-	print "max large i: $max_large_i\n";
+	#print "max large i: $max_large_i\n";
 
 	foreach my $i (0..$num_large_blocks-1) {
-		print "$i: in large blocks!\n";
+		#print "$i: in large blocks!\n";
 		push @offsets, {
 			start => $offset,
 			length => $large_block_length
@@ -739,9 +739,9 @@ sub determine_offsets {
 
 
 	my $max_small_i = $num_small_blocks - 1;
-	print "max small i: $max_small_i\n";
+	#print "max small i: $max_small_i\n";
 	foreach my $i (0..$num_small_blocks-1) {
-		print "in small blocks!\n";
+		#print "in small blocks!\n";
 		push @offsets, {
 			start => $offset,
 			length => $small_block_length

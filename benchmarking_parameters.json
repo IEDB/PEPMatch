@@ -33,7 +33,7 @@
         "algorithms": [
                 {
                         "name": "PEPMatch.pepmatch",
-                        "text_shifting": 1,
+                        "text_shifting": 0,
                         "algorithm_parameters":{}
                 },
                 {

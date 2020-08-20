@@ -33,12 +33,12 @@
         "algorithms": [
                 {
                         "name": "PEPMatch.pepmatch",
-                        "text_shifting": 0,
+                        "text_shifting": 1,
                         "algorithm_parameters":{}
                 },
                 {
                         "name": "blast",
-                        "text_shifting": 0,
+                        "text_shifting": 1,
                         "algorithm_parameters":{
                                 "bin_directory": "~/apps/ncbi-blast-2.10.0+/bin"
                         }

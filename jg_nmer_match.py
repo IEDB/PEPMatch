@@ -18,43 +18,50 @@ class Benchmarker(object):
     # in your PERL5LIB environment variable, that should be passed
     # as the perl_include_path here. E.g., if libraries are installed
     # to 'mylibs', the argument to be passed would be mylibs/lib/perl5
-    def __init__(self, lengths, mismatches, nmer_script_path,
-                 perl_exe='perl', perl_include_path=None,
-                 catalog_master_dir=None,
-                 output_master_dir=None):
+    def __init__(self, query, proteome, lengths, mismatches, algorithm_parameters):
         """Initialize the tool to run the benchmarks
-
 
         Positional arguments:
         mismatches -- the number of mismatches for which to run the benchmark
         nmer_script_path -- path to 'run_nmer_match.pl'
 
-        Keyword arguments:
+        algorithm_parameters can include:
         perl_exe -- the perl executable to use (default: perl)
         perl_include_path -- additional paths to add to the perl include path
         catalog_master_dir -- directory in which to store the database catalogs
         output_master_dir -- directory in which to store the output files
         """
+
+        self.query = query
+        self.proteome = proteome
+
         self.mismatches = mismatches
 
-        self.nmer_script_path = nmer_script_path
+        # this must be defined in algorithm_parameters; the rest of the
+        # parameters are optional and have defaults
+        self.nmer_script_path = algorithm_parameters['nmer_script_path']
 
-        # define the paths
-        self.perl_exe = perl_exe
+        if 'perl_exe' in algorithm_parameters:
+            self.perl_exe = algorithm_parameters['perl_exe']
+        else:
+            self.perl_exe = 'perl'
 
         # set the catalog & output directories
-        if (catalog_master_dir):
-            self.catalog_master_dir = catalog_master_dir
+        if 'catalog_master_dir' in algorithm_parameters:
+            self.catalog_master_dir = algorithm_parameters['catalog_master_dir']
         else:
             self.catalog_master_dir = tempfile.mkdtemp(prefix='catalogs.')
 
-        if (output_master_dir):
-            self.output_master_dir = output_master_dir
+        if 'output_master_dir' in algorithm_parameters:
+            self.output_master_dir = algorithm_parameters['output_master_dir']
         else:
             self.output_master_dir = tempfile.mkdtemp(prefix='outputs.')
 
         # set the extra perl include paths if given
-        self.perl_include_path = perl_include_path
+        if 'perl_include_path' in algorithm_parameters:
+            self.perl_include_path = algorithm_parameters['perl_include_path']
+        else:
+            self.perl_include_path = None
 
         # definte the system call to the script
         self.call_script = self.perl_exe
@@ -81,7 +88,9 @@ class Benchmarker(object):
     def __str__(self):
         return 'nmer_match - J. Greenbaum'
 
-    def preprocess_proteome(self, proteome):
+    def preprocess_proteome(self):
+
+        proteome = self.proteome
 
         # if lengths is empty, throw an exception
         if (len(self.lengths)) == 0:
@@ -107,7 +116,9 @@ class Benchmarker(object):
 
         return 0
 
-    def preprocess_query(self, query):
+    def preprocess_query(self):
+        query = self.query
+
         # given a query fasta file, preprocess it so that it is a peptide list
         # suitable for input to the tool
 
@@ -138,7 +149,11 @@ class Benchmarker(object):
 
         return 0
 
-    def search(self, query, proteome):
+    def search(self):
+
+        query = self.query
+        proteome = self.proteome
+
         # for each length & corresponding number of mismatches, run the search
         query_files_by_length = self.query_fa2lists[query]
         m = self.mismatches
@@ -157,13 +172,23 @@ class Benchmarker(object):
 
             self.result_sets[proteome][query][l][m] = output_file
             cmd = self.call_script + ' -a search -c ' + catalog_name + ' -q ' + query_list_file + ' -m ' + str(m) + ' -o ' + output_file
+
+            # if we're searching for the best match, regardless of mismatches we change the
+            # action to 'search-deep' and ignore the mismatch parameter
+            if (self.mismatches == -1):
+                cmd = self.call_script + ' -a search-deep -c ' + catalog_name + ' -q ' + query_list_file + ' -o ' + output_file
+
             print('Executing: ' + cmd)
             subprocess.run(cmd, shell=True, check=True)
 
-        return self.get_results(query, proteome)
+        return self.get_results()
 
 
-    def get_results(self, query, proteome):
+    def get_results(self):
+
+        query = self.query
+        proteome = self.proteome
+
         # retrieve the result for a given proteome, query, and max mm
         # and return a list with TSV rows:
         # query_peptide matching_protein match_position matching_peptide num_mm
@@ -182,8 +207,7 @@ class Benchmarker(object):
                     all_matching_proteins_positions = row[4].split('; ')
                     for mpp in all_matching_proteins_positions:
                         prot, pos = mpp.split(':')
-                        #results.append("\t".join([row[0], prot, pos, row[1], row[2]]))
-                        results.append("\t".join([row[0], prot, pos, row[2]]))
+                        results.append(",".join([row[0], row[1], prot, row[2], pos]))
 
         return results
 
@@ -192,14 +216,19 @@ class Benchmarker(object):
 
 def main():
     mismatches = 1
-    nmer_match_path = '/Users/jgbaum/projects/nmer-match/bin/run_nmer_match.pl'
+    algorithm_parameters = {
+        'nmer_script_path': '/Users/jgbaum/projects/nmer-match/bin/run_nmer_match.pl',
+        'perl_include_path': '/Users/jgbaum/perl_envs/nmer_match/lib/perl5'
+        }
+    # lengths are currently ignored, so we set it to empty
+    lengths=[]
     proteome_file = 'proteomes/tp.fa'
     query_file = 'queries/test_pep.fa'
 
-    tool = benchmark_jg_nmer_match(mismatches, nmer_match_path)
-    tool.preprocess_proteome(proteome_file)
-    tool.preprocess_query(query_file)
-    results = tool.search(query_file, proteome_file)
+    tool = Benchmarker(query_file, proteome_file, lengths, mismatches, algorithm_parameters)
+    tool.preprocess_query()
+    tool.preprocess_proteome()
+    results = tool.search()
 
 if __name__ == "__main__":
     main()

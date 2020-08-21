@@ -40,7 +40,7 @@
                         "name": "blast",
                         "text_shifting": 0,
                         "algorithm_parameters":{
-                                "bin_directory": "/home/dan/projects/pepmatch/bin"
+                                "bin_directory": "~/apps/ncbi-blast-2.10.0+/bin"
                         }
                 },
                 {
@@ -62,6 +62,15 @@
                         "name": "z",
                         "text_shifting": 1,
                         "algorithm_parameters":{}
-                }
+                },
+                {
+                        "name": "jg_nmer_match",
+                        "text_shifting": 0,
+                        "algorithm_parameters":{
+                                "nmer_script_path": "~/projects/nmer-match/bin/run_nmer_match.pl",
+                                "perl_include_path": " ~/perl_envs/nmer_match/lib/perl5"
+                        }
+                 }
+
         ]
 }

@@ -15,10 +15,10 @@
                         "expected": "expected/milk_peptides_expected.txt"
                 },
                 "coronavirus": {
-                        "lengths": [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+                        "lengths": [8, 9, 10, 11, 12, 13, 14, 15],
                         "mismatches": 2,
                         "query": "queries/coronavirus_test.fa",
-                        "proteome": "proteomes/coronaviruses_large.fa",
+                        "proteome": "proteomes/coronaviruses.fa",
                         "expected": "expected/coronavirus_expected.txt"
                 },
                 "neoepitopes": {

@@ -80,7 +80,7 @@ In order to improve on the tool, a system to compare current tools/algorithms (c
                     }
             },
             {
-                    "name": YOUR_ALGORITHM_MODULE
+                    "name": YOUR_WRAPPER_MODULE
                     "test_shifting": 0,
                     "algorithm_parameters": {}
             }
@@ -92,6 +92,7 @@ In order to improve on the tool, a system to compare current tools/algorithms (c
     Please put the name of the module of your wrapper, boolean for if it is a text shifting algorithm (most likely no, so put 0), and any addition parameters your algorithm will need to be passed. This will then be passed into your wrapper and used however you need. The purpose of this is certain parameters (such as paths to files) will vary between users and labeling it here will prevent anyone having to change your wrapper in any way.
 
     NOTE: as in the example above, the BLAST algorithm requires downloading the bin files from the NCBI site here: https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ 
+
     You must have the "blastp" and "makeblastdb" bin files to run it, so download the ones needed for your operating system and specify the bin directory in the JSON file.
 
 3. You can then call the benchmarking script like this:

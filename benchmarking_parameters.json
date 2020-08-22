@@ -67,8 +67,11 @@
                         "name": "jg_nmer_match",
                         "text_shifting": 0,
                         "algorithm_parameters":{
-                                "nmer_script_path": "~/projects/nmer-match/bin/run_nmer_match.pl",
-                                "perl_include_path": " ~/perl_envs/nmer_match/lib/perl5"
+                                "nmer_script_path": "jg_nmer_match/bin/run_nmer_match.pl",
+                                "perl_exe": "",
+                                "perl_include_path": "",
+                                "catalog_master_dir": "",
+                                "output_master_dir": "",
                         }
                  }
 

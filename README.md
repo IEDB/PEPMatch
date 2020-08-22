@@ -197,7 +197,7 @@ Good luck!
 - Exact Matching
     - PEPMatch
     - BLAST
-    - N-mer Match (Author: Jason Greenbaum)
+    - NmerMatch (Author: Jason Greenbaum)
     - Text shifting algorithms
         - Horspool
         - Boyer-Moore
@@ -206,4 +206,41 @@ Good luck!
 - Mismatching
     - PEPMatch
     - BLAST
-    - N-mer Match (Author: Jason Greenbaum)
+    - NmerMatch (Author: Jason Greenbaum)
+
+### NmerMatch
+
+The NmerMatch code is provided in the [NmerMatch directory](NmerMatch).  It is a Perl application and will require some configuration.  Briefly, all that is required is running cpanm and pointing to the jg\_nmer\_match directory:
+
+```bash
+cpanm jg_nmer_match
+```
+
+A [README](NmerMatch/README.md) is included that details the installation of it's dependencies.  In addtion, there are several parameters in [benchmarking\_parameters.json](benchmarking\_parameters.json) that may need to be adjusted.
+
+This section sets the default parameters for the tool:
+
+```json
+                {
+                        "name": "jg_nmer_match",
+                        "text_shifting": 0,
+                        "algorithm_parameters":{
+                                "nmer_script_path": "jg_nmer_match/bin/run_nmer_match.pl",
+                                "perl_exe": "",
+                                "perl_include_path": "",
+                                "catalog_master_dir": "",
+                                "output_master_dir": "",
+                        }
+                 }
+```
+
+**Algorithm Parameters**
+
+* nmer\_script\_path - the path to the 'run\_nmer\_match.pl' script.  By default, we point to the one included in this package.
+* perl\_exe - by default, the 'perl' executable on the PATH will be used.  If a different one should be called instead, set that here.
+* perl\_include\_path - if any of the dependencies are installed to a path that is not in the default search path, add that path here.
+* catalog\_master\_dir - the directory in which to store the catalog/database files created by the tool.  By default, these will be created underneath $TMP.
+* output\_master\_dir - the directory in which to store the output of the tool.  By default, output will be stored in a directory under $TMP.
+
+
+Of course, if the algorithm is not of interest, the section referring to it in [benchmarking\_parameters.json](benchmarking_parameters.json) can be removed.

@@ -2,17 +2,24 @@
 
 ## Dependencies
 * Perl 5.28 or higher
-* Perl modules in [requirements-notest.txt](requirements-notext.txt) (installed with cpanm -n)
 * Perl modules in [requirements.txt](requirements.txt) (installed with cpanm)
 
 ## Installation
 Installation is as easy as installing the required perl modules.  I recommend using [perlbrew](https://perlbrew.pl) to manage your perl environment and cpanm to install packages.  To install the requirements in your perl installation:
 
+From inside the package directory:
+
+```bash
+$ cpanm .
+```
+
+**OR**
+
 ```bash
 $ cat requirements.txt | xargs -I {} cpanm {}
 ```
 
-Alternatively, you can use the Docker container, described below, that has all requierements installed.
+Alternatively, you can use the Docker container, described below, that has all requirements installed.
 
 ## Usage
 Identifying matches in a set of peptide sequences and a set of proteins (this can also work for sets of nucleotide sequences) is divided into two phases, __catalog building__ and __searching__.
@@ -32,11 +39,24 @@ This will proceed to break up all protein sequences in the database file (-s) in
 Now that you have the database built, you are ready to search for matches.  Currenty, the tool supports a _query_ peptide file that is simply a _list_ (not FASTA) of peptides ([example query list](t/test_mm.lst)).  To search this list for peptides in the database file that match with up to 3 mismatches:
 
 ```bash
-perl run_nmer_match.pl -a search -c catalogs/test -q t/test_mm.lst -o output.tsv
+perl run_nmer_match.pl -a search \
+-c catalogs/test \
+-q t/test_mm.lst \
+-m 3 \
+-o output.tsv
 ```
 
 This will search the query file (-q) against the catalog built in the previous step (-c) and output the results to 'output.tsv' (-o).
 
+### Additional options
+
+All command-line options can be listed with:
+
+```
+perl bin/run_nmer_match.pl --help
+```
+
+One additional option of interest is using the 'search-deep' action in place of 'search'.  This will find the best hit for a peptide against a database, regardless of the number of mismatches.
 
 ### Important notes
 * At this time, the tool is limited to searching for 1 length at a time.
@@ -47,8 +67,13 @@ This will search the query file (-q) against the catalog built in the previous s
 To run the script from the docker container, you'll need to give it access to the directory where you have your input files with the -v option, e.g.:
 
 ```bash
-docker run -v $PWD:/scratch -w /scratch IMAGE_ID -a build -l 15 -s test_data/human.fasta -c catalogs/humb1
-
+docker run \
+-v $PWD:/scratch \
+-w /scratch IMAGE_ID \
+-a build \
+-l 15 \
+-s test_data/human.fasta \
+-c catalogs/humb1
 ```
 
 Simply replace the 'perl run\_nmer\_match.pl' from the above commands with:

@@ -1,8 +1,9 @@
+#!/usr/bin/env perl
+
 use strict;
 use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../local_lib/lib/perl5"; # install dependencies here
 use POSIX qw(floor);
 use Getopt::Long qw(GetOptions);
 use NmerMatch qw(read_fasta build_catalog get_catalog_info

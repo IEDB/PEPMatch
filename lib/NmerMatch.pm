@@ -25,6 +25,16 @@ use Inline (C => Config =>
             #CCFLAGSEX => '-march=x86-64',
             );
 
+=head1 NAME
+
+NmerMatch
+
+=head1 VERSION
+
+Version 0.1
+
+=cut
+
 # Workflow for searching
 # 1. get catalog info to set the CATALOG_NAME
 # 2. read in the query sequences

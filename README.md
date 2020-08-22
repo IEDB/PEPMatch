@@ -7,6 +7,14 @@
 ## Installation
 Installation is as easy as installing the required perl modules.  I recommend using [perlbrew](https://perlbrew.pl) to manage your perl environment and cpanm to install packages.  To install the requirements in your perl installation:
 
+From inside the package directory:
+
+```bash
+$ cpanm .
+```
+
+**OR**
+
 ```bash
 $ cat requirements.txt | xargs -I {} cpanm {}
 ```

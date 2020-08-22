@@ -210,10 +210,10 @@ Good luck!
 
 ### NmerMatch
 
-The NmerMatch code is provided in the [NmerMatch directory](NmerMatch).  It is a Perl application and will require some configuration.  Briefly, all that is required is running cpanm and pointing to the jg\_nmer\_match directory:
+The NmerMatch code is provided in the [NmerMatch directory](NmerMatch).  It is a Perl application and will require some configuration.  Briefly, all that is required is running cpanm and pointing to the NmerMatch directory:
 
 ```bash
-cpanm jg_nmer_match
+cpanm NmerMatch
 ```
 
 A [README](NmerMatch/README.md) is included that details the installation of it's dependencies.  In addtion, there are several parameters in [benchmarking\_parameters.json](benchmarking\_parameters.json) that may need to be adjusted.
@@ -222,10 +222,10 @@ This section sets the default parameters for the tool:
 
 ```json
                 {
-                        "name": "jg_nmer_match",
+                        "name": "NmerMatch",
                         "text_shifting": 0,
                         "algorithm_parameters":{
-                                "nmer_script_path": "jg_nmer_match/bin/run_nmer_match.pl",
+                                "nmer_script_path": "NmerMatch/bin/run_nmer_match.pl",
                                 "perl_exe": "",
                                 "perl_include_path": "",
                                 "catalog_master_dir": "",

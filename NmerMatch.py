@@ -224,7 +224,7 @@ class Benchmarker(object):
 def main():
     mismatches = 1
     algorithm_parameters = {
-        'nmer_script_path': 'jg_nmer_match/bin/run_nmer_match.pl',
+        'nmer_script_path': 'NmerMatch/bin/run_nmer_match.pl',
         'perl_include_path': '/Users/jgbaum/perl_envs/nmer_match/lib/perl5'
         }
     # lengths are currently ignored, so we set it to empty

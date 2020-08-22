@@ -93,7 +93,7 @@ class Benchmarker(object):
 
 
     def __str__(self):
-        return 'nmer_match - J. Greenbaum'
+        return 'NmerMatch (J Greenbaum)'
 
     def preprocess_proteome(self):
 

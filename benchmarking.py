@@ -148,12 +148,9 @@ def main():
     
     master_df = benchmark_algorithms(benchmark_options)
     master_df['Searching Time (s)'] = pd.to_numeric(master_df['Searching Time (s)'])
-    master_df.sort_values('Searching Time (s)', inplace = True)
 
     print(master_df.round(3))
     master_df.round(3).to_excel('benchmarking.xlsx')
-
-
 
 if __name__ == '__main__':
     main()

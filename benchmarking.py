@@ -16,6 +16,8 @@ benchmark_columns = ['Name', 'Preprocessing Proteome (s)', 'Preprocessing Query 
 
 directory = os.path.dirname(os.path.abspath(__file__))
 
+valid_datasets = ['mhc_ligands', 'milk', 'coronavirus', 'neoepitopes']
+
 def parse_arguments():
     # add arguments
     parser = argparse.ArgumentParser()
@@ -34,6 +36,9 @@ def parse_arguments():
     dataset = arguments.dataset[0]
     skip_mem = arguments.skip_mem
     text_shifting = arguments.text_shifting
+
+    if dataset not in valid_datasets:
+        raise ValueError('Invalid dataset. Please pass "mhc_ligands", "milk", "coronavirus", or "neoepitopes".')
 
     benchmark_options = [dataset, skip_mem, text_shifting]
 
@@ -148,12 +153,9 @@ def main():
     
     master_df = benchmark_algorithms(benchmark_options)
     master_df['Searching Time (s)'] = pd.to_numeric(master_df['Searching Time (s)'])
-    master_df.sort_values('Searching Time (s)', inplace = True)
 
     print(master_df.round(3))
     master_df.round(3).to_excel('benchmarking.xlsx')
-
-
 
 if __name__ == '__main__':
     main()

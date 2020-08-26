@@ -1,0 +1,7 @@
+bin/run_nmer_match.pl
+Build.PL
+lib/NmerMatch.pm
+MANIFEST
+t/00-load.t
+t/01-build-load-catalog.t
+t/02-query.t

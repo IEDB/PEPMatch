@@ -5,6 +5,7 @@ import collections
 import pprint
 import subprocess
 import csv
+import os
 from Bio import SeqIO
 
 pp = pprint.PrettyPrinter(indent=4)
@@ -41,24 +42,30 @@ class Benchmarker(object):
         # parameters are optional and have defaults
         self.nmer_script_path = algorithm_parameters['nmer_script_path']
 
-        if 'perl_exe' in algorithm_parameters:
+        # if it's a relative directory, we assume it is relative to this script
+        if not os.path.isabs(self.nmer_script_path):
+            print("Relative path to nmer script provided: " + self.nmer_script_path)
+            self.nmer_script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.nmer_script_path)
+            print("Absolute path: " + self.nmer_script_path)
+
+        if 'perl_exe' in algorithm_parameters and algorithm_parameters['perl_exe']:
             self.perl_exe = algorithm_parameters['perl_exe']
         else:
             self.perl_exe = 'perl'
 
         # set the catalog & output directories
-        if 'catalog_master_dir' in algorithm_parameters:
+        if 'catalog_master_dir' in algorithm_parameters and algorithm_parameters['catalog_master_dir']:
             self.catalog_master_dir = algorithm_parameters['catalog_master_dir']
         else:
             self.catalog_master_dir = tempfile.mkdtemp(prefix='catalogs.')
 
-        if 'output_master_dir' in algorithm_parameters:
+        if 'output_master_dir' in algorithm_parameters and algorithm_parameters['output_master_dir']:
             self.output_master_dir = algorithm_parameters['output_master_dir']
         else:
             self.output_master_dir = tempfile.mkdtemp(prefix='outputs.')
 
         # set the extra perl include paths if given
-        if 'perl_include_path' in algorithm_parameters:
+        if 'perl_include_path' in algorithm_parameters and algorithm_parameters['perl_include_path']:
             self.perl_include_path = algorithm_parameters['perl_include_path']
         else:
             self.perl_include_path = None
@@ -86,7 +93,7 @@ class Benchmarker(object):
 
 
     def __str__(self):
-        return 'nmer_match - J. Greenbaum'
+        return 'NmerMatch (J Greenbaum)'
 
     def preprocess_proteome(self):
 
@@ -217,7 +224,7 @@ class Benchmarker(object):
 def main():
     mismatches = 1
     algorithm_parameters = {
-        'nmer_script_path': '/Users/jgbaum/projects/nmer-match/bin/run_nmer_match.pl',
+        'nmer_script_path': 'NmerMatch/bin/run_nmer_match.pl',
         'perl_include_path': '/Users/jgbaum/perl_envs/nmer_match/lib/perl5'
         }
     # lengths are currently ignored, so we set it to empty

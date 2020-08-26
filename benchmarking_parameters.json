@@ -67,12 +67,12 @@
                         "name": "NmerMatch",
                         "text_shifting": 0,
                         "algorithm_parameters":{
+                                "nmer_script_path": "NmerMatch/bin/run_nmer_match.pl",
                                 "perl_exe": "",
                                 "perl_include_path": "",
                                 "catalog_master_dir": "",
                                 "output_master_dir": ""
                         }
                  }
-
         ]
 }

@@ -31,7 +31,7 @@ preprocessor = Preprocessor('proteome.fa', 5, 'sql') # pass path to file, k, and
 preprocessor.preprocess()
 ```
 
-There are two ways that PEPMatch does matching: finding exact matches and finding matches with mismatches (substitutions). After a proteome has been preprocessed either in SQL or pickle format we can now submit a query to search against by specifying the # of mismatches:
+There are two ways that PEPMatch does matching: finding exact matches and finding matches with mismatches (substitutions). After a proteome has been preprocessed either in SQL or pickle format we can now submit a query to search against by specifying the # of mismatches. The query can be passed either as a path to a FASTA file or as a Python list of strings. The proteome argument is passed as a path to the proteome file:
 
 ```
 from pepmatch import Matcher
@@ -47,7 +47,7 @@ matcher = Matcher('query.fa', 'proteome.fa', 3, output = True, output_format = '
 matcher.match()
 ```
 
-NOTE: SQL is used for exact matching for now and pickle format is used for mismatching. This will change in future versions.
+NOTE: For now, SQLite is used for exact matching and pickle is used for mismatching.
 
 
 ## Applications

@@ -166,7 +166,7 @@ class Matcher(Preprocessor):
     or Python list), proteome file, and maximum # of mismatches. There are multiple methods
     that will do exact/mismatch/best match searching against the proteome.
     Optional: output and output_format arguments to write results to file. Supported formats
-    are "CSV", "XLSX", "JSON", and "HTML".
+    are "csv", "xlsx", "json", and "html".
     '''
     def __init__(self, query, proteome, max_mismatches, output = False, output_format = 'csv'):
         if type(query) == list:

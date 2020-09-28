@@ -13,8 +13,8 @@ def parse_fasta(file):
 
 class BLAST(object):
     def __init__(self, query, proteome, max_mismatches, algorithm_parameters):
-        if max_mismatches == -1:
-            raise ValueError(self.__str__() + ' does not have a best match feature.\n')
+        # if max_mismatches == -1:
+        #     raise ValueError(self.__str__() + ' does not have a best match feature.\n')
 
         self.query = query
         self.proteome = proteome
@@ -26,7 +26,7 @@ class BLAST(object):
         self.blastp_path = os.path.join(bin_directory, 'blastp')
 
     def __str__(self):
-        return 'BLAST algorithm'
+        return 'BLAST'
     
     def preprocesss(self):
         os.system(self.makeblastdb_path + ' -in ' + self.proteome + ' -dbtype prot')
@@ -60,7 +60,7 @@ class BLAST(object):
             blastx_cline = NcbiblastpCommandline(cmd=self.blastp_path, 
                                                 query = query, 
                                                 db = proteome, 
-                                                evalue=5000, outfmt=10, out='output.csv')
+                                                evalue=10000, outfmt=10, out='output.csv')
 
             stdout, stderr = blastx_cline()
 
@@ -99,7 +99,7 @@ class Benchmarker(BLAST):
         super().__init__(query, proteome, max_mismatches, algorithm_parameters)
 
     def __str__(self):
-        return 'BLAST algorithm'
+        return 'BLAST'
 
     def preprocess_proteome(self):
         return self.preprocesss()

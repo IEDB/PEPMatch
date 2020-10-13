@@ -6,8 +6,8 @@ directory = os.path.dirname(os.path.abspath(__file__))
 
 class MMseqs2(object):
     def __init__(self, query, proteome, max_mismatches, algorithm_parameters):
-        # if max_mismatches == -1:
-        #     raise ValueError(self.__str__() + ' does not have a best match feature.\n')
+        if max_mismatches == -1:
+            raise ValueError(self.__str__() + ' does not have a best match feature.\n')
 
         self.query = query
         self.proteome = proteome

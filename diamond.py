@@ -10,8 +10,8 @@ def parse_fasta(file):
 
 class DIAMOND(object):
     def __init__(self, query, proteome, max_mismatches, algorithm_parameters):
-        # if max_mismatches == -1:
-        #     raise ValueError(self.__str__() + ' does not have a best match feature.\n')
+        if max_mismatches == -1:
+            raise ValueError(self.__str__() + ' does not have a best match feature.\n')
 
         self.query = query
         self.proteome = proteome
@@ -29,22 +29,6 @@ class DIAMOND(object):
         os.system(self.bin_file + ' makedb --in ' + self.proteome + ' -d ' + self.proteome_name)
     
     def diamond_search(self, query, proteome):
-        # peptides = parse_fasta(self.query)
-        # proteins = parse_fasta(self.proteome)
-
-        # peptide_dict = {}
-
-        # i = 0
-        # for peptide in peptides:
-        #     peptide_dict[str(peptide.id)] = str(peptide.seq)
-        #     i += 1
-
-        # protein_dict = {}
-        # i = 0
-        # for protein in proteins:
-        #     protein_dict[str(protein.id)] = str(protein.seq)
-        #     i += 1
-
         os.system(self.bin_file + ' blastp -d ' + self.proteome_name + ' -q ' + self.query + ' -o matches.m8' + 
                   ' -e 10000 -k 100 --ultra-sensitive --masking 0 -f 6 full_qseq sseq sseqid mismatch sstart')
 

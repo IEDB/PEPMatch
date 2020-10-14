@@ -11,6 +11,7 @@ directory = os.path.dirname(os.path.abspath(__file__))
 def parse_fasta(file):
     return SeqIO.parse(file, 'fasta')
 
+
 class BLAST(object):
     def __init__(self, query, proteome, max_mismatches, algorithm_parameters):
         if max_mismatches == -1:

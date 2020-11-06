@@ -10,7 +10,7 @@ import os, glob, sqlite3
 splits = []
 
 database = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, 'proteomes/pepmatch.db')
-# database = '/run/media/dan/HDD/All/Projects/PEPMatch/Proteomes/pepmatch.db'
+# database = '/run/media/dan/HDD/All/Projects/PEPMatch/pepmatch.db'
 
 def parse_fasta(file):
     '''Return a parsed Biopython SeqRecord object from a FASTA file.'''
@@ -25,15 +25,19 @@ class Preprocessor(object):
     Optional: protein IDs can be versioned, so the versioned_protein_ids argument can be passed
     as True to store them as versioned.
     '''
-    def __init__(self, proteome, split, preprocess_format, versioned_protein_ids = False):
-        # does not do 1-mer splits
+    def __init__(self, proteome, split, preprocess_format, database='', versioned_protein_ids = False):
         if split < 2:
             raise ValueError('k-sized split is invalid. Cannot be less than 2.')
+        
+        if preprocess_format == 'sql' and database == '':
+            raise ValueError('SQL format selected but database path not specified.')
 
         self.proteome = proteome
         self.split = split
         self.preprocess_format = preprocess_format
+        self.database = database
         self.versioned_protein_ids = versioned_protein_ids
+
 
     def split_protein(self, seq, k):
         '''
@@ -54,7 +58,7 @@ class Preprocessor(object):
         both k-mer and names dictionaries created. This is for compression and
         for being able to load the data in when a query is called.
         '''
-        name = self.proteome.replace('.fa', '')
+        name = self.proteome.split('.')[0]
 
         # Dump k-mer dictionary to a pickle proteome
         with open(name + '_kmers' + '_' + str(self.split) + '.pickle', 'wb') as f:
@@ -70,16 +74,14 @@ class Preprocessor(object):
         k-mer and names dictionaries created. These SQLite tables can then be used 
         for searching. This is much faster for exact matching.
         '''
-        name = self.proteome.replace('.fa', '').split('/')[-1]
+        name = self.proteome.split('.')[0].split('/')[-1]
 
-        # make table names based on proteome and split size
         kmers_table = name + '_kmers' + '_' + str(self.split)
         names_table = name + '_names'
 
-        conn = sqlite3.connect(database)
+        conn = sqlite3.connect(self.database)
         c = conn.cursor()
 
-        # create tables if they do not already exist
         c.execute('CREATE TABLE IF NOT EXISTS "{k}"(kmer TEXT, position INT)'.format(k = kmers_table))
         c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, protein_ID TEXT)'.format(n = names_table))
 
@@ -93,7 +95,6 @@ class Preprocessor(object):
             c.execute('INSERT INTO "{n}"(protein_number, protein_ID) VALUES(?, ?)'.format(n = names_table), 
                 (protein_number, protein_ID))
 
-        # create indexes for faster lookups
         c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{k}"(kmer)'.format(id = kmers_table + '_id', k = kmers_table))
         c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{n}"(protein_number)'.format(id = names_table + '_id', n = names_table))
 
@@ -111,13 +112,12 @@ class Preprocessor(object):
         to the protein ID to be read back later after searching.
         '''
 
-        # parse proteome using Biopython parse function
         proteome = parse_fasta(self.proteome)
 
         kmer_dict = {}
         names_dict = {}
 
-        protein_count = 1    # start protein number assignment
+        protein_count = 1
 
         for protein in proteome:
 
@@ -135,10 +135,13 @@ class Preprocessor(object):
                     kmer_dict[kmers[i]] = [protein_count * 100000 + i]
 
             # create names mapping # to protein ID (include versioned if argument is passed) 
-            if self.versioned_protein_ids:
-                protein_ID = str(protein.description).split(' ')[0]
-                names_dict[protein_count] = protein_ID.split('|',1)[0] + '|' + protein_ID.split('|')[1] + '.' + str(protein.description).split('SV=')[1] + '|' + protein_ID.split('|')[2]
-            else:
+            try:
+                if self.versioned_protein_ids:
+                    protein_ID = str(protein.description).split(' ')[0]
+                    names_dict[protein_count] = protein_ID.split('|',1)[0] + '|' + protein_ID.split('|')[1] + '.' + str(protein.description).split('SV=')[1] + '|' + protein_ID.split('|')[2]
+                else:
+                    names_dict[protein_count] = str(protein.description).split(' ')[0]
+            except IndexError:
                 names_dict[protein_count] = str(protein.description).split(' ')[0]
             
             protein_count += 1
@@ -219,7 +222,7 @@ class Matcher(Preprocessor):
         Read in the already created pickle files for each dictionary in the
         preprocessing step.
         '''
-        name = self.proteome.replace('.fa', '')
+        name = self.proteome.split('.')[0]
 
         # read in k-mer dictionary pickle file
         with open(name + '_kmers' + '_' + str(self.split) + '.pickle', 'rb') as f:
@@ -241,7 +244,7 @@ class Matcher(Preprocessor):
         kmers_table_name = proteome_name + '_kmers' + '_' + str(self.split)
         names_table_name = proteome_name + '_names'
 
-        conn = sqlite3.connect(database)
+        conn = sqlite3.connect(self.database)
         c = conn.cursor()
 
         peptides = self.query
@@ -691,6 +694,7 @@ class Matcher(Preprocessor):
         elif self.output_format == 'html':
             return df.to_html()
 
+
 class Benchmarker(Matcher):
     '''
     Object used for benchmarking the PEPMatch code for the various applications.
@@ -747,7 +751,7 @@ class Benchmarker(Matcher):
 
         # remove files after benchmarking as the only purpose is to extract benchmarks
         try:
-            os.remove(database)
+            os.remove(self.database)
         except FileNotFoundError:
             for file in glob.glob(os.path.dirname(self.proteome) + '/*.pickle'):
                 os.remove(file)

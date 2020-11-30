@@ -13,7 +13,7 @@ setup(
     url='https://gitlab.lji.org/dmarrama/pepmatch',
     author='Daniel Marrama',
     author_email='dmarrama@lji.org',
-    packages=['PEPMatch'],
+    packages=['pepmatch'],
     install_requires=['numpy>=0',
                   'pandas>=0',
                   'biopython>=0',

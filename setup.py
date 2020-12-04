@@ -7,7 +7,7 @@ with open('README.md', 'r') as f:
 
 setup(
     name='pepmatch',
-    version='0.1',
+    version='0.3',
     description='Peptide/epitope search against a reference proteome with specified mismatches.',
     long_description=long_description,
     url='https://gitlab.lji.org/dmarrama/pepmatch',

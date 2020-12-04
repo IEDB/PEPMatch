@@ -1,1 +1,3 @@
-from .pepmatch import Preprocessor, Matcher
+from .preprocessor import Preprocessor
+from .matcher import Matcher
+from .benchmarker import Benchmarker

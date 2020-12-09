@@ -4,6 +4,12 @@
 
 Peptide search against reference proteome(s) with specified mismatches.
 
+## Requirements
+- Python 3.7+
+- Numpy
+- Pandas
+- Biopython
+- Levenshtein
 
 ## Installation
 Run the following commands to install PEPMatch for either general use or benchmarking. Please ask for access permission if you do not have it.

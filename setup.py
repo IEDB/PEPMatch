@@ -14,9 +14,9 @@ setup(
     author='Daniel Marrama',
     author_email='dmarrama@lji.org',
     packages=['pepmatch'],
-    install_requires=['numpy>=0',
-                  'pandas>=0',
-                  'biopython>=0',
-                  'python-Levenshtein>=0'],
+    install_requires=['numpy>=1.18',
+                  'pandas>=1.1',
+                  'biopython>=1.5',
+                  'python-Levenshtein>=0.11'],
     zip_safe=False
 )

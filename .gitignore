@@ -1,10 +1,12 @@
 __pycache__/
 _Inline/
 bin/
+build/
 data/
 old_code/
+pepmatch.egg-info/
 jupyter_notebooks/
-PEPMatch/__pycache__
+pepmatch/__pycache__
 proteomes/*.pdb
 proteomes/*.phr
 proteomes/*.pin
@@ -15,4 +17,4 @@ proteomes/*.pto
 proteomes/*.pickle
 benchmarking.xlsx
 notes.txt
-pepmatch/pepmatch.py
+pepmatch.py

@@ -53,7 +53,7 @@ class Matcher(Preprocessor):
     if self.output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError('Invalid output format, please choose csv, xlsx, json, or html.')
 
-    super().__init__(self.proteome, self.split, self.preprocess_format)
+    super().__init__(self.proteome, self.split, self.preprocess_format, self.database)
 
   def split_peptide(self, seq, k):
     '''

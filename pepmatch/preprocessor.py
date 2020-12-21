@@ -7,20 +7,26 @@ from .parser import parse_fasta
 
 class Preprocessor(object):
   '''
-  Object class that takes in a proteome FASTA file, k for k-mer size (split), and format to 
-  store preprocessed data.
+  Object class that takes in a proteome FASTA file, k for k-mer size (split),
+  and format to store preprocessed data.
 
-  With the preprocess method, it will break the proteome into equal size k-mers and map 
-  them to locations within the individual proteins. The mapped keys and values will then 
-  be stored in either pickle files or a SQLite database.
+  With the preprocess method, it will break the proteome into equal size k-mers
+  and map them to locations within the individual proteins. The mapped keys and
+  values will then be stored in either pickle files or a SQLite database.
 
-  The proteins within the proteome will be assigned numbers along with the index position of 
-  each k-mer within the protein. 
+  The proteins within the proteome will be assigned numbers along with the index
+  position of each k-mer within the protein.
 
-  Optional: protein IDs can be versioned, so the versioned_protein_ids argument can be passed
-  as True to store them as versioned.
+  Optional: protein IDs can be versioned, so the versioned_protein_ids argument
+  can be passed as True to store them as versioned.
   '''
-  def __init__(self, proteome, split, preprocess_format, database='', versioned_protein_ids = False):
+  def __init__(self,
+               proteome,
+               split,
+               preprocess_format,
+               database='',
+               versioned_protein_ids=False):
+
     if split < 2:
       raise ValueError('k-sized split is invalid. Cannot be less than 2.')
 
@@ -46,7 +52,7 @@ class Preprocessor(object):
 
   def pickle_proteome(self, kmer_dict, names_dict):
     '''
-    Takes the preprocessed proteome (below) and creates a pickle file for 
+    Takes the preprocessed proteome (below) and creates a pickle file for
     both k-mer and names dictionaries created. This is for compression and
     for being able to load the data in when a query is called.
     '''
@@ -58,9 +64,9 @@ class Preprocessor(object):
 
   def sql_proteome(self, kmer_dict, names_dict):
     '''
-    Takes the preprocessed proteome (below) and creates SQLite tables for both the 
-    k-mer and names dictionaries created. These SQLite tables can then be used 
-    for searching. This is much faster for exact matching.
+    Takes the preprocessed proteome (below) and creates SQLite tables for both
+    the k-mer and names dictionaries created. These SQLite tables can then be
+    used for searching. This is much faster for exact matching.
     '''
     name = self.proteome.split('/')[-1].split('.')[0]
     kmers_table = name + '_kmers' + '_' + str(self.split)
@@ -78,7 +84,7 @@ class Preprocessor(object):
 
     # make a row for each number to protein ID mapping
     for protein_number, protein_ID in names_dict.items():
-      c.execute('INSERT INTO "{n}"(protein_number, protein_ID) VALUES(?, ?)'.format(n = names_table), 
+      c.execute('INSERT INTO "{n}"(protein_number, protein_ID) VALUES(?, ?)'.format(n = names_table),
         (protein_number, protein_ID))
 
     # create indexes for both k-mer and name tables
@@ -90,12 +96,13 @@ class Preprocessor(object):
 
   def preprocess(self):
     '''
-    Method which preprocessed the given proteome, by splitting each protein into k-mers 
-    and assigninga unique index to each unique k-mer within each protein. This is done by 
-    assigning a number to each protein and for each k-mer, multiplying the protein number 
-    by 100,000 and adding the index position of the index within the protein. This 
-    guarantees a unique index for each and every possible k-mer. Also, each protein # 
-    assigned is also mappedto the protein ID to be read back later after searching.
+    Method which preprocessed the given proteome, by splitting each protein into
+    k-mers and assigninga unique index to each unique k-mer within each protein.
+    This is done by assigning a number to each protein and for each k-mer,
+    multiplying the protein number by 100,000 and adding the index position of
+    the index within the protein. This guarantees a unique index for each and
+    every possible k-mer. Also, each protein # assigned is also mappedto the
+    protein ID to be read back later after searching.
     '''
     proteome = parse_fasta(self.proteome)
     kmer_dict = {}
@@ -106,11 +113,13 @@ class Preprocessor(object):
       kmers = self.split_protein(str(protein.seq), self.split)
       for i in range(len(kmers)):
         if kmers[i] in kmer_dict.keys():
-          kmer_dict[kmers[i]].append(protein_count * 100000 + i) # add index to k-mer list 
-        else: 
-          kmer_dict[kmers[i]] = [protein_count * 100000 + i]     # create entry for new k-mer
+          # add index to k-mer list
+          kmer_dict[kmers[i]].append(protein_count * 100000 + i)
+        else:
+          # create entry for new k-mer
+          kmer_dict[kmers[i]] = [protein_count * 100000 + i]
 
-      # create names mapping # to protein ID (include versioned if argument is passed) 
+      # create mapping of protein # to protein ID
       try:
         if self.versioned_protein_ids:
           protein_ID = str(protein.description).split(' ')[0]

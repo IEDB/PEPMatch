@@ -67,6 +67,9 @@ class Preprocessor(object):
     kmers_table = name + '_kmers' + '_' + str(self.split)
     names_table = name + '_names'
 
+    conn = sqlite3.connect(self.database)
+    c = conn.cursor()
+
     if self.smaller_proteome != '':
       smaller_proteome_ids = []
       smaller_proteome = parse_fasta(self.smaller_proteome)
@@ -75,11 +78,10 @@ class Preprocessor(object):
         if self.versioned_ids:
           protein_id += '.' + str(protein.description).split('SV=')[1][0]
         smaller_proteome_ids.append(protein_id)
+      c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, protein_id TEXT, in_smaller_proteome INT, protein_existence_level INT)'.format(n = names_table))
 
-    conn = sqlite3.connect(self.database)
-    c = conn.cursor()
     c.execute('CREATE TABLE IF NOT EXISTS "{k}"(kmer TEXT, position INT)'.format(k = kmers_table))
-    c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, protein_id TEXT, in_smaller_proteome INT, protein_existence_level INT)'.format(n = names_table))
+    c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, protein_id TEXT)'.format(n = names_table))
 
     # make a row for each unique k-mer and position mapping
     for kmer, positions in kmer_dict.items():
@@ -88,11 +90,13 @@ class Preprocessor(object):
 
     # make a row for each number to protein ID mapping
     for protein_number, protein_data in names_dict.items():
-      
-      in_smaller_proteome = 1 if protein_data[0] in smaller_proteome_ids else 0
-      
-      c.execute('INSERT INTO "{n}"(protein_number, protein_id, in_smaller_proteome, protein_existence_level) VALUES(?, ?, ?, ?)'.format(n = names_table), 
-        (protein_number, protein_data[0], in_smaller_proteome, protein_data[1]))
+      if self.smaller_proteome != '':
+        in_smaller_proteome = 1 if protein_data[0] in smaller_proteome_ids else 0
+        c.execute('INSERT INTO "{n}"(protein_number, protein_id, in_smaller_proteome, protein_existence_level) VALUES(?, ?, ?, ?)'.format(n = names_table), 
+          (protein_number, protein_data[0], in_smaller_proteome, protein_data[1]))
+      else:
+        c.execute('INSERT INTO "{n}"(protein_number, protein_id) VALUES(?, ?)'.format(n = names_table), 
+          (protein_number, protein_data[0]))
 
     # create indexes for both k-mer and name tables
     c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{k}"(kmer)'.format(id = kmers_table + '_id', k = kmers_table))
@@ -132,7 +136,7 @@ class Preprocessor(object):
         else:
           names_dict[protein_count] = (protein_id.split('|')[1], protein_existence_level)
       except IndexError:
-        names_dict[protein_count] = str(protein.description).split(' ')[0]
+        names_dict[protein_count] = (str(protein.description).split(' ')[0])
 
       protein_count += 1
 

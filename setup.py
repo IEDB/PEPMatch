@@ -1,16 +1,17 @@
 from setuptools import setup
 
 
-with open('README.md', 'r') as f:
-    long_description = f.read()
+with open('README.md', 'r', encoding='utf-8') as fh:
+    long_description = fh.read()
 
 
 setup(
     name='pepmatch',
-    version='0.3',
-    description='Peptide/epitope search against a reference proteome with specified mismatches.',
+    version='0.3.3',
+    description='Peptide and epitope search against a reference proteome with specified mismatches.',
     long_description=long_description,
-    url='https://gitlab.lji.org/dmarrama/pepmatch',
+    long_description_content_type='text/markdown',
+    url='https://github.com/IEDB/PEPMatch',
     author='Daniel Marrama',
     author_email='dmarrama@lji.org',
     packages=['pepmatch'],

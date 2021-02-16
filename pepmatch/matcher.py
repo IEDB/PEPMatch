@@ -5,6 +5,7 @@ from Levenshtein import hamming
 import _pickle as pickle
 import pandas as pd
 import sqlite3
+import random
 
 from .parser import parse_fasta
 from .preprocessor import Preprocessor
@@ -536,11 +537,12 @@ class Matcher(Preprocessor):
 
   def output_matches(self, df):
     '''Write Pandas dataframe to format that is specified'''
+    results_id = ''.join(random.choice('0123456789ABCDEFabcdef') for i in range(6))
     if self.output_format == 'csv':
-      return df.to_csv('PEPMatch_results.csv')
+      return df.to_csv('PEPMatch_results_' + results_id + '.csv')
     elif self.output_format == 'xlsx':
-      return df.to_excel('PEPMatch_results.xlsx')
+      return df.to_excel('PEPMatch_results_' + results_id + '.xlsx')
     elif self.output_format == 'json':
-      return df.to_json('PEPMatch_results.json')
+      return df.to_json('PEPMatch_results_' + results_id + '.json')
     elif self.output_format == 'html':
       return df.to_html()

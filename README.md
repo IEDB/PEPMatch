@@ -12,18 +12,10 @@ Peptide search against reference proteome(s) with specified mismatches.
 - Levenshtein
 
 ## Installation
-Run the following commands to install PEPMatch for either general use or benchmarking. Please ask for access permission if you do not have it.
+Run the following commands to install PEPMatch for either general use or benchmarking.
 
 ```
-git clone https://gitlab.lji.org/dmarrama/pepmatch.git
-cd pepmatch
-pip install .
-```
-
-or
-
-```
-pip install git+https://gitlab.lji.org/dmarrama/pepmatch.git
+pip install pepmatch
 ```
 
 NOTE: it is not required to pip install PEPMatch to run the benchmarking code. However, the packages in the requirements.txt file are needed to run it.

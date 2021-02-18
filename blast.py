@@ -29,7 +29,7 @@ class BLAST(object):
     def __str__(self):
         return 'BLAST'
     
-    def preprocesss(self):
+    def preprocess(self):
         os.system(self.makeblastdb_path + ' -in ' + self.proteome + ' -dbtype prot')
     
     def blast_search(self, query, proteome):
@@ -75,6 +75,7 @@ class BLAST(object):
 
         df['Index start'] = df['Index start'].apply(lambda x: x - 1)
 
+        df.to_csv('blast_results_aaaaaa.csv')
 
         all_matches = []
         for i, row in df.iterrows():

@@ -28,7 +28,9 @@ class Matcher(Preprocessor):
                query,
                proteome,
                max_mismatches,
+               split=0,
                database='',
+               one_match = False,
                output = False,
                output_format = 'csv'):
 
@@ -40,25 +42,33 @@ class Matcher(Preprocessor):
     self.lengths = sorted(list(set([len(peptide) for peptide in self.query])))
     self.proteome = proteome
     self.max_mismatches = max_mismatches
+    self.split = split
     self.database = database
+    self.one_match = one_match
     self.output = output
     self.output_format = output_format
 
     # use sql format for exact matches
-    if max_mismatches == 0:
-      self.split = min(self.lengths)
-      self.preprocess_format = 'sql'
+    if self.split == 0:
+      if max_mismatches == 0:
+        self.split = min(self.lengths)
+        self.preprocess_format = 'sql'
 
-    # use pickle format for mismatching
-    # calculate optimal k-splits by the query passed
-    elif max_mismatches > 0:
-      self.splits = self.mismatching_splits(self.lengths)
-      self.split = self.splits[0]
-      self.preprocess_format = 'pickle'
-    elif max_mismatches == -1:
-      self.splits = self.best_match_splits(min(self.lengths))
-      self.split = self.splits[0]
-      self.preprocess_format = 'pickle'
+      # use pickle format for mismatching
+      # calculate optimal k-splits by the query passed
+      elif max_mismatches > 0:
+        self.splits = self.mismatching_splits(self.lengths)
+        self.split = self.splits[0]
+        self.preprocess_format = 'pickle'
+      elif max_mismatches == -1:
+        self.splits = self.best_match_splits(min(self.lengths))
+        self.split = self.splits[0]
+        self.preprocess_format = 'pickle'
+    else:
+      if self.database != '':
+        self.preprocess_format = 'sql'
+      else:
+        self.preprocess_format = 'pickle'
 
     if self.output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError('Invalid output format, please choose csv, xlsx, json, or html.')
@@ -173,12 +183,14 @@ class Matcher(Preprocessor):
         all_matches.append((peptide, '', '', '', ''))
       for match in matches:
         # retrieve protein IDs from the other created table
-        get_protein_name = 'SELECT protein_ID FROM "{names_table}" WHERE protein_number = "{protein_number}"'.format(
+        get_protein_data = 'SELECT * FROM "{names_table}" WHERE protein_number = "{protein_number}"'.format(
                   names_table = names_table_name, protein_number = (match - (match % 100000)) // 100000)
-        c.execute(get_protein_name)
-        protein_ID = c.fetchall()
+        c.execute(get_protein_data)
+        protein_data = c.fetchall()
 
-        all_matches.append((peptide, peptide, protein_ID[0][0], 0, match % 100000))
+        print(protein_data)
+
+        all_matches.append((peptide, peptide, protein_data[0][1], 0, match % 100000, protein_data[0][2], protein_data[0][3]))
 
     c.close()
     conn.close()
@@ -371,6 +383,8 @@ class Matcher(Preprocessor):
             names_dict[(match[2] - (match[2] % 100000)) // 100000],
             match[1],
             match[2] % 100000,
+            None,
+            None
             ))
 
     return all_matches
@@ -471,15 +485,26 @@ class Matcher(Preprocessor):
                                  'Matched Peptide',
                                  'Protein ID',
                                  'Mismatches',
-                                 'Index start'])
+                                 'Index start',
+                                 'Protein Existence Level',
+                                 'In Smaller Proteome'])
 
   def output_matches(self, df):
     '''Write Pandas dataframe to format that is specified'''
+    if self.one_match:
+      idx = df.groupby(['Peptide Sequence'])['In Smaller Proteome'].transform('max') == df['In Smaller Proteome']
+      df = df[idx]
+
+      idx = df.groupby(['Peptide Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']
+      df = df[idx]
+
+    columns = ['Peptide Sequence', 'Matched Peptide', 'Protein ID', 'Mismatches', 'Index start']
+
     results_id = ''.join(random.choice('0123456789ABCDEFabcdef') for i in range(6))
     if self.output_format == 'csv':
-      return df.to_csv('PEPMatch_results_' + results_id + '.csv')
+      return df.to_csv('PEPMatch_results_' + results_id + '.csv', columns = columns)
     elif self.output_format == 'xlsx':
-      return df.to_excel('PEPMatch_results_' + results_id + '.xlsx')
+      return df.to_excel('PEPMatch_results_' + results_id + '.xlsx', columns = columns)
     elif self.output_format == 'json':
       return df.to_json('PEPMatch_results_' + results_id + '.json')
     elif self.output_format == 'html':

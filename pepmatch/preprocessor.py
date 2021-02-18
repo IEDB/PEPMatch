@@ -70,18 +70,8 @@ class Preprocessor(object):
     conn = sqlite3.connect(self.database)
     c = conn.cursor()
 
-    if self.smaller_proteome != '':
-      smaller_proteome_ids = []
-      smaller_proteome = parse_fasta(self.smaller_proteome)
-      for protein in smaller_proteome:
-        protein_id = protein.id.split('|')[1]
-        if self.versioned_ids:
-          protein_id += '.' + str(protein.description).split('SV=')[1][0]
-        smaller_proteome_ids.append(protein_id)
-      c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, protein_id TEXT, in_smaller_proteome INT, protein_existence_level INT)'.format(n = names_table))
-
     c.execute('CREATE TABLE IF NOT EXISTS "{k}"(kmer TEXT, position INT)'.format(k = kmers_table))
-    c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, protein_id TEXT)'.format(n = names_table))
+    c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, protein_id TEXT, protein_existence_level INT, in_smaller_proteome INT)'.format(n = names_table))
 
     # make a row for each unique k-mer and position mapping
     for kmer, positions in kmer_dict.items():
@@ -90,13 +80,8 @@ class Preprocessor(object):
 
     # make a row for each number to protein ID mapping
     for protein_number, protein_data in names_dict.items():
-      if self.smaller_proteome != '':
-        in_smaller_proteome = 1 if protein_data[0] in smaller_proteome_ids else 0
-        c.execute('INSERT INTO "{n}"(protein_number, protein_id, in_smaller_proteome, protein_existence_level) VALUES(?, ?, ?, ?)'.format(n = names_table), 
-          (protein_number, protein_data[0], in_smaller_proteome, protein_data[1]))
-      else:
-        c.execute('INSERT INTO "{n}"(protein_number, protein_id) VALUES(?, ?)'.format(n = names_table), 
-          (protein_number, protein_data[0]))
+      c.execute('INSERT INTO "{n}"(protein_number, protein_id, protein_existence_level, in_smaller_proteome) VALUES(?, ?, ?, ?)'.format(n = names_table), 
+        (protein_number, protein_data[0], protein_data[1], protein_data[2]))
 
     # create indexes for both k-mer and name tables
     c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{k}"(kmer)'.format(id = kmers_table + '_id', k = kmers_table))
@@ -119,6 +104,13 @@ class Preprocessor(object):
     names_dict = {}
     protein_count = 1
 
+    if self.smaller_proteome != '':
+      smaller_proteome_ids = []
+      smaller_proteome = parse_fasta(self.smaller_proteome)
+      for protein in smaller_proteome:
+        protein_id = protein.id.split('|')[1]
+        smaller_proteome_ids.append(protein_id)
+
     for protein in proteome:
       kmers = self.split_protein(str(protein.seq), self.split)
       for i in range(len(kmers)):
@@ -128,15 +120,24 @@ class Preprocessor(object):
           kmer_dict[kmers[i]] = [protein_count * 100000 + i]     # create entry for new k-mer
 
       # create names mapping # to protein ID (include versioned if argument is passed) 
-      protein_id = str(protein.description).split(' ')[0]
+      try:
+        protein_id = protein.id.split('|')[1]
+      except IndexError:
+        protein_id = protein.id
+
+      if self.smaller_proteome != '':
+        in_smaller_proteome = 1 if protein_id in smaller_proteome_ids else 0
+      else:
+        in_smaller_proteome = None
+
       try:
         protein_existence_level = int(str(protein.description).split('PE=')[1][0])
         if self.versioned_ids:
-          names_dict[protein_count] = (protein_id.split('|')[1] + '.' + str(protein.description).split('SV=')[1][0], protein_existence_level)
+          names_dict[protein_count] = (protein_id + '.' + str(protein.description).split('SV=')[1][0], protein_existence_level, in_smaller_proteome)
         else:
-          names_dict[protein_count] = (protein_id.split('|')[1], protein_existence_level)
+          names_dict[protein_count] = (protein_id, protein_existence_level, in_smaller_proteome)
       except IndexError:
-        names_dict[protein_count] = (str(protein.description).split(' ')[0])
+        names_dict[protein_count] = (str(protein.description).split(' ')[0], None, None)
 
       protein_count += 1
 

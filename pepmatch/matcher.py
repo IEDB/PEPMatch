@@ -485,16 +485,18 @@ class Matcher(Preprocessor):
                                  'Mismatches',
                                  'Index start',
                                  'Protein Evidence Level',
-                                 'In Smaller Proteome'])
+                                 'Gene Priority'])
 
   def output_matches(self, df):
     '''Write Pandas dataframe to format that is specified'''
     if self.one_match:
-      idx = df.groupby(['Peptide Sequence'])['In Smaller Proteome'].transform('max') == df['In Smaller Proteome']
+      idx = df.groupby(['Peptide Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
       df = df[idx]
 
       idx = df.groupby(['Peptide Sequence'])['Protein Evidence Level'].transform('min') == df['Protein Evidence Level']
       df = df[idx]
+
+      df.drop_duplicates(inplace=True)
 
     columns = ['Peptide Sequence', 'Matched Peptide', 'Protein ID', 'Mismatches', 'Index start']
 

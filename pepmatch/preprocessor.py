@@ -20,7 +20,7 @@ class Preprocessor(object):
   Optional: protein IDs can be versioned, so the versioned_ids argument can be passed
   as True to store them as versioned.
   '''
-  def __init__(self, proteome, split, preprocess_format, database='', smaller_proteome='', versioned_ids = False):
+  def __init__(self, proteome, split, preprocess_format, database='', one_gene_proteome='', versioned_ids = False):
     if split < 2:
       raise ValueError('k-sized split is invalid. Cannot be less than 2.')
 
@@ -31,7 +31,7 @@ class Preprocessor(object):
     self.split = split
     self.preprocess_format = preprocess_format
     self.database = database
-    self.smaller_proteome = smaller_proteome
+    self.one_gene_proteome = one_gene_proteome
     self.versioned_ids = versioned_ids
 
   def split_protein(self, seq, k):
@@ -71,7 +71,7 @@ class Preprocessor(object):
     c = conn.cursor()
 
     c.execute('CREATE TABLE IF NOT EXISTS "{k}"(kmer TEXT, position INT)'.format(k = kmers_table))
-    c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, protein_id TEXT, protein_existence_level INT, in_smaller_proteome INT)'.format(n = names_table))
+    c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, protein_id TEXT, pe_level INT, gene_priority INT)'.format(n = names_table))
 
     # make a row for each unique k-mer and position mapping
     for kmer, positions in kmer_dict.items():
@@ -80,7 +80,7 @@ class Preprocessor(object):
 
     # make a row for each number to protein ID mapping
     for protein_number, protein_data in names_dict.items():
-      c.execute('INSERT INTO "{n}"(protein_number, protein_id, protein_existence_level, in_smaller_proteome) VALUES(?, ?, ?, ?)'.format(n = names_table), 
+      c.execute('INSERT INTO "{n}"(protein_number, protein_id, pe_level, gene_priority) VALUES(?, ?, ?, ?)'.format(n = names_table), 
         (protein_number, protein_data[0], protein_data[1], protein_data[2]))
 
     # create indexes for both k-mer and name tables
@@ -104,12 +104,12 @@ class Preprocessor(object):
     names_dict = {}
     protein_count = 1
 
-    if self.smaller_proteome != '':
-      smaller_proteome_ids = []
-      smaller_proteome = parse_fasta(self.smaller_proteome)
-      for protein in smaller_proteome:
+    if self.one_gene_proteome != '':
+      one_gene_proteome_ids = []
+      one_gene_proteome = parse_fasta(self.one_gene_proteome)
+      for protein in one_gene_proteome:
         protein_id = protein.id.split('|')[1]
-        smaller_proteome_ids.append(protein_id)
+        one_gene_proteome_ids.append(protein_id)
 
     for protein in proteome:
       kmers = self.split_protein(str(protein.seq), self.split)
@@ -125,17 +125,17 @@ class Preprocessor(object):
       except IndexError:
         protein_id = protein.id
 
-      if self.smaller_proteome != '':
-        in_smaller_proteome = 1 if protein_id in smaller_proteome_ids else 0
+      if self.one_gene_proteome != '':
+        gene_priority = 1 if protein_id in one_gene_proteome_ids else 0
       else:
-        in_smaller_proteome = None
+        gene_priority = None
 
       try:
-        protein_existence_level = int(str(protein.description).split('PE=')[1][0])
+        pe_level = int(str(protein.description).split('PE=')[1][0])
         if self.versioned_ids:
-          names_dict[protein_count] = (protein_id + '.' + str(protein.description).split('SV=')[1][0], protein_existence_level, in_smaller_proteome)
+          names_dict[protein_count] = (protein_id + '.' + str(protein.description).split('SV=')[1][0], pe_level, gene_priority)
         else:
-          names_dict[protein_count] = (protein_id, protein_existence_level, in_smaller_proteome)
+          names_dict[protein_count] = (protein_id, pe_level, gene_priority)
       except IndexError:
         names_dict[protein_count] = (str(protein.description).split(' ')[0], None, None)
 

@@ -188,8 +188,6 @@ class Matcher(Preprocessor):
         c.execute(get_protein_data)
         protein_data = c.fetchall()
 
-        print(protein_data)
-
         all_matches.append((peptide, peptide, protein_data[0][1], 0, match % 100000, protein_data[0][2], protein_data[0][3]))
 
     c.close()
@@ -486,7 +484,7 @@ class Matcher(Preprocessor):
                                  'Protein ID',
                                  'Mismatches',
                                  'Index start',
-                                 'Protein Existence Level',
+                                 'Protein Evidence Level',
                                  'In Smaller Proteome'])
 
   def output_matches(self, df):
@@ -495,7 +493,7 @@ class Matcher(Preprocessor):
       idx = df.groupby(['Peptide Sequence'])['In Smaller Proteome'].transform('max') == df['In Smaller Proteome']
       df = df[idx]
 
-      idx = df.groupby(['Peptide Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']
+      idx = df.groupby(['Peptide Sequence'])['Protein Evidence Level'].transform('min') == df['Protein Evidence Level']
       df = df[idx]
 
     columns = ['Peptide Sequence', 'Matched Peptide', 'Protein ID', 'Mismatches', 'Index start']

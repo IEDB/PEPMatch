@@ -5,6 +5,7 @@ import sqlite3
 
 from .parser import parse_fasta
 
+
 class Preprocessor(object):
   '''
   Object class that takes in a proteome FASTA file, k for k-mer size (split), and format to 
@@ -52,7 +53,7 @@ class Preprocessor(object):
     for being able to load the data in when a query is called.
     '''
     name = self.proteome.split('/')[-1].split('.')[0]
-    with open(name + '_kmers' + '_' + str(self.split) + '.pickle', 'wb') as f:
+    with open(name + '_' + str(self.split) + 'mers' + '.pickle', 'wb') as f:
       pickle.dump(kmer_dict, f)
     with open(name + '_names.pickle', 'wb') as f:
       pickle.dump(names_dict, f)
@@ -64,7 +65,7 @@ class Preprocessor(object):
     for searching. This is much faster for exact matching.
     '''
     name = self.proteome.split('/')[-1].split('.')[0]
-    kmers_table = name + '_kmers' + '_' + str(self.split)
+    kmers_table = name + '_' + str(self.split) + 'mers'
     names_table = name + '_names'
 
     conn = sqlite3.connect(self.database)

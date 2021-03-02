@@ -10,8 +10,9 @@ import random
 from .parser import parse_fasta
 from .preprocessor import Preprocessor
 
-VALID_OUTPUT_FORMATS = ['csv', 'xlsx', 'json', 'html']
+
 splits = []
+VALID_OUTPUT_FORMATS = ['csv', 'xlsx', 'json', 'html']
 
 class Matcher(Preprocessor):
   '''
@@ -24,15 +25,17 @@ class Matcher(Preprocessor):
   Optional: output and output_format arguments to write results to file.
   Supported formats are "csv", "xlsx", "json", and "html".
   '''
+
+
   def __init__(self,
                query,
                proteome,
                max_mismatches,
                split=0,
                database='',
-               one_match = False,
-               output = False,
-               output_format = 'csv'):
+               one_match=False,
+               output_df=False,
+               output_format=''):
 
     if type(query) == list:
       self.query = query
@@ -45,7 +48,7 @@ class Matcher(Preprocessor):
     self.split = split
     self.database = database
     self.one_match = one_match
-    self.output = output
+    self.output_df = output_df
     self.output_format = output_format
 
     # use sql format for exact matches
@@ -70,7 +73,7 @@ class Matcher(Preprocessor):
       else:
         self.preprocess_format = 'pickle'
 
-    if self.output_format not in VALID_OUTPUT_FORMATS:
+    if self.output_format != '' and self.output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError('Invalid output format, please choose csv, xlsx, json, or html.')
 
     super().__init__(self.proteome, self.split, self.preprocess_format, self.database, True)
@@ -92,7 +95,7 @@ class Matcher(Preprocessor):
     preprocessing step.
     '''
     name = self.proteome.split('.')[0]
-    with open(name + '_kmers' + '_' + str(self.split) + '.pickle', 'rb') as f:
+    with open(name + '_' + str(self.split) + 'mers' + '.pickle', 'rb') as f:
       kmer_dict = pickle.load(f)
     with open(name + '_names.pickle', 'rb') as f:
       names_dict = pickle.load(f)
@@ -103,7 +106,7 @@ class Matcher(Preprocessor):
     Use the preprocessed SQLite DB to perform the exact search query.
     '''
     proteome_name = self.proteome.split('/')[-1].split('.')[0]
-    kmers_table_name = proteome_name + '_kmers' + '_' + str(self.split)
+    kmers_table_name = proteome_name + '_' + str(self.split) + 'mers'
     names_table_name = proteome_name + '_names'
 
     conn = sqlite3.connect(self.database)
@@ -188,7 +191,8 @@ class Matcher(Preprocessor):
         c.execute(get_protein_data)
         protein_data = c.fetchall()
 
-        all_matches.append((peptide, peptide, protein_data[0][1], 0, match % 100000, protein_data[0][2], protein_data[0][3]))
+        all_matches.append((peptide, peptide, protein_data[0][1], 0, (match % 100000), 
+          (match % 100000) + len(peptide), protein_data[0][2], protein_data[0][3]))
 
     c.close()
     conn.close()
@@ -381,6 +385,7 @@ class Matcher(Preprocessor):
             names_dict[(match[2] - (match[2] % 100000)) // 100000],
             match[1],
             match[2] % 100000,
+            (match[2] % 100000) + len(peptide),
             None,
             None
             ))
@@ -470,41 +475,47 @@ class Matcher(Preprocessor):
       raise ValueError('Invalid input of mismatches.')
 
     # option to output results to a specified format, default is CSV
-    if self.output:
+    if self.output_df:
       df = self.dataframe_matches(all_matches)
-      self.output_matches(df)
+      if self.output_format == '':
+        return df
+      else:
+        self.output_matches(df)
 
     return all_matches
 
   def dataframe_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
-    return pd.DataFrame(all_matches,
-                        columns=['Peptide Sequence',
-                                 'Matched Peptide',
-                                 'Protein ID',
-                                 'Mismatches',
-                                 'Index start',
-                                 'Protein Evidence Level',
-                                 'Gene Priority'])
+    df = pd.DataFrame(all_matches,
+                      columns=['Peptide Sequence',
+                               'Matched Peptide',
+                               'Protein ID',
+                               'Mismatches',
+                               'Index start',
+                               'Index end',
+                               'Protein Evidence Level',
+                               'Gene Priority'])
+    
+    if self.one_match:
+      try:
+        idx = df.groupby(['Peptide Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
+        df = df[idx]
+
+        idx = df.groupby(['Peptide Sequence'])['Protein Evidence Level'].transform('min') == df['Protein Evidence Level']
+        df = df[idx]
+        df.drop_duplicates(inplace=True)
+      except KeyError:
+        df.drop_duplicates(inplace=True)
+
+    return df 
 
   def output_matches(self, df):
     '''Write Pandas dataframe to format that is specified'''
-    if self.one_match:
-      idx = df.groupby(['Peptide Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
-      df = df[idx]
-
-      idx = df.groupby(['Peptide Sequence'])['Protein Evidence Level'].transform('min') == df['Protein Evidence Level']
-      df = df[idx]
-
-      df.drop_duplicates(inplace=True)
-
-    columns = ['Peptide Sequence', 'Matched Peptide', 'Protein ID', 'Mismatches', 'Index start']
-
     results_id = ''.join(random.choice('0123456789ABCDEFabcdef') for i in range(6))
     if self.output_format == 'csv':
-      return df.to_csv('PEPMatch_results_' + results_id + '.csv', columns = columns)
+      return df.to_csv('PEPMatch_results_' + results_id + '.csv')
     elif self.output_format == 'xlsx':
-      return df.to_excel('PEPMatch_results_' + results_id + '.xlsx', columns = columns)
+      return df.to_excel('PEPMatch_results_' + results_id + '.xlsx')
     elif self.output_format == 'json':
       return df.to_json('PEPMatch_results_' + results_id + '.json')
     elif self.output_format == 'html':

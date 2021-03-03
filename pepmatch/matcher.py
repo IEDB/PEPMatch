@@ -45,14 +45,13 @@ class Matcher(Preprocessor):
     self.lengths = sorted(list(set([len(peptide) for peptide in self.query])))
     self.proteome = proteome
     self.max_mismatches = max_mismatches
-    self.split = split
     self.database = database
     self.one_match = one_match
     self.output_df = output_df
     self.output_format = output_format
 
     # use sql format for exact matches
-    if self.split == 0:
+    if split == 0:
       if max_mismatches == 0:
         self.split = min(self.lengths)
         self.preprocess_format = 'sql'
@@ -68,6 +67,7 @@ class Matcher(Preprocessor):
         self.split = self.splits[0]
         self.preprocess_format = 'pickle'
     else:
+      self.split = split
       if self.database != '':
         self.preprocess_format = 'sql'
       else:
@@ -191,8 +191,13 @@ class Matcher(Preprocessor):
         c.execute(get_protein_data)
         protein_data = c.fetchall()
 
-        all_matches.append((peptide, peptide, protein_data[0][1], 0, (match % 100000), 
-          (match % 100000) + len(peptide), protein_data[0][2], protein_data[0][3]))
+        all_matches.append((peptide, 
+                            peptide, 
+                            protein_data[0][1],
+                            (match % 100000),
+                            (match % 100000) + len(peptide), 
+                            protein_data[0][2], 
+                            protein_data[0][3]))
 
     c.close()
     conn.close()
@@ -223,7 +228,6 @@ class Matcher(Preprocessor):
     all_matches_dict = {}
 
     peptides = self.query
-
     try:
       kmer_dict, names_dict = self.read_pickle_files()
       rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
@@ -384,11 +388,9 @@ class Matcher(Preprocessor):
             match[0],
             names_dict[(match[2] - (match[2] % 100000)) // 100000],
             match[1],
+            [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]],
             match[2] % 100000,
-            (match[2] % 100000) + len(peptide),
-            None,
-            None
-            ))
+            (match[2] % 100000) + len(peptide)))
 
     return all_matches
 
@@ -461,12 +463,15 @@ class Matcher(Preprocessor):
     # if we specify the # of mismatches, we can the use the optimal k-split
     # given the lengths and # of mismatches
     elif self.max_mismatches > 0:
-      all_matches = []
-      query = self.query
-      for split in self.splits:
-        self.split = split
-        self.query = [peptide for peptide in query if (len(peptide) // (self.max_mismatches + 1)) == split]
-        all_matches.extend(self.mismatching())
+      if self.split:
+        all_matches = self.mismatching()
+      else:
+        all_matches = []
+        query = self.query
+        for split in self.splits:
+          self.split = split
+          self.query = [peptide for peptide in query if (len(peptide) // (self.max_mismatches + 1)) == split]
+          all_matches.extend(self.mismatching())
 
     elif self.max_mismatches == -1:
       all_matches = self.best_match()
@@ -476,7 +481,11 @@ class Matcher(Preprocessor):
 
     # option to output results to a specified format, default is CSV
     if self.output_df:
-      df = self.dataframe_matches(all_matches)
+      if self.max_mismatches == 0:
+        df = self.dataframe_exact_matches(all_matches)
+      else:
+        df = self.dataframe_mismatch_matches(all_matches)
+      
       if self.output_format == '':
         return df
       else:
@@ -484,13 +493,12 @@ class Matcher(Preprocessor):
 
     return all_matches
 
-  def dataframe_matches(self, all_matches):
+  def dataframe_exact_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
                       columns=['Peptide Sequence',
                                'Matched Peptide',
                                'Protein ID',
-                               'Mismatches',
                                'Index start',
                                'Index end',
                                'Protein Evidence Level',
@@ -498,14 +506,32 @@ class Matcher(Preprocessor):
     
     if self.one_match:
       try:
+        idx = df.groupby(['Peptide Sequence'])['Protein Evidence Level'].transform('min') == df['Protein Evidence Level']
+        df = df[idx]
+
         idx = df.groupby(['Peptide Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
         df = df[idx]
 
-        idx = df.groupby(['Peptide Sequence'])['Protein Evidence Level'].transform('min') == df['Protein Evidence Level']
-        df = df[idx]
-        df.drop_duplicates(inplace=True)
+        df.drop_duplicates(['Peptide Sequence'], inplace=True)
+
       except KeyError:
-        df.drop_duplicates(inplace=True)
+        df.drop_duplicates(['Peptide Sequence'], inplace=True)
+
+    return df 
+
+  def dataframe_mismatch_matches(self, all_matches):
+    '''Return Pandas dataframe of the results.'''
+    df = pd.DataFrame(all_matches,
+                      columns=['Peptide Sequence',
+                               'Matched Peptide',
+                               'Protein ID',
+                               'Mismatches',
+                               'Mutated Positions',
+                               'Index start',
+                               'Index end'])
+
+    if self.one_match:
+      df.drop_duplicates(['Peptide Sequence'], inplace=True)
 
     return df 
 

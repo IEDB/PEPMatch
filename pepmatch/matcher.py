@@ -25,8 +25,6 @@ class Matcher(Preprocessor):
   Optional: output and output_format arguments to write results to file.
   Supported formats are "csv", "xlsx", "json", and "html".
   '''
-
-
   def __init__(self,
                query,
                proteome,
@@ -94,7 +92,7 @@ class Matcher(Preprocessor):
     Read in the already created pickle files for each dictionary in the
     preprocessing step.
     '''
-    name = self.proteome.split('.')[0]
+    name = self.proteome.replace('.fa', '').replace('.fasta', '')
     with open(name + '_' + str(self.split) + 'mers' + '.pickle', 'rb') as f:
       kmer_dict = pickle.load(f)
     with open(name + '_names.pickle', 'rb') as f:
@@ -183,7 +181,7 @@ class Matcher(Preprocessor):
     # compile all matches into format used for benchmarking (comma separated)
     for peptide, matches in all_matches_dict.items():
       if matches == []:
-        all_matches.append((peptide, '', '', '', ''))
+        all_matches.append((peptide, '', '', '', '', '', ''))
       for match in matches:
         # retrieve protein IDs from the other created table
         get_protein_data = 'SELECT * FROM "{names_table}" WHERE protein_number = "{protein_number}"'.format(
@@ -380,13 +378,13 @@ class Matcher(Preprocessor):
     # (peptide, matched peptide, protein matched in, index, # of mismatches)
     for peptide, matches in all_matches_dict.items():
       if matches == []:
-        all_matches.append((peptide, '', '', '', ''))
+        all_matches.append((peptide, '', '', '', '', '', ''))
       else:
         for match in matches:
           all_matches.append((
             peptide,
             match[0],
-            names_dict[(match[2] - (match[2] % 100000)) // 100000],
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][0],
             match[1],
             [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]],
             match[2] % 100000,

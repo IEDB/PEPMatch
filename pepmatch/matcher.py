@@ -509,7 +509,6 @@ class Matcher(Preprocessor):
 
         idx = df.groupby(['Peptide Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
         df = df[idx]
-
         df.drop_duplicates(['Peptide Sequence'], inplace=True)
 
       except KeyError:

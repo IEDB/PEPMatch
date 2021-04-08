@@ -84,9 +84,11 @@ class Preprocessor(object):
       c.execute('INSERT INTO "{n}"(protein_number, protein_id, pe_level, gene_priority) VALUES(?, ?, ?, ?)'.format(n = names_table), 
         (protein_number, protein_data[0], protein_data[1], protein_data[2]))
 
-    # create indexes for both k-mer and name tables
-    c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{k}"(kmer)'.format(id = kmers_table + '_id', k = kmers_table))
+    # create indexes for both k-mer, unique position, and name tables
+    c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{k}"(kmer)'.format(id = kmers_table + '_kmer_id', k = kmers_table))
+    c.execute('CREATE UNIQUE INDEX IF NOT EXISTS "{id}" ON "{k}"(position)'.format(id = kmers_table + '_position_id', k = kmers_table))
     c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{n}"(protein_number)'.format(id = names_table + '_id', n = names_table))
+
     conn.commit()
     c.close()
     conn.close()

@@ -124,12 +124,15 @@ class Matcher(Preprocessor):
       hit_list = []
       if len(peptide) % self.split == 0:
         for i in range(0, len(kmers), self.split):
+          
           get_positions = 'SELECT position FROM "{kmer_table}" WHERE kmer = "{actual_kmer}"'.format(kmer_table = kmers_table_name, actual_kmer = kmers[i])
           c.execute(get_positions)
           positions_fetch = c.fetchall()
+          
           try:
             for hit in positions_fetch:
               hit_list.append(hit[0] - i)
+          
           except:
             continue
 
@@ -254,6 +257,7 @@ class Matcher(Preprocessor):
               # if the k-mer is found in the middle or end, check the neighboring
               # k-mers to the left
               for j in range(0, i, self.split):
+                print(peptide)
                 try:
 
                   # use reverse dictionary to retrive k-mers for Hamming distance
@@ -503,16 +507,23 @@ class Matcher(Preprocessor):
                                'Gene Priority'])
     
     if self.one_match:
-      try:
+      if df['Protein Evidence Level'].isnull().values.any():
+        df.drop_duplicates(['Peptide Sequence'], inplace=True)
+        return df
+
+      else:
         idx = df.groupby(['Peptide Sequence'])['Protein Evidence Level'].transform('min') == df['Protein Evidence Level']
         df = df[idx]
 
+      if df['Gene Priority'].isnull().values.any():
+        df.drop_duplicates(['Peptide Sequence'], inplace=True)
+        return df
+
+      else:
         idx = df.groupby(['Peptide Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
         df = df[idx]
-        df.drop_duplicates(['Peptide Sequence'], inplace=True)
-
-      except KeyError:
-        df.drop_duplicates(['Peptide Sequence'], inplace=True)
+      
+      df.drop_duplicates(['Peptide Sequence'], inplace=True)
 
     return df 
 

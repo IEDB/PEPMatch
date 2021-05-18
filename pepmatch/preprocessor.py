@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-import _pickle as pickle
+import pickle
 import sqlite3
 
 from .parser import parse_fasta
@@ -86,7 +86,6 @@ class Preprocessor(object):
 
     # create indexes for both k-mer, unique position, and name tables
     c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{k}"(kmer)'.format(id = kmers_table + '_kmer_id', k = kmers_table))
-    c.execute('CREATE UNIQUE INDEX IF NOT EXISTS "{id}" ON "{k}"(position)'.format(id = kmers_table + '_position_id', k = kmers_table))
     c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{n}"(protein_number)'.format(id = names_table + '_id', n = names_table))
 
     conn.commit()

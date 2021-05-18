@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 from collections import Counter
 from Levenshtein import hamming
@@ -114,6 +114,9 @@ class Matcher(Preprocessor):
     all_matches_dict = {}
 
     for peptide in peptides:
+      if len(peptide) < self.split:
+        continue
+
       all_matches_dict[peptide] = []
       kmers = self.split_peptide(peptide, self.split)
 
@@ -257,7 +260,6 @@ class Matcher(Preprocessor):
               # if the k-mer is found in the middle or end, check the neighboring
               # k-mers to the left
               for j in range(0, i, self.split):
-                print(peptide)
                 try:
 
                   # use reverse dictionary to retrive k-mers for Hamming distance

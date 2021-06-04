@@ -198,10 +198,11 @@ class Matcher(Preprocessor):
         all_matches.append((peptide, 
                             peptide, 
                             protein_data[0][1],
+                            protein_data[0][2]
                             (match % 100000),
                             (match % 100000) + len(peptide), 
-                            protein_data[0][2], 
-                            protein_data[0][3]))
+                            protein_data[0][3], 
+                            protein_data[0][4]))
 
     c.close()
     conn.close()
@@ -391,6 +392,7 @@ class Matcher(Preprocessor):
             peptide,
             match[0],
             names_dict[(match[2] - (match[2] % 100000)) // 100000][0],
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][1],
             match[1],
             [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]],
             match[2] % 100000,
@@ -503,6 +505,7 @@ class Matcher(Preprocessor):
                       columns=['Peptide Sequence',
                                'Matched Peptide',
                                'Protein ID',
+                               'Protein Name',
                                'Index start',
                                'Index end',
                                'Protein Evidence Level',

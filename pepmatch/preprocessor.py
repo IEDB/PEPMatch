@@ -2,6 +2,7 @@
 
 import pickle
 import sqlite3
+import re
 
 from .parser import parse_fasta
 
@@ -21,18 +22,25 @@ class Preprocessor(object):
   Optional: protein IDs can be versioned, so the versioned_ids argument can be passed
   as True to store them as versioned.
   '''
-  def __init__(self, proteome, split, preprocess_format, database='', one_gene_proteome='', versioned_ids = False):
+  def __init__(self, proteome, split, preprocess_format, database='', one_gene_proteome='', source='uniprot', versioned_ids = False):
     if split < 2:
       raise ValueError('k-sized split is invalid. Cannot be less than 2.')
 
+    if not preprocess_format in ('sql', 'pickle'):
+      raise AssertionError('Unexpected value of preprocessing format:', preprocess_format)
+
     if preprocess_format == 'sql' and database == '':
       raise ValueError('SQL format selected but database path not specified.')
+
+    if not source in ('uniprot', 'ncbi'):
+      raise ValueError('Source is not from UniProt or NCBI.')
 
     self.proteome = proteome
     self.split = split
     self.preprocess_format = preprocess_format
     self.database = database
     self.one_gene_proteome = one_gene_proteome
+    self.source = source
     self.versioned_ids = versioned_ids
 
   def split_protein(self, seq, k):
@@ -72,7 +80,7 @@ class Preprocessor(object):
     c = conn.cursor()
 
     c.execute('CREATE TABLE IF NOT EXISTS "{k}"(kmer TEXT, position INT)'.format(k = kmers_table))
-    c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, protein_id TEXT, pe_level INT, gene_priority INT)'.format(n = names_table))
+    c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, protein_id TEXT, protein_name TEXT, pe_level INT, gene_priority INT)'.format(n = names_table))
 
     # make a row for each unique k-mer and position mapping
     for kmer, positions in kmer_dict.items():
@@ -81,8 +89,8 @@ class Preprocessor(object):
 
     # make a row for each number to protein ID mapping
     for protein_number, protein_data in names_dict.items():
-      c.execute('INSERT INTO "{n}"(protein_number, protein_id, pe_level, gene_priority) VALUES(?, ?, ?, ?)'.format(n = names_table), 
-        (protein_number, protein_data[0], protein_data[1], protein_data[2]))
+      c.execute('INSERT INTO "{n}"(protein_number, protein_id, protein_name, pe_level, gene_priority) VALUES(?, ?, ?, ?, ?)'.format(n = names_table), 
+        (protein_number, protein_data[0], protein_data[1], protein_data[2], protein_data[3]))
 
     # create indexes for both k-mer, unique position, and name tables
     c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{k}"(kmer)'.format(id = kmers_table + '_kmer_id', k = kmers_table))
@@ -106,7 +114,7 @@ class Preprocessor(object):
     names_dict = {}
     protein_count = 1
 
-    if self.one_gene_proteome != '':
+    if self.one_gene_proteome:
       one_gene_proteome_ids = []
       one_gene_proteome = parse_fasta(self.one_gene_proteome)
       for protein in one_gene_proteome:
@@ -121,33 +129,44 @@ class Preprocessor(object):
         else: 
           kmer_dict[kmers[i]] = [protein_count * 100000 + i]     # create entry for new k-mer
 
-      # create names mapping # to protein ID (include versioned if argument is passed) 
+      # create names mapping # to protein ID (include versioned if argument is passed)  
       try:
-        protein_id = protein.id.split('|')[1]
+        protein_id = protein.id.split('|')[1] # UniProt has standardized ID formatting with vertical bar (|)
       except IndexError:
         protein_id = protein.id
-
-      if self.one_gene_proteome != '':
-        gene_priority = 1 if protein_id in one_gene_proteome_ids else 0
-      else:
-        gene_priority = None
-
-      try:
-        pe_level = int(str(protein.description).split('PE=')[1][0])
-        if self.versioned_ids:
-          names_dict[protein_count] = (protein_id + '.' + str(protein.description).split('SV=')[1][0], pe_level, gene_priority)
+      
+      # UniProt format differs from NCBI - uses gene priority and protein existence levels as well
+      if self.source == 'uniprot':
+        if self.one_gene_proteome != '':
+          gene_priority = 1 if protein_id in one_gene_proteome_ids else 0
         else:
-          names_dict[protein_count] = (protein_id, pe_level, gene_priority)
-      except IndexError:
-        names_dict[protein_count] = (str(protein.description).split(' ')[0], None, None)
+          gene_priority = None
+
+        # use regex to find protein name and protein existence levels within FASTA description
+        try:
+          protein_name = re.search(' (.*) OS', protein.description).group(1)
+          pe_level = int(re.search('PE=(.*) ', protein.description).group(1))
+          if self.versioned_ids:
+            names_dict[protein_count] = (protein_id + '.' + str(protein.description).split('SV=')[1][0], protein_name, pe_level, gene_priority)
+          else:
+            names_dict[protein_count] = (protein_id, protein_name, pe_level, gene_priority)
+        
+        except(IndexError, AttributeError) as e:
+          names_dict[protein_count] = (str(protein.description).split(' ')[0], None, None, None)
+
+      elif self.source == 'ncbi':
+        protein_name = re.search(' (.*) \[', protein.description).group(1)
+        if self.versioned_ids:
+          names_dict[protein_count] = (protein_id, protein_name, None, None)
+        else:
+          names_dict[protein_count] = (protein_id.split('.')[0], protein_name, None, None)
 
       protein_count += 1
 
+    # store data based on format specified
     if self.preprocess_format == 'pickle':
       self.pickle_proteome(kmer_dict, names_dict)
     elif self.preprocess_format == 'sql':
       self.sql_proteome(kmer_dict, names_dict)
-    else:
-      raise AssertionError('Unexpected value of preprocessing format', self.preprocess_format)
 
     return kmer_dict, names_dict

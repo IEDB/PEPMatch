@@ -22,7 +22,15 @@ class Preprocessor(object):
   Optional: protein IDs can be versioned, so the versioned_ids argument can be passed
   as True to store them as versioned.
   '''
-  def __init__(self, proteome, split, preprocess_format, database='', one_gene_proteome='', source='uniprot', versioned_ids = False):
+  def __init__(self,
+               proteome,
+               split,
+               preprocess_format,
+               database='',
+               one_gene_proteome='',
+               source='uniprot',
+               versioned_ids = False):
+
     if split < 2:
       raise ValueError('k-sized split is invalid. Cannot be less than 2.')
 

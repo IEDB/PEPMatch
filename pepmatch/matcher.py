@@ -198,7 +198,7 @@ class Matcher(Preprocessor):
         all_matches.append((peptide, 
                             peptide, 
                             protein_data[0][1],
-                            protein_data[0][2]
+                            protein_data[0][2],
                             (match % 100000),
                             (match % 100000) + len(peptide), 
                             protein_data[0][3], 

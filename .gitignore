@@ -19,3 +19,4 @@ proteomes/*.pickle
 benchmarking.xlsx
 notes.txt
 pepmatch.py
+*.pyc

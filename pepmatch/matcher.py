@@ -187,7 +187,7 @@ class Matcher(Preprocessor):
     # compile all matches into format used for benchmarking (comma separated)
     for peptide, matches in all_matches_dict.items():
       if matches == []:
-        all_matches.append((peptide, None, None, None, None, None, None, None))
+        all_matches.append((peptide, '', '', '', '', '', '', ''))
       for match in matches:
         # retrieve protein IDs from the other created table
         get_protein_data = 'SELECT * FROM "{names_table}" WHERE protein_number = "{protein_number}"'.format(
@@ -385,7 +385,7 @@ class Matcher(Preprocessor):
     # (peptide, matched peptide, protein matched in, index, # of mismatches)
     for peptide, matches in all_matches_dict.items():
       if matches == []:
-        all_matches.append((peptide, None, None, None, None, None, None, None))
+        all_matches.append((peptide, '', '', '', '', '', '', ''))
       else:
         for match in matches:
           all_matches.append((

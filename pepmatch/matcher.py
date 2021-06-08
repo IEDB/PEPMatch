@@ -508,16 +508,16 @@ class Matcher(Preprocessor):
                                'Protein Name',
                                'Index start',
                                'Index end',
-                               'Protein Evidence Level',
+                               'Protein Existence Level',
                                'Gene Priority'])
     
     if self.one_match:
-      if df['Protein Evidence Level'].isnull().values.any():
+      if df['Protein Existence Level'].isnull().values.any():
         df.drop_duplicates(['Peptide Sequence'], inplace=True)
         return df
 
       else:
-        idx = df.groupby(['Peptide Sequence'])['Protein Evidence Level'].transform('min') == df['Protein Evidence Level']
+        idx = df.groupby(['Peptide Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']
         df = df[idx]
 
       if df['Gene Priority'].isnull().values.any():

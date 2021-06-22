@@ -83,7 +83,7 @@ def benchmark_algorithms(benchmark_options):
     for algorithm in algorithms:
         print('Initializing algorithm...\n')
         try:
-            get_benchmark_object = getattr(importlib.import_module(algorithm['name']), 'Benchmarker')
+            get_benchmark_object = getattr(importlib.import_module(os.path.join('algorithms', algorithm['name'])), 'Benchmarker')
             benchmark_tool = get_benchmark_object(
                 os.path.join(directory, inputs['query']),  
                 os.path.join(directory, inputs['proteome']), 

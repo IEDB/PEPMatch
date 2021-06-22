@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
+import sys
+
 from Bio import SeqIO
 
-
-proteome = '/home/dan/Desktop/9606.fasta'
-gene_priority_proteome = '/home/dan/Desktop/9606_small.fasta'
-
+# takes in a proteome and a gene priority proteome from
+# UniProt and adds GP as part of the FASTA headers
+# to indentify protein records as beloning to the gene priority
 def append_gp(proteome, gene_priority_proteome):
   gpp = list(SeqIO.parse(gene_priority_proteome, 'fasta'))
   p = list(SeqIO.parse(proteome, 'fasta'))
@@ -15,6 +16,8 @@ def append_gp(proteome, gene_priority_proteome):
   
   with open(proteome, 'w') as fout:
     for record in p:
+      if 'GP' in record.description:
+        continue
       if record.id in ids:
         GP = 'GP=1'
       else:
@@ -23,4 +26,6 @@ def append_gp(proteome, gene_priority_proteome):
       SeqIO.write(record, fout, 'fasta')
 
 if __name__ == '__main__':
+  proteome = sys.argv[1]
+  gene_priority_proteome = sys.argv[2]
   append_gp(proteome, gene_priority_proteome)

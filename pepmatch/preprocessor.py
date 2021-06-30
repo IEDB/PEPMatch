@@ -27,8 +27,7 @@ class Preprocessor(object):
                split,
                preprocess_format,
                database='',
-               one_gene_proteome='',
-               source='uniprot',
+               gene_priority_proteome='',
                versioned_ids = False):
 
     if split < 2:
@@ -40,15 +39,11 @@ class Preprocessor(object):
     if preprocess_format == 'sql' and database == '':
       raise ValueError('SQL format selected but database path not specified.')
 
-    if not source in ('uniprot', 'ncbi'):
-      raise ValueError('Source is not from UniProt or NCBI.')
-
     self.proteome = proteome
     self.split = split
     self.preprocess_format = preprocess_format
     self.database = database
-    self.one_gene_proteome = one_gene_proteome
-    self.source = source
+    self.gene_priority_proteome = gene_priority_proteome
     self.versioned_ids = versioned_ids
 
   def split_protein(self, seq, k):
@@ -122,12 +117,12 @@ class Preprocessor(object):
     names_dict = {}
     protein_count = 1
 
-    if self.one_gene_proteome:
-      one_gene_proteome_ids = []
-      one_gene_proteome = parse_fasta(self.one_gene_proteome)
-      for protein in one_gene_proteome:
+    if self.gene_priority_proteome:
+      gene_priority_proteome_ids = []
+      gene_priority_proteome = parse_fasta(self.gene_priority_proteome)
+      for protein in gene_priority_proteome:
         protein_id = protein.id.split('|')[1]
-        one_gene_proteome_ids.append(protein_id)
+        gene_priority_proteome_ids.append(protein_id)
 
     for protein in proteome:
       kmers = self.split_protein(str(protein.seq), self.split)
@@ -143,31 +138,23 @@ class Preprocessor(object):
       except IndexError:
         protein_id = protein.id
       
-      # UniProt format differs from NCBI - uses gene priority and protein existence levels as well
-      if self.source == 'uniprot':
-        if self.one_gene_proteome != '':
-          gene_priority = 1 if protein_id in one_gene_proteome_ids else 0
-        else:
-          gene_priority = None
+      if not self.gene_priority_proteome:
+        gene_priority = 1 if protein_id in gene_priority_proteome_ids else 0
+      else:
+        gene_priority = None
 
-        # use regex to find protein name and protein existence levels within FASTA description
-        try:
-          protein_name = re.search(' (.*) OS', protein.description).group(1)
-          pe_level = int(re.search('PE=(.*) ', protein.description).group(1))
-          if self.versioned_ids:
-            names_dict[protein_count] = (protein_id + '.' + str(protein.description).split('SV=')[1][0], protein_name, pe_level, gene_priority)
-          else:
-            names_dict[protein_count] = (protein_id, protein_name, pe_level, gene_priority)
-        
-        except(IndexError, AttributeError) as e:
-          names_dict[protein_count] = (str(protein.description).split(' ')[0], None, None, None)
-
-      elif self.source == 'ncbi':
-        protein_name = re.search(' (.*) \[', protein.description).group(1)
+      # use regex to find protein name and protein existence levels within FASTA description
+      try:
+        protein_name = re.search(' (.*) OS', protein.description).group(1)
+        pe_level = int(re.search('PE=(.*) ', protein.description).group(1))
         if self.versioned_ids:
-          names_dict[protein_count] = (protein_id, protein_name, None, None)
+          names_dict[protein_count] = (protein_id + '.' + str(protein.description).split('SV=')[1][0], protein_name, pe_level, gene_priority)
         else:
-          names_dict[protein_count] = (protein_id.split('.')[0], protein_name, None, None)
+          names_dict[protein_count] = (protein_id, protein_name, pe_level, gene_priority)
+      
+      except(IndexError, AttributeError) as e:
+        names_dict[protein_count] = (str(protein.description).split(' ')[0], None, None, None)
+
 
       protein_count += 1
 

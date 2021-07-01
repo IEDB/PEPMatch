@@ -66,7 +66,7 @@ class Matcher(Preprocessor):
         self.preprocess_format = 'pickle'
     else:
       self.split = split
-      if self.database != '':
+      if self.database:
         self.preprocess_format = 'sql'
       else:
         self.preprocess_format = 'pickle'
@@ -196,13 +196,17 @@ class Matcher(Preprocessor):
         protein_data = c.fetchall()
 
         all_matches.append((peptide, 
-                            peptide, 
+                            peptide,
                             protein_data[0][1],
                             protein_data[0][2],
+                            protein_data[0][3],
+                            protein_data[0][4],
+                            protein_data[0][5],
+                            0,                     # 0 mismatches for exact matches
                             (match % 100000),
                             (match % 100000) + len(peptide), 
-                            protein_data[0][3], 
-                            protein_data[0][4]))
+                            protein_data[0][6], 
+                            protein_data[0][7]))
 
     c.close()
     conn.close()
@@ -504,8 +508,12 @@ class Matcher(Preprocessor):
     df = pd.DataFrame(all_matches,
                       columns=['Peptide Sequence',
                                'Matched Peptide',
+                               'Taxon ID',
+                               'Species',
+                               'Gene',
                                'Protein ID',
                                'Protein Name',
+                               'Mismatches',
                                'Index start',
                                'Index end',
                                'Protein Existence Level',
@@ -530,6 +538,9 @@ class Matcher(Preprocessor):
       
       df.drop_duplicates(['Peptide Sequence'], inplace=True)
 
+    # drop any columns that are entirely empty (usually gene priority column)
+    df.dropna(how='all', axis=1, inplace=True)
+
     return df 
 
   def dataframe_mismatch_matches(self, all_matches):
@@ -537,15 +548,23 @@ class Matcher(Preprocessor):
     df = pd.DataFrame(all_matches,
                       columns=['Peptide Sequence',
                                'Matched Peptide',
+                               'Taxon ID',
+                               'Species',
+                               'Gene',
                                'Protein ID',
                                'Protein Name',
                                'Mismatches',
                                'Mutated Positions',
                                'Index start',
-                               'Index end'])
+                               'Index end',
+                               'Protein Existence Level',
+                               'Gene Priority'])
 
     if self.one_match:
       df.drop_duplicates(['Peptide Sequence'], inplace=True)
+
+    # drop any columns that are entirely empty (usually gene priority column)
+    df.dropna(how='all', axis=1, inplace=True)
 
     return df 
 

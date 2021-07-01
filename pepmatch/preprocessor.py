@@ -28,7 +28,7 @@ class Preprocessor(object):
                preprocess_format,
                database='',
                gene_priority_proteome='',
-               versioned_ids = False):
+               versioned_ids = True):
 
     if split < 2:
       raise ValueError('k-sized split is invalid. Cannot be less than 2.')
@@ -83,7 +83,7 @@ class Preprocessor(object):
     c = conn.cursor()
 
     c.execute('CREATE TABLE IF NOT EXISTS "{k}"(kmer TEXT, position INT)'.format(k = kmers_table))
-    c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, protein_id TEXT, protein_name TEXT, pe_level INT, gene_priority INT)'.format(n = names_table))
+    c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, taxon INT, species TEXT, gene TEXT, protein_id TEXT, protein_name TEXT, pe_level INT, gene_priority INT)'.format(n = names_table))
 
     # make a row for each unique k-mer and position mapping
     for kmer, positions in kmer_dict.items():
@@ -92,8 +92,8 @@ class Preprocessor(object):
 
     # make a row for each number to protein ID mapping
     for protein_number, protein_data in names_dict.items():
-      c.execute('INSERT INTO "{n}"(protein_number, protein_id, protein_name, pe_level, gene_priority) VALUES(?, ?, ?, ?, ?)'.format(n = names_table), 
-        (protein_number, protein_data[0], protein_data[1], protein_data[2], protein_data[3]))
+      c.execute('INSERT INTO "{n}"(protein_number, taxon, species, gene, protein_id, protein_name, pe_level, gene_priority) VALUES(?, ?, ?, ?, ?, ?, ?, ?)'.format(n = names_table), 
+        (protein_number, protein_data[0], protein_data[1], protein_data[2], protein_data[3], protein_data[4], protein_data[5], protein_data[6]))
 
     # create indexes for both k-mer, unique position, and name tables
     c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{k}"(kmer)'.format(id = kmers_table + '_kmer_id', k = kmers_table))
@@ -132,30 +132,51 @@ class Preprocessor(object):
         else: 
           kmer_dict[kmers[i]] = [protein_count * 100000 + i]     # create entry for new k-mer
 
-      # create names mapping # to protein ID (include versioned if argument is passed)  
-      try:
-        protein_id = protein.id.split('|')[1] # UniProt has standardized ID formatting with vertical bar (|)
-      except IndexError:
-        protein_id = protein.id
-      
-      if not self.gene_priority_proteome:
+      if self.gene_priority_proteome:
         gene_priority = 1 if protein_id in gene_priority_proteome_ids else 0
       else:
         gene_priority = None
 
-      # use regex to find protein name and protein existence levels within FASTA description
+      # grab UniProt ID which is usually in the middle of two vetical bars
+      try:
+        protein_id = protein.id.split('|')[1]
+      except IndexError:
+        protein_id = protein.id
+
+      # use regex to get all data from the UniProt FASTA header
+      try:
+        taxon = int(re.search('OX=(.*?) ', protein.description).group(1))
+      except AttributeError:
+        taxon = None
+
+      try:
+        species = re.search('OS=(.*) OX=', protein.description).group(1)
+      except AttributeError:
+        species = None
+
+      try:
+        gene = re.search('GN=(.*?) ', protein.description).group(1)
+      except AttributeError:
+        gene = None
+
       try:
         protein_name = re.search(' (.*) OS', protein.description).group(1)
-        pe_level = int(re.search('PE=(.*) ', protein.description).group(1))
-        if self.versioned_ids:
-          names_dict[protein_count] = (protein_id + '.' + str(protein.description).split('SV=')[1][0], protein_name, pe_level, gene_priority)
-        else:
-          names_dict[protein_count] = (protein_id, protein_name, pe_level, gene_priority)
+      except AttributeError:
+        protein_name = None
+
+      try:
+        pe_level = int(re.search('PE=(.*?) ', protein.description).group(1))
+      except AttributeError:
+        pe_level = None
+
+      if self.versioned_ids:
+        try: 
+          versioned_id = re.search('SV=(.*)', protein.description).group(1)
+          protein_id += '.' + versioned_id
+        except AttributeError:
+          versioned_id = None
       
-      except(IndexError, AttributeError) as e:
-        names_dict[protein_count] = (str(protein.description).split(' ')[0], None, None, None)
-
-
+      names_dict[protein_count] = (taxon, species, gene, protein_id, protein_name, pe_level, gene_priority)
       protein_count += 1
 
     # store data based on format specified

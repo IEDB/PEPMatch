@@ -20,3 +20,4 @@ benchmarking.xlsx
 notes.txt
 pepmatch.py
 *.pyc
+.DS_STORE

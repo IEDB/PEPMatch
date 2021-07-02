@@ -32,8 +32,8 @@ class Matcher(Preprocessor):
                split=0,
                database='',
                one_match=False,
-               output_df=False,
-               output_format=''):
+               output_df=True,
+               output_format='xlsx'):
 
     if type(query) == list:
       self.query = query
@@ -127,15 +127,15 @@ class Matcher(Preprocessor):
       hit_list = []
       if len(peptide) % self.split == 0:
         for i in range(0, len(kmers), self.split):
-          
+
           get_positions = 'SELECT position FROM "{kmer_table}" WHERE kmer = "{actual_kmer}"'.format(kmer_table = kmers_table_name, actual_kmer = kmers[i])
           c.execute(get_positions)
           positions_fetch = c.fetchall()
-          
+
           try:
             for hit in positions_fetch:
               hit_list.append(hit[0] - i)
-          
+
           except:
             continue
 
@@ -195,7 +195,7 @@ class Matcher(Preprocessor):
         c.execute(get_protein_data)
         protein_data = c.fetchall()
 
-        all_matches.append((peptide, 
+        all_matches.append((peptide,
                             peptide,
                             protein_data[0][1],
                             protein_data[0][2],
@@ -204,8 +204,8 @@ class Matcher(Preprocessor):
                             protein_data[0][5],
                             0,                     # 0 mismatches for exact matches
                             (match % 100000),
-                            (match % 100000) + len(peptide), 
-                            protein_data[0][6], 
+                            (match % 100000) + len(peptide),
+                            protein_data[0][6],
                             protein_data[0][7]))
 
     c.close()
@@ -495,7 +495,7 @@ class Matcher(Preprocessor):
         df = self.dataframe_exact_matches(all_matches)
       else:
         df = self.dataframe_mismatch_matches(all_matches)
-      
+
       if self.output_format == '':
         return df
       else:
@@ -518,7 +518,7 @@ class Matcher(Preprocessor):
                                'Index end',
                                'Protein Existence Level',
                                'Gene Priority'])
-    
+
     if self.one_match:
       if df['Protein Existence Level'].isnull().values.any():
         df.drop_duplicates(['Peptide Sequence'], inplace=True)
@@ -535,13 +535,13 @@ class Matcher(Preprocessor):
       else:
         idx = df.groupby(['Peptide Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
         df = df[idx]
-      
+
       df.drop_duplicates(['Peptide Sequence'], inplace=True)
 
     # drop any columns that are entirely empty (usually gene priority column)
     df.dropna(how='all', axis=1, inplace=True)
 
-    return df 
+    return df
 
   def dataframe_mismatch_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
@@ -566,7 +566,7 @@ class Matcher(Preprocessor):
     # drop any columns that are entirely empty (usually gene priority column)
     df.dropna(how='all', axis=1, inplace=True)
 
-    return df 
+    return df
 
   def output_matches(self, df):
     '''Write Pandas dataframe to format that is specified'''

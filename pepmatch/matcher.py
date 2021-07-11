@@ -187,7 +187,7 @@ class Matcher(Preprocessor):
     # compile all matches into format used for benchmarking (comma separated)
     for peptide, matches in all_matches_dict.items():
       if matches == []:
-        all_matches.append((peptide, '', '', '', '', '', '', ''))
+        all_matches.append((peptide, '', '', '', '', '', '', '', '', '', '', ''))
       for match in matches:
         # retrieve protein IDs from the other created table
         get_protein_data = 'SELECT * FROM "{names_table}" WHERE protein_number = "{protein_number}"'.format(
@@ -246,6 +246,7 @@ class Matcher(Preprocessor):
       rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
     for peptide in peptides:
+      print(peptide)
       # record matches in a set so as to not duplicate matches
       matches = set()
 
@@ -382,6 +383,7 @@ class Matcher(Preprocessor):
             continue
 
       all_matches_dict[peptide] = list(matches)
+      print(list(matches))
 
     all_matches = []
 
@@ -389,7 +391,7 @@ class Matcher(Preprocessor):
     # (peptide, matched peptide, protein matched in, index, # of mismatches)
     for peptide, matches in all_matches_dict.items():
       if matches == []:
-        all_matches.append((peptide, '', '', '', '', '', '', ''))
+        all_matches.append((peptide, '', '', '', '', '', '', '', '', '', '', '', ''))
       else:
         for match in matches:
           all_matches.append((
@@ -397,10 +399,15 @@ class Matcher(Preprocessor):
             match[0],
             names_dict[(match[2] - (match[2] % 100000)) // 100000][0],
             names_dict[(match[2] - (match[2] % 100000)) // 100000][1],
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][2],
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][3],
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][4],
             match[1],
             [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]],
             match[2] % 100000,
-            (match[2] % 100000) + len(peptide)))
+            (match[2] % 100000) + len(peptide),
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][5],
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][6],))
 
     return all_matches
 

@@ -246,7 +246,6 @@ class Matcher(Preprocessor):
       rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
     for peptide in peptides:
-      print(peptide)
       # record matches in a set so as to not duplicate matches
       matches = set()
 
@@ -383,7 +382,6 @@ class Matcher(Preprocessor):
             continue
 
       all_matches_dict[peptide] = list(matches)
-      print(list(matches))
 
     all_matches = []
 

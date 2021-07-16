@@ -43,13 +43,7 @@ results = matcher.match()
 
 The Matcher object takes in the query (in FASTA or python list), the name of the proteome (preprocessed files should be in the same location where this is being called), the # of mismatches, and the k-size split, which should be equal to the preprocessed k-size split used.
 
-PEPMatch will output a file of your matches. You can specify the output format when initializing the Matcher object:
-
-```
-# supports 'csv', xlsx', 'json' and 'html'
-matcher = Matcher('query.fa', 'proteome.fa', 3, output_format = 'csv')
-matcher.match()
-```
+PEPMatch can output a file of your matches. Just specify the format in the Matcher object like this: ```output_format='csv'```. The output formats supported are CSV, XLSX, JSON, and HTML.
 
 There is also an option to find only one match, and PEPMatch will return a prioritized match based on the gene priority (if given in the preprocessing step) and the protein existence levels (based on UniProt criteria). Just pass ```one_match=True``` into the Matcher object.
 

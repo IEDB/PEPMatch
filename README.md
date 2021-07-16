@@ -25,27 +25,35 @@ PEPMatch achieves highly sensitive and accurate searching of peptides and epitop
 
 ```
 from pepmatch import Preprocessor
-preprocessor = Preprocessor('proteome.fa', 5, 'sql') # pass path to file, k, and format
+preprocessor = Preprocessor('proteome.fa', 5, 'sql', 'proteome.db')
 preprocessor.preprocess()
 ```
+
+The Preprocessor object is initialized with a proteome FASTA file (typically from UniProt), the k-size to split the proteome, the output format (SQLite or pickle) and the database to write to (if SQLite).
+
+UniProt has reference proteomes with gene priority, meaning for each gene there is a protein sequence assigned that best represents it. PEPMatch can prioritize search results based on this as well as protein existence levels, which is already data found in the UniProt FASTA headers.
 
 There are two ways that PEPMatch does matching: finding exact matches and finding matches with mismatches (substitutions). After a proteome has been preprocessed either in SQL or pickle format we can now submit a query to search against by specifying the # of mismatches. The query can be passed either as a path to a FASTA file or as a Python list of strings. The proteome argument is passed as a path to the proteome file:
 
 ```
 from pepmatch import Matcher
-matcher = Matcher('query.fa', 'proteome.fa', 3) # pass paths to query/proteome, and # of mismatches
+matcher = Matcher('query.fa', 'proteome', 3, 5)
 results = matcher.match()
 ```
 
-PEPMatch will output a file of your matches. You can specify the output format when initialzing the Matcher object:
+The Matcher object takes in the query (in FASTA or python list), the name of the proteome (preprocessed files should be in the same location where this is being called), the # of mismatches, and the k-size split, which should be equal to the preprocessed k-size split used.
+
+PEPMatch will output a file of your matches. You can specify the output format when initializing the Matcher object:
 
 ```
-# supports 'csv', xlsx', 'json' and 'html' 
-matcher = Matcher('query.fa', 'proteome.fa', 3, output = True, output_format = 'csv')
+# supports 'csv', xlsx', 'json' and 'html'
+matcher = Matcher('query.fa', 'proteome.fa', 3, output_format = 'csv')
 matcher.match()
 ```
 
-NOTE: For now, SQLite is used for exact matching and pickle is used for mismatching.
+There is also an option to find only one match, and PEPMatch will return a prioritized match based on the gene priority (if given in the preprocessing step) and the protein existence levels (based on UniProt criteria). Just pass ```one_match=True``` into the Matcher object.
+
+NOTE: For now due to search speed performance, SQLite is used for exact matching and pickle is used for mismatching.
 
 
 ## Applications
@@ -89,7 +97,7 @@ In order to improve on the tool, a system to compare current tools/algorithms (c
 
     Please put the name of the module of your wrapper, boolean for if it is a text shifting algorithm (most likely no, so put 0), and any addition parameters your algorithm will need to be passed. This will then be passed into your wrapper and used however you need. The purpose of this is certain parameters (such as paths to files) will vary between users and labeling it here will prevent anyone having to change your wrapper in any way.
 
-    NOTE: as in the example above, the BLAST algorithm requires downloading the bin files from the NCBI site here: https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ 
+    NOTE: as in the example above, the BLAST algorithm requires downloading the bin files from the NCBI site here: https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 
     You must have the "blastp" and "makeblastdb" bin files to run it, so download the ones needed for your operating system and specify the bin directory in the JSON file.
 
@@ -98,15 +106,15 @@ In order to improve on the tool, a system to compare current tools/algorithms (c
     ```
     ./benchmarking.py -d mhc_ligands -s -t
     ```
-    Passing the "-d" argument with the framework you want to test your tool against will automatically pull the necessary parameters for that framework. 
+    Passing the "-d" argument with the framework you want to test your tool against will automatically pull the necessary parameters for that framework.
 
-    Passing the "-s" argument in the command line will skip the memory benchmark which usually takes a long time. 
+    Passing the "-s" argument in the command line will skip the memory benchmark which usually takes a long time.
 
     NOTE: the memory benchmark is limited since the recording method will only account for the process ID for the benchmarking script. In the future, the benchmarking may be put in a container in order to improve on this.
 
     Lastly, passing the "-t" argument will include the text-shifting algorithms, which are algorithms used in various datasets for searching text files. These algorithms are often slow, and do not do mismatching, so they are just an option.
 
-    The following are the list of inputs for each dataset: 
+    The following are the list of inputs for each dataset:
 
     - The MHC ligand benchmarking will run 1,000 9-mers through the human proteome for exact matches (0 mismatches).
     - The milk benchmarking will run 111 15-mers through the human proteome for the best match. The parameter for mismatches is -1 in this case to indicate best match. If your tool does not have a best match optiion, raising an exception is sufficient and is described below.
@@ -115,11 +123,11 @@ In order to improve on the tool, a system to compare current tools/algorithms (c
 
     Simply pass "-d mhc_ligands", "-d milk", "-d coronavirus", or "-d neoepitopes" in the command line for the dataset you want to run.
 
-4. Your wrapper needs to have a class called "Benchmarker" which will take all the parameters mentioned for initilization: the query file (FASTA), the proteome file (FASTA), lengths of query peptides, max number of mismatches and your additional algorithm_parameters. 
+4. Your wrapper needs to have a class called "Benchmarker" which will take all the parameters mentioned for initilization: the query file (FASTA), the proteome file (FASTA), lengths of query peptides, max number of mismatches and your additional algorithm_parameters.
 
     The class can inherit from your actual tool or just be created as an object which will call your code's executable. The Benchmarker object will should then have the three methods: preprocess_proteome, preprocess_query, and search. Along with the three methods, you need an \_\_init\_\_ method taking in at least the lengths of the peptides and the corresponding mismatches. You will need a \_\_str\_\_ method that just returns the name of your tool as a string.
 
-    The Python class with its methods should be written like this with the following arguments: 
+    The Python class with its methods should be written like this with the following arguments:
 
     ```
     class Benchmarker(object):
@@ -142,7 +150,7 @@ In order to improve on the tool, a system to compare current tools/algorithms (c
     ```
 
     What you do with the arguments after they are passed is up to you. Having the other necessary arguments specific to your tool in the "benchmarking_parameters.json" file and importing them into your wrapper would be helpful so others can run your tool without having to alter your wrapper or code of your actual tool. The three methods are for the three separate calls that the script will perform in order to time each process.
-    
+
 5. If your tool does not do any mismatching, raise a ValueError within your \_\_init\_\_ method:
 
     Example:
@@ -174,7 +182,7 @@ In order to improve on the tool, a system to compare current tools/algorithms (c
             raise TypeError(self.__str__() + ' does not preprocess proteomes.\n')
     ```
 
-6. Lastly the results from your search method should be returned in a standard format, which will then be put through another function for accuracy. The results should be in a Python list with the format as follows: comma-separated values with the query peptide first, followed by the matched peptide within the proteome, followed by the protein ID it is found in, followed by the number of mismatches, and then lastly, the index position where the peptide is found. 
+6. Lastly the results from your search method should be returned in a standard format, which will then be put through another function for accuracy. The results should be in a Python list with the format as follows: comma-separated values with the query peptide first, followed by the matched peptide within the proteome, followed by the protein ID it is found in, followed by the number of mismatches, and then lastly, the index position where the peptide is found.
 
     NOTE: the index is 0-based, not 1-based, as is standard in Python.
 
@@ -185,7 +193,7 @@ In order to improve on the tool, a system to compare current tools/algorithms (c
     ```
 
     This example is also the first result from the eluted MHC ligands benchmarking. The benchmarking script will then use these results and compare them to expected values. The output will be a percentage of correct results.
-    
+
 7. Please take a look at the "benchmarking_example.py" script or the PEPMatch code to see how a wrapper should be look. If anything was unclear in this writeup, please email me at dmarrama@lji.org with any questions or bugs and I will clarify / make corrections.
 
 Good luck!

@@ -33,18 +33,12 @@ class Matcher(Preprocessor):
                database='',
                one_match=False,
                output_df=True,
-               output_name='',
-               output_format='csv'):
+               output_format='xlsx'):
 
     if type(query) == list:
       self.query = query
-      self.output_name = 'PEPMatch_results'
     else:
       self.query = [str(sequence.seq) for sequence in parse_fasta(query)]
-      if output_name:
-        self.output_name = output_name
-      else:
-        self.output_name = query.replace('.fasta', '') + '_to_' + proteome.split('/')[-1].split('.')[0]
 
     self.lengths = sorted(list(set([len(peptide) for peptide in self.query])))
     self.proteome = proteome
@@ -120,7 +114,6 @@ class Matcher(Preprocessor):
     all_matches_dict = {}
 
     for peptide in peptides:
-
       if len(peptide) < self.split:
         continue
 
@@ -253,7 +246,6 @@ class Matcher(Preprocessor):
       rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
     for peptide in peptides:
-
       # record matches in a set so as to not duplicate matches
       matches = set()
 
@@ -520,7 +512,7 @@ class Matcher(Preprocessor):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
                       columns=['Peptide Sequence',
-                               'Matched Sequence',
+                               'Matched Peptide',
                                'Taxon ID',
                                'Species',
                                'Gene',
@@ -560,7 +552,7 @@ class Matcher(Preprocessor):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
                       columns=['Peptide Sequence',
-                               'Matched Sequence',
+                               'Matched Peptide',
                                'Taxon ID',
                                'Species',
                                'Gene',
@@ -583,12 +575,12 @@ class Matcher(Preprocessor):
 
   def output_matches(self, df):
     '''Write Pandas dataframe to format that is specified'''
-    # results_id = ''.join(random.choice('0123456789ABCDEFabcdef') for i in range(6))
+    results_id = ''.join(random.choice('0123456789ABCDEFabcdef') for i in range(6))
     if self.output_format == 'csv':
-      return df.to_csv(self.output_name + '.csv')
+      return df.to_csv('PEPMatch_results_' + results_id + '.csv')
     elif self.output_format == 'xlsx':
-      return df.to_excel(self.output_name + '.xlsx')
+      return df.to_excel('PEPMatch_results_' + results_id + '.xlsx')
     elif self.output_format == 'json':
-      return df.to_json(self.output_name + '.json')
+      return df.to_json('PEPMatch_results_' + results_id + '.json')
     elif self.output_format == 'html':
       return df.to_html()

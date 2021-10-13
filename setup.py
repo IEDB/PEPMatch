@@ -7,7 +7,7 @@ with open('README.md', 'r', encoding='utf-8') as fh:
 
 setup(
     name='pepmatch',
-    version='0.7.4',
+    version='0.7.5',
     description='Peptide and epitope search against a reference proteome with specified mismatches.',
     long_description=long_description,
     long_description_content_type='text/markdown',

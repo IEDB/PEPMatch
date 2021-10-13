@@ -121,6 +121,8 @@ class Matcher(Preprocessor):
 
     for peptide in peptides:
 
+      peptide = peptide.upper()
+
       if len(peptide) < self.split:
         continue
 
@@ -253,6 +255,8 @@ class Matcher(Preprocessor):
       rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
     for peptide in peptides:
+
+      peptide = peptide.upper()
 
       # record matches in a set so as to not duplicate matches
       matches = set()

@@ -12,7 +12,7 @@ Peptide search against reference proteome(s) with specified mismatches.
 - Levenshtein
 
 ## Installation
-Run the following commands to install PEPMatch for either general use or benchmarking.
+Run the following command to install PEPMatch for either general use or benchmarking.
 
 ```
 pip install pepmatch

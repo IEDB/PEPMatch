@@ -62,6 +62,9 @@ NOTE: For now due to search speed performance, SQLite is used for exact matching
 - Peptide comparison of similar species (e.g. SARS-CoV-2 against other coronaviruses)
 - Mutated peptide search (e.g. neoepitopes in cancer)
 
+## TODO
+- Conservation analysis automated script 
+- Multiprocessing and/or GPU programming capability
 
 ## Benchmarking
 In order to improve on the tool, a system to compare current tools/algorithms (current list below) has been created. For each application above, specific parameters have been created with a specified query and proteome. To compare your tool/algorithm to the current ones, the following instructions should be implemented:

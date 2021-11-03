@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from .matcher import Matcher
 
 class Benchmarker(Matcher):

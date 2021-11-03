@@ -10,6 +10,7 @@ Peptide search against reference proteome(s) with specified mismatches.
 - Pandas
 - Biopython
 - Levenshtein
+- SciPy
 
 ## Installation
 Run the following command to install PEPMatch for either general use or benchmarking.
@@ -64,6 +65,7 @@ NOTE: For now due to search speed performance, SQLite is used for exact matching
 
 ## TODO
 - Conservation analysis automated script 
+- Allow multiple data format inputs
 - Multiprocessing and/or GPU programming capability
 
 ## Benchmarking

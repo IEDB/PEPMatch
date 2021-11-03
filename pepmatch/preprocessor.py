@@ -28,8 +28,7 @@ class Preprocessor(object):
                gene_priority_proteome='',
                versioned_ids = True):
 
-    if split < 2:
-      raise ValueError('k-sized split is invalid. Cannot be less than 2.')
+    assert split < 2, 'k-sized split is invalid. Cannot be less than 2.'
 
     if not preprocess_format in ('sql', 'pickle'):
       raise AssertionError('Unexpected value of preprocessing format:', preprocess_format)

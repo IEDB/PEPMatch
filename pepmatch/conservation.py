@@ -9,18 +9,29 @@ import glob
 
 class ConservationAnalysis(object):
   '''
-  Class that takes data as a 2 column pandas dataframe
+  Class that takes data with two columns: peptides and binary values for any given feature
+  and produces output from Fisher's exact test for a conservation analysis. Output can be
+  either the p-value, odds ratio, 2x2 table, or all of the above.
   '''
   def __init__(self, data, proteome, max_mismatches=-1, homology_threshold=-1):
-    df = pd.read_csv(data)
-    assert df.shape()[1] == 2, 'Data received is not two columns.'
+    if data.split('.')[1] == 'csv':
+      df = pd.read_csv(data)
+    elif data.split('.')[1] == 'tsv':
+      df = pd.read_csv(data, sep='\t')
+    elif type(data) == pd.core.frame.DataFrame:
+      df = data
 
+    assert df.shape()[1] == 2, 'Data received is not two columns.'
+    assert df.iloc[:, 1].dtype == bool, '2nd column not binary values.'
+    for i in list(df.iloc[:, 0]):
+          assert type(i) == str, '1st column contains non-string data.'
+    
     if max_mismatches == -1 and homology_threshold == -1:
       raise ValueError('Neither mismatch or homology threshold specified.')
 
   def preprocess(self, proteome, split):
     print('Preprocessing proteome...')
-    Preprocessor(proteome, split, 'pickle').preprocess()
+    Preprocessor(self.proteome, self.split, 'pickle').preprocess()
     print('Finished preprocessing.')
 
   def remove_preprocessed_data(self, proteome):

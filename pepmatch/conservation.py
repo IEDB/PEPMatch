@@ -1,5 +1,5 @@
-from preprocessor import Preprocessor
-from matcher import Matcher
+from .preprocessor import Preprocessor
+from .matcher import Matcher
 
 from scipy.stats import fisher_exact
 
@@ -28,29 +28,35 @@ class ConservationAnalysis(object):
   '''
   def __init__(self, data, proteome, homology_threshold):
     if data.split('.')[1] == 'csv':
-      self.df = pd.read_csv(data)
+      df = pd.read_csv(data)
     elif data.split('.')[1] == 'tsv':
-      self.df = pd.read_csv(data, sep='\t')
+      df = pd.read_csv(data, sep='\t')
     elif type(data) == pd.core.frame.DataFrame:
-      self.df = data
+      df = data
 
-    assert df.shape()[1] == 2, 'Data received is not two columns.'
-    assert df.iloc[:, 1].dtype == bool, '2nd column not binary values.'
+    assert df.shape[1] == 2, 'Data received is not two columns.'
+
     for i in list(df.iloc[:, 0]):
-          assert type(i) == str, '1st column contains non-string data.'
+      assert type(i) == str, '1st column contains non-string data.'
     
+    for i in list(df.iloc[:, 1]):
+      assert i in [0, 1], 'Not all values in 2nd column are binary.'
+
     if homology_threshold > 1 or 0 > homology_threshold:
       raise ValueError('Homology threshold outside of [0,1] boundary.')
     else:
       # specify the maximum number of mismatches from homology threshold value and
       # shortest sequence length from list of peptides
-      min_length = min(list(df.iloc[:,0]), key=len)
-      self.max_mismatches = math.ceil(min_length - (min_length / homology_threshold))
+      min_length = len(min(list(df.iloc[:,0]), key=len))
+      self.max_mismatches = math.ceil(min_length - (min_length * homology_threshold))
 
+    self.df = df
     self.proteome = proteome
+    self.split = math.floor(min_length / (self.max_mismatches + 1))
 
-  def preprocess(self, proteome, split):
+  def preprocess(self):
     print('Preprocessing proteome...')
+    print(self.split)
     Preprocessor(self.proteome, self.split, 'pickle').preprocess()
     print('Finished preprocessing.')
 
@@ -66,3 +72,8 @@ class ConservationAnalysis(object):
   
   def create_2x2_table(self):
     pass
+
+  def run(self):
+    self.preprocess()
+
+ConservationAnalysis('test.csv', './proteomes/9606_uniprot_small.fa', 0.8).run()

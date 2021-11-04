@@ -75,5 +75,6 @@ class ConservationAnalysis(object):
 
   def run(self):
     self.preprocess()
+    self.remove_preprocessed_data()
 
 ConservationAnalysis('test.csv', './proteomes/9606_uniprot_small.fa', 0.8).run()

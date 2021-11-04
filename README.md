@@ -56,12 +56,8 @@ There is also an option to find only one match, and PEPMatch will return a prior
 
 NOTE: For now due to search speed performance, SQLite is used for exact matching and pickle is used for mismatching.
 
-
-## Applications
-- Exact matching against a proteome (e.g. eluted MHC Ligands found in a proteome for IEDB)
-- Similarity peptides against other proteomes (e.g. bovine milk peptides against human proteome)
-- Peptide comparison of similar species (e.g. SARS-CoV-2 against other coronaviruses)
-- Mutated peptide search (e.g. neoepitopes in cancer)
+## Conservation
+<description here>
 
 ## TODO
 - Conservation analysis automated script 

@@ -1,5 +1,5 @@
-from .preprocessor import Preprocessor
-from .matcher import Matcher
+from preprocessor import Preprocessor
+from matcher import Matcher
 
 from scipy.stats import fisher_exact
 
@@ -51,18 +51,22 @@ class ConservationAnalysis(object):
       self.max_mismatches = math.ceil(min_length - (min_length * homology_threshold))
 
     self.df = df
+    self.peptides = list(df.iloc[:,0])
     self.proteome = proteome
     self.split = math.floor(min_length / (self.max_mismatches + 1))
 
   def preprocess(self):
     print('Preprocessing proteome...')
-    print(self.split)
     Preprocessor(self.proteome, self.split, 'pickle').preprocess()
     print('Finished preprocessing.')
 
-  def remove_preprocessed_data(self, proteome):
-    for file in glob.glob(os.path.dirname(self.proteome) + '/*.pickle'):
+  def remove_preprocessed_data(self):
+    for file in glob.glob('./*.pickle'):
       os.remove(file)
+    print('Removed preprocessed files.')
+  
+  def search(self):
+    return Matcher(self.peptides, self.proteome, self.split, output_format='').match()
 
   def odds_ratio(self):
     return fisher_exact(table)[0]
@@ -75,6 +79,7 @@ class ConservationAnalysis(object):
 
   def run(self):
     self.preprocess()
+    df = self.search()
     self.remove_preprocessed_data()
 
 ConservationAnalysis('test.csv', './proteomes/9606_uniprot_small.fa', 0.8).run()

@@ -2,7 +2,7 @@ import pickle
 import sqlite3
 import re
 
-from .parser import parse_fasta
+from parser import parse_fasta
 
 
 class Preprocessor(object):

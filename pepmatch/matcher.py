@@ -5,8 +5,8 @@ import pandas as pd
 import sqlite3
 import random
 
-from .parser import parse_fasta
-from .preprocessor import Preprocessor
+from parser import parse_fasta
+from preprocessor import Preprocessor
 
 
 splits = []

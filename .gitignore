@@ -19,5 +19,6 @@ proteomes/*.pickle
 benchmarking.xlsx
 notes.txt
 pepmatch.py
+test.csv
 *.pyc
 .DS_Store

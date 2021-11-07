@@ -1,6 +1,5 @@
 from collections import Counter
-from Levenshtein import hamming
-import _pickle as pickle
+from Levenshtein import hamming import _pickle as pickle
 import pandas as pd
 import sqlite3
 import random
@@ -10,7 +9,7 @@ from preprocessor import Preprocessor
 
 
 splits = []
-VALID_OUTPUT_FORMATS = ['csv', 'xlsx', 'json', 'html']
+VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'xlsx', 'json', 'html']
 
 class Matcher(Preprocessor):
   '''
@@ -75,7 +74,7 @@ class Matcher(Preprocessor):
       else:
         self.preprocess_format = 'pickle'
 
-    if self.output_format != '' and self.output_format not in VALID_OUTPUT_FORMATS:
+    if self.output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError('Invalid output format, please choose csv, xlsx, json, or html.')
 
     super().__init__(self.proteome, self.split, self.preprocess_format, self.database, True)
@@ -511,7 +510,7 @@ class Matcher(Preprocessor):
       else:
         df = self.dataframe_mismatch_matches(all_matches)
 
-      if self.output_format == '':
+      if self.output_format == 'dataframe':
         return df
       else:
         self.output_matches(df)

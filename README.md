@@ -1,10 +1,19 @@
-# PEPMatch
+<p align="center">
+  <img src="docs/logo.png">
+</p>
 
-### Author: Daniel Marrama
+#### Author: Daniel Marrama
 
 Peptide search against reference proteome(s) with specified mismatches.
 
-## Requirements
+Two step process: preprocessing and matching.
+
+Preprocessed data is stored in a SQLite or pickle format and only has to be performed once.
+
+As a competition to improve tool performance, we created a benchmarking framework with instructions below.
+
+### Requirements
+
 - Python 3.7+
 - Numpy
 - Pandas
@@ -12,16 +21,51 @@ Peptide search against reference proteome(s) with specified mismatches.
 - Levenshtein
 - SciPy
 
-## Installation
-Run the following command to install PEPMatch for either general use or benchmarking.
+### Installation
+
+Run the following command.
 
 ```
 pip install pepmatch
 ```
 
-NOTE: it is not required to pip install PEPMatch to run the benchmarking code. However, the packages in the requirements.txt file are needed to run it.
+### Inputs
 
-## How It Works
+#### Preprocessor
+
+```proteome``` - Proteome to search against.
+```k (split)``` - k-mer size to break up proteome into.
+```preprocessed_format``` - 
+```database``` - 
+```gene_priority_proteome``` - 
+```versioned_ids``` - 
+
+#### Matcher
+
+
+
+### Exact Matching Example
+
+```python
+from pepmatch import Preprocessor, Matcher
+
+Preprocessor('proteomes/9606.fasta', 5, 'sql', '9606.db', '9606_small.fasta').preprocess()
+
+Matcher('queries/mhc_ligands_test.fasta', '9606', 0, 5, '9606.db').match()
+```
+
+### Mismatching Example
+
+```python
+from pepmatch import Preprocessor, Matcher
+
+Preprocessor('proteomes/9606.fasta', 3, 'pickle').preprocess()
+
+Matcher('queries/neoepitopes_test.fasta', '9606', 3, 3).match()
+```
+
+###  How It Works
+
 PEPMatch achieves highly sensitive and accurate searching of peptides and epitopes within a proteome by first performing a preprocessing step. The proteome in question is preprocessed by splitting it up into ALL possible k-mers for a given k and mapping them to the location of the protein and position within that protein. Once all preprocessing is done, it does not have to be done again and can be stored either as a SQL database or in a serialized pickle file. UniProt proteomes are ideal for preprocessing with PEPMatch. Preprocessing can be done as follows:
 
 ```
@@ -56,15 +100,16 @@ There is also an option to find only one match, and PEPMatch will return a prior
 
 NOTE: For now due to search speed performance, SQLite is used for exact matching and pickle is used for mismatching.
 
-## Conservation
-<description here>
+### Conservation
 
-## TODO
+### TODO
+
 - Conservation analysis automated script 
 - Allow multiple data format inputs
 - Multiprocessing and/or GPU programming capability
 
-## Benchmarking
+### Benchmarking
+
 In order to improve on the tool, a system to compare current tools/algorithms (current list below) has been created. For each application above, specific parameters have been created with a specified query and proteome. To compare your tool/algorithm to the current ones, the following instructions should be implemented:
 
 1. Tools should be broken down into initialization, query preprocessing, proteome preprocessing, and searching. Preprocessing is not required for every tool, but if it is, certain arguments must be passed in order to perform this task. Preprocessing is defined as performing some functions on the query or proteome before searching which helps speed this process up. Of course, searching is the actual runtime your tool performs to search each peptide through the specified proteome. In order to standardize the benchmarking smoothly, a Python wrapper between the benchmarking script and your tool's executable must be created.
@@ -201,6 +246,7 @@ Good luck!
 
 
 ## Current Algorithms
+
 - Exact Matching
     - PEPMatch
     - BLAST

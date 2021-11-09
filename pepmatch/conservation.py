@@ -33,6 +33,8 @@ class ConservationAnalysis(object):
       df = pd.read_csv(data, sep='\t')
     elif type(data) == pd.core.frame.DataFrame:
       df = data
+    else:
+      raise ValueError('Data passed not supported. Please pass .csv file, .tsv file, or a pandas dataframe of peptides and binary values.')
 
     assert df.shape[1] == 2, 'Data received is not two columns.'
 
@@ -61,14 +63,14 @@ class ConservationAnalysis(object):
     print('Finished preprocessing.')
 
   def remove_preprocessed_data(self):
-    for file in glob.glob('./*.pickle'):
+    for file in glob.glob(os.path.dirname(self.proteome) + '/*.pickle'):
       os.remove(file)
     print('Removed preprocessed files.')
   
   def search(self):
-    return Matcher(self.peptides, self.proteome, self.split, output_format='').match()
+    return Matcher(self.peptides, self.proteome, self.split, output_format='dataframe').match()
 
-  def odds_ratio(self):
+  def odds_ratio(self, table):
     return fisher_exact(table)[0]
 
   def p_value(self, table):
@@ -77,9 +79,16 @@ class ConservationAnalysis(object):
   def create_2x2_table(self):
     pass
 
+  def graph_p_values(self):
+    pass
+
+  def graph_odds_ratios(self):
+    pass
+
   def run(self):
     self.preprocess()
     df = self.search()
+    print(df)
     self.remove_preprocessed_data()
 
 ConservationAnalysis('test.csv', './proteomes/9606_uniprot_small.fa', 0.8).run()

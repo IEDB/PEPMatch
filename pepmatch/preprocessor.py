@@ -1,6 +1,7 @@
 import pickle
 import sqlite3
 import re
+import os
 
 from parser import parse_fasta
 
@@ -60,7 +61,7 @@ class Preprocessor(object):
     both k-mer and names dictionaries created. This is for compression and
     for being able to load the data in when a query is called.
     '''
-    name = self.proteome.split('/')[-1].split('.')[0]
+    name = os.path.splitext(self.proteome)[0]
     with open(name + '_' + str(self.split) + 'mers' + '.pickle', 'wb') as f:
       pickle.dump(kmer_dict, f)
     with open(name + '_names.pickle', 'wb') as f:

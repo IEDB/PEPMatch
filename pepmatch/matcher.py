@@ -1,8 +1,10 @@
 from collections import Counter
-from Levenshtein import hamming import _pickle as pickle
+from Levenshtein import hamming
+import _pickle as pickle
 import pandas as pd
 import sqlite3
 import random
+import os
 
 from parser import parse_fasta
 from preprocessor import Preprocessor
@@ -77,7 +79,7 @@ class Matcher(Preprocessor):
     if self.output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError('Invalid output format, please choose csv, xlsx, json, or html.')
 
-    super().__init__(self.proteome, self.split, self.preprocess_format, self.database, True)
+    super().__init__(self.proteome, self.split, self.preprocess_format, self.database)
 
   def split_peptide(self, seq, k):
     '''
@@ -95,7 +97,7 @@ class Matcher(Preprocessor):
     Read in the already created pickle files for each dictionary in the
     preprocessing step.
     '''
-    name = self.proteome.replace('.fa', '').replace('.fasta', '')
+    name = os.path.splitext(self.proteome)[0]
     with open(name + '_' + str(self.split) + 'mers' + '.pickle', 'rb') as f:
       kmer_dict = pickle.load(f)
     with open(name + '_names.pickle', 'rb') as f:

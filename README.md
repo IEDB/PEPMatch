@@ -2,6 +2,8 @@
   <img src="docs/logo.png">
 </p>
 
+--------------------------------------------------------------------
+
 #### Author: Daniel Marrama
 
 Peptide search against reference proteome(s) with specified mismatches.
@@ -33,16 +35,24 @@ pip install pepmatch
 
 #### Preprocessor
 
-```proteome``` - Proteome to search against.
-```k (split)``` - k-mer size to break up proteome into.
-```preprocessed_format``` - 
-```database``` - 
-```gene_priority_proteome``` - 
-```versioned_ids``` - 
+```proteome``` - Path to proteome file to search against.\
+```k (split)``` - k-mer size to break up proteome into.\
+```preprocessed_format``` - SQLite ("sqlite") or "pickle".\
+```database``` - If preprocessed format is SQLite then specify a name for it.\
+```gene_priority_proteome``` - Subset of ```proteome``` with prioritized protein IDs.\
+```versioned_ids``` - UniProt or NCBI ID versioning included.\
 
 #### Matcher
 
-
+```query``` - Query of peptides to search either in .fasta file or as a Python list.\
+```proteome``` - Name of preprocessed proteome to search against.\
+```max_mismatches``` - Maximum number of mismatches (substitutions) for query.\
+```k (split)``` - k-mer size of the preprocessed proteome.\
+```database``` - Name of SQLite database that was preprocessed. Leave blank if pickle.\
+```one_match``` - (optional) Returns only one match per query peptide.\
+```output_df``` - (optional) Returns results in a pandas dataframe, otherwise just as a list of lists.\
+```output_format``` - (optional) Outputs results into a file (CSV, XLSX, JSON, HTML) or just as a dataframe.\
+```output_name``` - (optional) Specify name of file for output. Leaving blank will generate a name.\
 
 ### Exact Matching Example
 

@@ -32,8 +32,8 @@ class Matcher(Preprocessor):
                database='',
                one_match=False,
                output_df=True,
-               output_name='',
-               output_format='csv'):
+               output_format='csv',
+               output_name=''):
 
     if type(query) == list:
       self.query = query

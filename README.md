@@ -25,8 +25,6 @@ As a competition to improve tool performance, we created a benchmarking framewor
 
 ### Installation
 
-Run the following command.
-
 ```
 pip install pepmatch
 ```
@@ -36,7 +34,7 @@ pip install pepmatch
 #### Preprocessor
 
 ```proteome``` - Path to proteome file to search against.\
-```k (split)``` - k-mer size to break up proteome into.\
+```split``` - k-mer size to break up proteome into.\
 ```preprocessed_format``` - SQLite ("sqlite") or "pickle".\
 ```database``` - If preprocessed format is SQLite then specify a name for it.\
 ```gene_priority_proteome``` - Subset of ```proteome``` with prioritized protein IDs.\
@@ -47,12 +45,14 @@ pip install pepmatch
 ```query``` - Query of peptides to search either in .fasta file or as a Python list.\
 ```proteome``` - Name of preprocessed proteome to search against.\
 ```max_mismatches``` - Maximum number of mismatches (substitutions) for query.\
-```k (split)``` - k-mer size of the preprocessed proteome.\
+```split``` - k-mer size of the preprocessed proteome.\
 ```database``` - Name of SQLite database that was preprocessed. Leave blank if pickle.\
-```one_match``` - (optional) Returns only one match per query peptide.\
+```one_match``` - (optional) Returns only one match per query peptide. It will output the best match.\
 ```output_df``` - (optional) Returns results in a pandas dataframe, otherwise just as a list of lists.\
 ```output_format``` - (optional) Outputs results into a file (CSV, XLSX, JSON, HTML) or just as a dataframe.\
 ```output_name``` - (optional) Specify name of file for output. Leaving blank will generate a name.\
+
+Note: For now, due to performance, SQLite is used for exact matching and pickle is used for mismatching.
 
 ### Exact Matching Example
 
@@ -73,44 +73,6 @@ Preprocessor('proteomes/9606.fasta', 3, 'pickle').preprocess()
 
 Matcher('queries/neoepitopes_test.fasta', '9606', 3, 3).match()
 ```
-
-###  How It Works
-
-PEPMatch achieves highly sensitive and accurate searching of peptides and epitopes within a proteome by first performing a preprocessing step. The proteome in question is preprocessed by splitting it up into ALL possible k-mers for a given k and mapping them to the location of the protein and position within that protein. Once all preprocessing is done, it does not have to be done again and can be stored either as a SQL database or in a serialized pickle file. UniProt proteomes are ideal for preprocessing with PEPMatch. Preprocessing can be done as follows:
-
-```
-from pepmatch import Preprocessor
-preprocessor = Preprocessor('proteome.fa', split = 5, preprocess_format = 'sql', database = 'proteome.db') 
-preprocessor.preprocess()
-```
-
-The Preprocessor object is initialized with a proteome FASTA file (typically from UniProt), the k-size to split the proteome, the output format ('sql' or 'pickle') and the path to the database to write to (if SQLite).
-
-UniProt has reference proteomes with gene priority, meaning for each gene there is a protein sequence assigned that best represents it. PEPMatch can prioritize search results based on this as well as protein existence levels, which is already data found in the UniProt FASTA headers. To add a gene priority proteome to take into account for prioritization, add the path of that file to the parameters:
-
-```gene_priority_proteome = 'path/to/gene/priority/proteome.fasta'```
-
-UniProt also has sequence versioned IDs for protein entries and this can be added to the preprocessed proteome metadata, which is already the default setting. Add this parameter to the constructor if you want it disabled: ```versioned_ids = False```
-
-There are two ways that PEPMatch does matching: finding exact matches and finding matches with mismatches (substitutions). After a proteome has been preprocessed either in SQL or pickle format we can now submit a query to search against by specifying the # of mismatches. The query can be passed either as a path to a FASTA file or as a Python list of strings. The proteome argument is passed as a path to the proteome file:
-
-```
-from pepmatch import Matcher
-matcher = Matcher('query.fa', 'proteome_name', max_mismatches = 3, split = 5, database = 'proteome.db')
-results = matcher.match()
-```
-
-The Matcher object takes in the query (in FASTA or Python list), the name of the proteome (preprocessed pickle files should be in the same location where this is being called), the # of mismatches, the k-size split, which should be equal to the preprocessed k-size split used, and the path to the preprocessed SQLite database if exact matching is being performed.
-
-PEPMatch will output a file of your matches. Just specify the format in the Matcher object like this: ```output_format='csv'``` (default). The output formats supported are CSV, XLSX, JSON, and HTML. If you do not want PEPMatch to output a file but simply return the dataframe of results add this to the Matcher constructor: ```output_df = False```.
-
-The file name of the output will be based on the query and proteome inputs. However, you can create your own name of the output file like so: ```output_name = 'name_of_output'```.
-
-There is also an option to find only one match, and PEPMatch will return a prioritized match based on the gene priority (if given in the preprocessing step) and the protein existence levels (based on UniProt criteria). Just pass ```one_match=True``` into the Matcher object.
-
-NOTE: For now due to search speed performance, SQLite is used for exact matching and pickle is used for mismatching.
-
-### Conservation
 
 ### TODO
 

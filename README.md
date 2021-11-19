@@ -78,6 +78,16 @@ Preprocessor('proteomes/9606.fasta', 3, 'pickle').preprocess()
 Matcher('queries/neoepitopes_test.fasta', '9606', 3, 3).match()
 ```
 
+## Outputs
+
+As mentioned above, outputs can be specified with the ```output_format``` parameter in tha ```Matcher``` class. The following formats are allowed: 'dataframe', 'csv', 'xlsx', 'json', and 'html'.
+
+If specifying 'dataframe', the ```match()``` method will return a pandas dataframe which can be stored as a variable as so:
+
+```python
+df = Matcher('queries/neoepitopes_test.fasta', '9606', 3, 3, output_format='dataframe').match()
+```
+
 ### TODO
 
 - Conservation analysis automated script 

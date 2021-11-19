@@ -38,7 +38,7 @@ pip install pepmatch
 ```preprocessed_format``` - SQLite ("sqlite") or "pickle".\
 ```database``` - If preprocessed format is SQLite then specify a name for it.\
 ```gene_priority_proteome``` - Subset of ```proteome``` with prioritized protein IDs.\
-```versioned_ids``` - UniProt or NCBI ID versioning included.\
+```versioned_ids``` - UniProt or NCBI ID versioning included.
 
 #### Matcher
 
@@ -50,7 +50,7 @@ pip install pepmatch
 ```one_match``` - (optional) Returns only one match per query peptide. It will output the best match.\
 ```output_df``` - (optional) Returns results in a pandas dataframe, otherwise just as a list of lists.\
 ```output_format``` - (optional) Outputs results into a file (CSV, XLSX, JSON, HTML) or just as a dataframe.\
-```output_name``` - (optional) Specify name of file for output. Leaving blank will generate a name.\
+```output_name``` - (optional) Specify name of file for output. Leaving blank will generate a name.
 
 Note: For now, due to performance, SQLite is used for exact matching and pickle is used for mismatching.
 
@@ -59,8 +59,10 @@ Note: For now, due to performance, SQLite is used for exact matching and pickle 
 ```python
 from pepmatch import Preprocessor, Matcher
 
+# proteome, k (split), preprocessed_format, database, gene_priority_proteome
 Preprocessor('proteomes/9606.fasta', 5, 'sql', '9606.db', '9606_small.fasta').preprocess()
 
+# query, proteome, max_mismatches, k (split), database
 Matcher('queries/mhc_ligands_test.fasta', '9606', 0, 5, '9606.db').match()
 ```
 
@@ -69,8 +71,10 @@ Matcher('queries/mhc_ligands_test.fasta', '9606', 0, 5, '9606.db').match()
 ```python
 from pepmatch import Preprocessor, Matcher
 
+# proteome, k (split), preprocessed_format
 Preprocessor('proteomes/9606.fasta', 3, 'pickle').preprocess()
 
+# query, proteome, max_mismatches, k (split)
 Matcher('queries/neoepitopes_test.fasta', '9606', 3, 3).match()
 ```
 

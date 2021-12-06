@@ -1,12 +1,14 @@
-from preprocessor import Preprocessor
-from matcher import Matcher
+from pepmatch import Preprocessor
+from pepmatch import Matcher
 
 from scipy.stats import fisher_exact
 
 import pandas as pd
+import numpy as np
 import math
 import os
 import glob
+
 
 class ConservationAnalysis(object):
   '''
@@ -14,19 +16,13 @@ class ConservationAnalysis(object):
   and produces output from Fisher's exact test for a conservation analysis. Output can be
   either the p-value, odds ratio, 2x2 table, or all of the above.
 
-  data = 
+  data = two column dataset (from .csv, .tsv or pandas DataFrame) with peptides in one column
+         and binary values in the other column separating the peptides into two groups.
   proteome = path to .fasta file of reference proteome
-
-  For getting homology levels, the user can input EITHER:
-  
-  max_mismatches = # of mismatches to use a a threshold for conservation levels
-  
-  or 
-  
   homology_threshold = # between 0 and 1 representing up to and including that homology
                        threshold. Recommended to not go much below 0.5 (50%).
   '''
-  def __init__(self, data, proteome, homology_threshold):
+  def __init__(self, data, proteome, homology_threshold, output='all'):
     if data.split('.')[1] == 'csv':
       df = pd.read_csv(data)
     elif data.split('.')[1] == 'tsv':
@@ -53,31 +49,77 @@ class ConservationAnalysis(object):
       self.max_mismatches = math.ceil(min_length - (min_length * homology_threshold))
 
     self.df = df
+    self.binary_map = dict(zip(df.iloc[:, 0], df.iloc[:, 1]))
     self.peptides = list(df.iloc[:,0])
     self.proteome = proteome
+    self.homology_threshold = homology_threshold
     self.split = math.floor(min_length / (self.max_mismatches + 1))
 
   def preprocess(self):
-    print('Preprocessing proteome...')
+    '''Creates preprocessed files needed for PEPMatch search.'''
     Preprocessor(self.proteome, self.split, 'pickle').preprocess()
-    print('Finished preprocessing.')
 
   def remove_preprocessed_data(self):
+    '''Removes preprocessed files used by PEPMatch.'''
     for file in glob.glob(os.path.dirname(self.proteome) + '/*.pickle'):
       os.remove(file)
     print('Removed preprocessed files.')
   
   def search(self):
+    '''Searches peptides in proteome with PEPMatch.'''
     return Matcher(self.peptides, self.proteome, self.split, output_format='dataframe').match()
 
-  def odds_ratio(self, table):
-    return fisher_exact(table)[0]
+  def create_binary_df(self, df):
+    '''
+    Takes the PEPMatch results and creates a dataframe where the columns represent
+    each mismatch threshold as well as the original binary grouping. Binary values
+    are placed in each column for each peptide if the peptide is found at that
+    mismatch threshold.
+
+    Example output:
+          Peptides | 0 | 1 | 2 | Group |
+          ------------------------------
+          KLQNLNIFL  1   1   1     1
+          LEDEERVVRL 0   0   1     0
+          RLLDEWFTL  0   1   1     1
+    '''
+    # replace empty strings with NaN values for conditional below
+    df['Mismatches'] = (df['Mismatches'].replace(r'^\s*$', np.NaN, regex=True))
+
+    data = []
+    for peptide in self.peptides:
+      values = [peptide]
+      for i in range(self.max_mismatches + 1):
+
+        if peptide in list(df[df['Mismatches'] <= i]['Peptide Sequence']):
+          values.append(1)
+        else:
+          values.append(0)
+
+      data.append(values)
+
+    binary_df =  pd.DataFrame(data=data, 
+                              columns = ['Peptides'] + [str(i) for i in range(self.max_mismatches+1)])
+    binary_df[self.df.columns[1]] = binary_df['Peptides'].map(self.binary_map)
+
+    return binary_df
+
+  def create_2x2_table(self, binary_df, threshold):
+    conserved_g1     = sum(binary_df[binary_df.iloc[:, -1] == 0][str(threshold)].isin([1]))
+    conserved_g2     = sum(binary_df[binary_df.iloc[:, -1] == 1][str(threshold)].isin([1]))
+    not_conserved_g1 = sum(binary_df[binary_df.iloc[:, -1] == 0][str(threshold)].isin([0]))
+    not_conserved_g2 = sum(binary_df[binary_df.iloc[:, -1] == 1][str(threshold)].isin([0]))
+
+    table = [ [conserved_g1, not_conserved_g1], 
+              [conserved_g2, not_conserved_g2] ]
+
+    return table
 
   def p_value(self, table):
     return fisher_exact(table)[1]
-  
-  def create_2x2_table(self):
-    pass
+
+  def odds_ratio(self, table):
+    return fisher_exact(table)[0]
 
   def graph_p_values(self):
     pass
@@ -86,9 +128,28 @@ class ConservationAnalysis(object):
     pass
 
   def run(self):
-    self.preprocess()
-    df = self.search()
-    print(df)
-    self.remove_preprocessed_data()
+    print('Running conservation analysis with', len(self.peptides),
+          'peptides at', str(self.homology_threshold * 100) + '%',
+          'max homology threshold. Evaluation at', self.max_mismatches + 1, 'thresholds.\n')
 
-ConservationAnalysis('test.csv', './proteomes/9606_uniprot_small.fa', 0.8).run()
+    print('Preprocessing proteome...\n')
+    self.preprocess()
+    print('Finished preprocessing.\n')
+
+    print('Searching peptides in proteome...\n')
+    df = self.search()
+    print('Finished searching peptides.\n')
+
+    binary_df = self.create_binary_df(df)
+
+    for i in range(self.max_mismatches + 1):
+      print('')
+      table = self.create_2x2_table(binary_df, i)
+      print(self.p_value(table))
+      print(self.odds_ratio(table))
+
+    print('Removing preprocessed data...\n')
+    self.remove_preprocessed_data()
+    print('Done with analysis.\n')
+
+ConservationAnalysis('test.csv', '9606.fasta', 0.8).run()

@@ -6,8 +6,8 @@ import sqlite3
 import random
 import os
 
-from parser import parse_fasta
-from preprocessor import Preprocessor
+from .parser import parse_fasta
+from .preprocessor import Preprocessor
 
 
 splits = []
@@ -77,7 +77,7 @@ class Matcher(Preprocessor):
         self.preprocess_format = 'pickle'
 
     if self.output_format not in VALID_OUTPUT_FORMATS:
-      raise ValueError('Invalid output format, please choose csv, xlsx, json, or html.')
+      raise ValueError('Invalid output format, please choose dataframe, csv, xlsx, json, or html.')
 
     super().__init__(self.proteome, self.split, self.preprocess_format, self.database)
 

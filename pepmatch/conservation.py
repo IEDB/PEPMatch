@@ -22,7 +22,7 @@ class ConservationAnalysis(object):
   homology_threshold = # between 0 and 1 representing up to and including that homology
                        threshold. Recommended to not go much below 0.5 (50%).
   '''
-  def __init__(self, data, proteome, homology_threshold, output='all'):
+  def __init__(self, data, proteome, homology_threshold):
     if data.split('.')[1] == 'csv':
       df = pd.read_csv(data)
     elif data.split('.')[1] == 'tsv':
@@ -47,13 +47,16 @@ class ConservationAnalysis(object):
       # shortest sequence length from list of peptides
       min_length = len(min(list(df.iloc[:,0]), key=len))
       self.max_mismatches = math.ceil(min_length - (min_length * homology_threshold))
+      self.homology_thresholds = [(min_length - i) / min_length for i in range(self.max_mismatches)]
 
     self.df = df
+    self.query_name = os.path.basename(data).split('.')[0] + '_to_' + os.path.basename(proteome).split('.')[0]
+    self.group_name = df.columns[-1]
     self.binary_map = dict(zip(df.iloc[:, 0], df.iloc[:, 1]))
     self.peptides = list(df.iloc[:,0])
     self.proteome = proteome
-    self.homology_threshold = homology_threshold
-    self.split = math.floor(min_length / (self.max_mismatches + 1))
+    self.max_homology_threshold = homology_threshold
+    self.split = max(2, math.floor(min_length / (self.max_mismatches + 1)))
 
   def preprocess(self):
     '''Creates preprocessed files needed for PEPMatch search.'''
@@ -68,6 +71,16 @@ class ConservationAnalysis(object):
   def search(self):
     '''Searches peptides in proteome with PEPMatch.'''
     return Matcher(self.peptides, self.proteome, self.split, output_format='dataframe').match()
+
+  def threshold_map(self, df):
+    '''
+    Create dictionary with mismatches as keys and peptides that have matches with that 
+    mismatch threshold found within to use to create binary dataframe.
+    '''
+    threshold_map = {}
+    for i in range(self.max_mismatches + 1):
+      threshold_map[i] = list(df[df['Mismatches'] <= i]['Peptide Sequence'])
+    return threshold_map
 
   def create_binary_df(self, df):
     '''
@@ -86,12 +99,14 @@ class ConservationAnalysis(object):
     # replace empty strings with NaN values for conditional below
     df['Mismatches'] = (df['Mismatches'].replace(r'^\s*$', np.NaN, regex=True))
 
+    # 
+    threshold_map = self.threshold_map(df)
+
     data = []
     for peptide in self.peptides:
       values = [peptide]
       for i in range(self.max_mismatches + 1):
-
-        if peptide in list(df[df['Mismatches'] <= i]['Peptide Sequence']):
+        if peptide in threshold_map[i]:
           values.append(1)
         else:
           values.append(0)
@@ -105,15 +120,24 @@ class ConservationAnalysis(object):
     return binary_df
 
   def create_2x2_table(self, binary_df, threshold):
-    conserved_g1     = sum(binary_df[binary_df.iloc[:, -1] == 0][str(threshold)].isin([1]))
-    conserved_g2     = sum(binary_df[binary_df.iloc[:, -1] == 1][str(threshold)].isin([1]))
-    not_conserved_g1 = sum(binary_df[binary_df.iloc[:, -1] == 0][str(threshold)].isin([0]))
-    not_conserved_g2 = sum(binary_df[binary_df.iloc[:, -1] == 1][str(threshold)].isin([0]))
+    conserved_g1     = sum(binary_df[binary_df.iloc[:, -1] == 1][str(threshold)].isin([1]))
+    conserved_g2     = sum(binary_df[binary_df.iloc[:, -1] == 0][str(threshold)].isin([1]))
+    not_conserved_g1 = sum(binary_df[binary_df.iloc[:, -1] == 1][str(threshold)].isin([0]))
+    not_conserved_g2 = sum(binary_df[binary_df.iloc[:, -1] == 0][str(threshold)].isin([0]))
 
     table = [ [conserved_g1, not_conserved_g1], 
               [conserved_g2, not_conserved_g2] ]
 
     return table
+
+  def output_2x2_table(self, table, p_value, odds_ratio, homology_threshold, path):
+    fout = open(path + '.csv', 'a')
+    pd.DataFrame(table, columns = ['Conserved', 'Not Conserved'],
+                        index   = [self.group_name, 'Not ' + self.group_name]).to_csv(fout)
+    fout.write('Homology threshold: ' + str(round(homology_threshold * 100, 2)) + '%')
+    fout.write(' p-value: ' + str(round(p_value, 4)))
+    fout.write(' Odds ratio: ' + str(round(odds_ratio, 4)))
+    fout.close()
 
   def p_value(self, table):
     return fisher_exact(table)[1]
@@ -129,8 +153,8 @@ class ConservationAnalysis(object):
 
   def run(self):
     print('Running conservation analysis with', len(self.peptides),
-          'peptides at', str(self.homology_threshold * 100) + '%',
-          'max homology threshold. Evaluation at', self.max_mismatches + 1, 'thresholds.\n')
+          'peptides at >=', str(self.max_homology_threshold * 100) + '%',
+          'max homology threshold. Evaluating at', len(self.homology_thresholds), 'thresholds.\n')
 
     print('Preprocessing proteome...\n')
     self.preprocess()
@@ -140,16 +164,45 @@ class ConservationAnalysis(object):
     df = self.search()
     print('Finished searching peptides.\n')
 
+    print('Creating binary data for analysis...\n')
     binary_df = self.create_binary_df(df)
+    print('Done.\n')
 
-    for i in range(self.max_mismatches + 1):
-      print('')
+    p_values = []
+    odds_ratios = []
+
+    for i in range(self.max_mismatches):
+      print("Evaluating Fisher's exact test at", 
+             round(self.homology_thresholds[i] * 100, 2), '% homology threshold...')
+      
+      # create 2x2 table and get Fisher's p-value and odds ratio
       table = self.create_2x2_table(binary_df, i)
-      print(self.p_value(table))
-      print(self.odds_ratio(table))
+      p_value = self.p_value(table)
+      odds_ratio = self.odds_ratio(table)
 
+      # write 2x2 table to .csv file
+      self.output_2x2_table(table, p_value, odds_ratio, self.homology_thresholds[i],
+                            self.query_name + '_' + str(round(self.homology_thresholds[i], 2)))
+
+      # save p-values and odds ratios for charts
+      p_values.append(p_value)
+      odds_ratios.append(odds_ratio)
+      
+      print('p-value: ', round(p_value, 4))
+      print('Odds ratio: ', round(odds_ratio, 4), '\n')
+
+    ############################
+    # TODO: 
+    print('Creating charts...\n')
+    self.graph_p_values()
+    self.graph_odds_ratios()
+    print('Done.\n')
+    ############################
+    
     print('Removing preprocessed data...\n')
     self.remove_preprocessed_data()
     print('Done with analysis.\n')
 
-ConservationAnalysis('test.csv', '9606.fasta', 0.8).run()
+
+ConservationAnalysis('/home/dan/projects/pertussis/one_donor_reactive.csv', 
+                     '/home/dan/projects/pertussis/D422.fasta', 0.5).run()

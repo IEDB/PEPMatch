@@ -15,7 +15,6 @@ class ConservationAnalysis(object):
   Class that takes data with two columns: peptides and binary values for any given feature
   and produces output from Fisher's exact test for a conservation analysis. Output can be
   either the p-value, odds ratio, 2x2 table, or all of the above.
-
   data = two column dataset (from .csv, .tsv or pandas DataFrame) with peptides in one column
          and binary values in the other column separating the peptides into two groups.
   proteome = path to .fasta file of reference proteome
@@ -88,7 +87,6 @@ class ConservationAnalysis(object):
     each mismatch threshold as well as the original binary grouping. Binary values
     are placed in each column for each peptide if the peptide is found at that
     mismatch threshold.
-
     Example output:
           Peptides | 0 | 1 | 2 | Group |
           ------------------------------

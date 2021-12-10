@@ -60,10 +60,10 @@ Note: For now, due to performance, SQLite is used for exact matching and pickle 
 from pepmatch import Preprocessor, Matcher
 
 # proteome, k (split), preprocessed_format, database, gene_priority_proteome
-Preprocessor('proteomes/9606.fasta', 5, 'sql', '9606.db', '9606_small.fasta').preprocess()
+Preprocessor('proteomes/9606.fasta', 5, 'sql', '9606.db', 'proteomes/9606_small.fasta').preprocess()
 
 # query, proteome, max_mismatches, k (split), database
-Matcher('queries/mhc_ligands_test.fasta', '9606', 0, 5, '9606.db').match()
+Matcher('queries/mhc_ligands_test.fasta', 'proteomes/9606.fasta', 0, 5, '9606.db').match()
 ```
 
 ### Mismatching Example
@@ -75,7 +75,7 @@ from pepmatch import Preprocessor, Matcher
 Preprocessor('proteomes/9606.fasta', 3, 'pickle').preprocess()
 
 # query, proteome, max_mismatches, k (split)
-Matcher('queries/neoepitopes_test.fasta', '9606', 3, 3).match()
+Matcher('queries/neoepitopes_test.fasta', 'proteomes/9606.fasta', 3, 3).match()
 ```
 
 ## Outputs

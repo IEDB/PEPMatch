@@ -203,18 +203,18 @@ class Matcher(Preprocessor):
         c.execute(get_protein_data)
         protein_data = c.fetchall()
 
-        all_matches.append((peptide,
-                            peptide,
-                            protein_data[0][1],
-                            protein_data[0][2],
-                            protein_data[0][3],
-                            protein_data[0][4],
-                            protein_data[0][5],
+        all_matches.append((peptide,               # query peptide
+                            peptide,               # matched peptide (same as query if exact)
+                            protein_data[0][1],    # taxon ID
+                            protein_data[0][2],    # species name
+                            protein_data[0][3],    # gene
+                            protein_data[0][4],    # protein ID
+                            protein_data[0][5],    # protein name
                             0,                     # 0 mismatches for exact matches
-                            (match % 100000),
-                            (match % 100000) + len(peptide),
-                            protein_data[0][6],
-                            protein_data[0][7]))
+                            (match % 100000) + 1,  # index start
+                            (match % 100000) + len(peptide) + 1, # index end
+                            protein_data[0][6],    # protein existence level
+                            protein_data[0][7]))   # gene priority binary
 
     c.close()
     conn.close()
@@ -404,19 +404,19 @@ class Matcher(Preprocessor):
       else:
         for match in matches:
           all_matches.append((
-            peptide,
-            match[0],
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][0],
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][1],
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][2],
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][3],
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][4],
-            match[1],
-            [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]],
-            match[2] % 100000,
-            (match[2] % 100000) + len(peptide),
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][5],
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][6],))
+            peptide,                                                         # query peptide
+            match[0],                                                        # matched peptide
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][0],       # taxon ID
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][1],       # species name
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][2],       # gene
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][3],       # protein ID
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][4],       # protein name
+            match[1],                                                        # mismatches count
+            [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]], # mutated positions
+            (match[2] % 100000) + 1,                                         # index start
+            (match[2] % 100000) + len(peptide) + 1,                          # index end
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][5],       # protein existence level
+            names_dict[(match[2] - (match[2] % 100000)) // 100000][6],))     # gene priority binary
 
     return all_matches
 
@@ -522,18 +522,10 @@ class Matcher(Preprocessor):
   def dataframe_exact_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
-                      columns=['Peptide Sequence',
-                               'Matched Sequence',
-                               'Taxon ID',
-                               'Species',
-                               'Gene',
-                               'Protein ID',
-                               'Protein Name',
-                               'Mismatches',
-                               'Index start',
-                               'Index end',
-                               'Protein Existence Level',
-                               'Gene Priority'])
+                      columns=['Peptide Sequence', 'Matched Sequence', 'Taxon ID',
+                               'Species', 'Gene', 'Protein ID', 'Protein Name',
+                               'Mismatches', 'Index start', 'Index end',
+                               'Protein Existence Level', 'Gene Priority'])
 
     if self.one_match:
       if df['Protein Existence Level'].isnull().values.any():
@@ -562,19 +554,10 @@ class Matcher(Preprocessor):
   def dataframe_mismatch_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
-                      columns=['Peptide Sequence',
-                               'Matched Sequence',
-                               'Taxon ID',
-                               'Species',
-                               'Gene',
-                               'Protein ID',
-                               'Protein Name',
-                               'Mismatches',
-                               'Mutated Positions',
-                               'Index start',
-                               'Index end',
-                               'Protein Existence Level',
-                               'Gene Priority'])
+                      columns=['Peptide Sequence', 'Matched Sequence', 'Taxon ID',
+                               'Species', 'Gene', 'Protein ID', 'Protein Name',
+                               'Mismatches', 'Mutated Positions', 'Index start',
+                               'Index end', 'Protein Existence Level', 'Gene Priority'])
 
     if self.one_match:
       df.drop_duplicates(['Peptide Sequence'], inplace=True)

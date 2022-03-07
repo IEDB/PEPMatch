@@ -44,7 +44,7 @@ class Preprocessor(object):
       raise AssertionError('Unexpected value of preprocessing format:', preprocess_format)
 
     self.proteome = proteome
-    self.proteome_name = self.proteome.split('/')[-1].split('.')[0]
+    self.proteome_name = proteome.split('/')[-1].split('.')[0]
     self.split = split
     self.preprocess_format = preprocess_format
     self.preprocessed_files_path = preprocessed_files_path

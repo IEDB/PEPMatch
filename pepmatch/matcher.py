@@ -29,7 +29,7 @@ class Matcher(Preprocessor):
                proteome,
                max_mismatches,
                split=0,
-               database='',
+               preprocessed_files_path='.',
                one_match=False,
                output_df=True,
                output_format='csv',
@@ -47,8 +47,9 @@ class Matcher(Preprocessor):
 
     self.lengths = sorted(list(set([len(peptide) for peptide in self.query])))
     self.proteome = proteome
+    self.proteome_name = proteome.split('/')[-1].split('.')[0]
     self.max_mismatches = max_mismatches
-    self.database = database
+    self.preprocessed_files_path = preprocessed_files_path
     self.one_match = one_match
     self.output_df = output_df
     self.output_format = output_format
@@ -71,7 +72,7 @@ class Matcher(Preprocessor):
         self.preprocess_format = 'pickle'
     else:
       self.split = split
-      if self.database:
+      if self.max_mismatches == 0:
         self.preprocess_format = 'sql'
       else:
         self.preprocess_format = 'pickle'
@@ -79,7 +80,7 @@ class Matcher(Preprocessor):
     if self.output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError('Invalid output format, please choose dataframe, csv, xlsx, json, or html.')
 
-    super().__init__(self.proteome, self.split, self.preprocess_format, self.database)
+    super().__init__(self.proteome, self.split, self.preprocess_format, self.preprocessed_files_path)
 
   def split_peptide(self, seq, k):
     '''
@@ -97,22 +98,29 @@ class Matcher(Preprocessor):
     Read in the already created pickle files for each dictionary in the
     preprocessing step.
     '''
-    name = os.path.splitext(self.proteome)[0]
-    with open(name + '_' + str(self.split) + 'mers' + '.pickle', 'rb') as f:
+    print(os.path.abspath('matcher.py'))
+    print(os.path.join(self.preprocessed_files_path, self.proteome_name + '_' +
+              str(self.split) + 'mers.pickle'))
+    with open(os.path.join(self.preprocessed_files_path, self.proteome_name + '_' +
+              str(self.split) + 'mers.pickle'), 'rb') as f:
+
       kmer_dict = pickle.load(f)
-    with open(name + '_names.pickle', 'rb') as f:
+
+    with open(os.path.join(self.preprocessed_files_path, self.proteome_name +
+              '_names.pickle'), 'rb') as f:
+
       names_dict = pickle.load(f)
+
     return kmer_dict, names_dict
 
   def sql_exact_match(self):
     '''
     Use the preprocessed SQLite DB to perform the exact search query.
     '''
-    proteome_name = self.proteome.split('/')[-1].split('.')[0]
-    kmers_table_name = proteome_name + '_' + str(self.split) + 'mers'
-    names_table_name = proteome_name + '_names'
+    kmers_table_name = self.proteome_name + '_' + str(self.split) + 'mers'
+    names_table_name = self.proteome_name + '_names'
 
-    conn = sqlite3.connect(self.database)
+    conn = sqlite3.connect(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db'))
     c = conn.cursor()
 
     peptides = self.query
@@ -254,7 +262,6 @@ class Matcher(Preprocessor):
       rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
     for peptide in peptides:
-      print(peptide)
       peptide = peptide.upper()
 
       # record matches in a set so as to not duplicate matches

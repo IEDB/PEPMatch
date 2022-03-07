@@ -18,14 +18,23 @@ class Preprocessor(object):
   The proteins within the proteome will be assigned numbers along with the index position of
   each k-mer within the protein.
 
-  Optional: protein IDs can be versioned, so the versioned_ids argument can be passed
+  Optional:
+  preprocessed_files_path - default is current directory. This is the location where either
+  the .db file will be stored (for exact matching) or the .pickle files will be stored (for
+  mismatching).
+
+  gene_priority_proteome - used by UniProt proteomes which contain a prioritized protein
+  sequence per gene. This will be used in the search and prioritize these sequences when
+  one match is requested.
+
+  versioned_ids - protein IDs can be versioned, so the versioned_ids argument can be passed
   as True to store them as versioned.
   '''
   def __init__(self,
                proteome,
                split,
                preprocess_format,
-               database='',
+               preprocessed_files_path='.',
                gene_priority_proteome='',
                versioned_ids = True):
 
@@ -34,13 +43,11 @@ class Preprocessor(object):
     if not preprocess_format in ('sql', 'pickle'):
       raise AssertionError('Unexpected value of preprocessing format:', preprocess_format)
 
-    if preprocess_format == 'sql' and database == '':
-      raise ValueError('SQL format selected but database path not specified.')
-
     self.proteome = proteome
+    self.proteome_name = self.proteome.split('/')[-1].split('.')[0]
     self.split = split
     self.preprocess_format = preprocess_format
-    self.database = database
+    self.preprocessed_files_path = preprocessed_files_path
     self.gene_priority_proteome = gene_priority_proteome
     self.versioned_ids = versioned_ids
 
@@ -61,10 +68,14 @@ class Preprocessor(object):
     both k-mer and names dictionaries created. This is for compression and
     for being able to load the data in when a query is called.
     '''
-    name = os.path.splitext(self.proteome)[0]
-    with open(name + '_' + str(self.split) + 'mers' + '.pickle', 'wb') as f:
+    with open(os.path.join(self.preprocessed_files_path, self.proteome_name + '_' +
+              str(self.split) + 'mers.pickle'), 'wb') as f:
+
       pickle.dump(kmer_dict, f)
-    with open(name + '_names.pickle', 'wb') as f:
+
+    with open(os.path.join(self.preprocessed_files_path, self.proteome_name +
+              '_names.pickle'), 'wb') as f:
+
       pickle.dump(names_dict, f)
 
   def sql_proteome(self, kmer_dict, names_dict):
@@ -73,11 +84,10 @@ class Preprocessor(object):
     k-mer and names dictionaries created. These SQLite tables can then be used
     for searching. This is much faster for exact matching.
     '''
-    name = self.proteome.split('/')[-1].split('.')[0]
-    kmers_table = name + '_' + str(self.split) + 'mers'
-    names_table = name + '_names'
+    kmers_table = self.proteome_name + '_' + str(self.split) + 'mers'
+    names_table = self.proteome_name + '_names'
 
-    conn = sqlite3.connect(self.database)
+    conn = sqlite3.connect(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db'))
     c = conn.cursor()
 
     c.execute('CREATE TABLE IF NOT EXISTS "{k}"(kmer TEXT, position INT)'.format(k = kmers_table))

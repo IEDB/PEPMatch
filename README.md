@@ -61,6 +61,7 @@ from pepmatch import Preprocessor, Matcher
 
 # proteome, k (split), preprocessed_format, database, gene_priority_proteome
 Preprocessor('proteomes/9606.fasta', 5, 'sql', '9606.db', 'proteomes/9606_small.fasta').preprocess()
+# PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
 
 # query, proteome, max_mismatches, k (split), database
 Matcher('queries/mhc_ligands_test.fasta', 'proteomes/9606.fasta', 0, 5, '9606.db').match()
@@ -73,6 +74,7 @@ from pepmatch import Preprocessor, Matcher
 
 # proteome, k (split), preprocessed_format
 Preprocessor('proteomes/9606.fasta', 3, 'pickle').preprocess()
+# PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
 
 # query, proteome, max_mismatches, k (split)
 Matcher('queries/neoepitopes_test.fasta', 'proteomes/9606.fasta', 3, 3).match()

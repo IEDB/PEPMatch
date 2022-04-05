@@ -36,7 +36,7 @@ pip install pepmatch
 ```proteome``` - Path to proteome file to search against.\
 ```split``` - k-mer size to break up proteome into.\
 ```preprocessed_format``` - SQLite ("sqlite") or "pickle".\
-```database``` - If preprocessed format is SQLite then specify a name for it.\
+```preprocessed_files_path``` - Directory where you want preprocessed files to go. Default is current directory.\
 ```gene_priority_proteome``` - Subset of ```proteome``` with prioritized protein IDs.\
 ```versioned_ids``` - UniProt or NCBI ID versioning included.
 
@@ -46,7 +46,7 @@ pip install pepmatch
 ```proteome``` - Name of preprocessed proteome to search against.\
 ```max_mismatches``` - Maximum number of mismatches (substitutions) for query.\
 ```split``` - k-mer size of the preprocessed proteome.\
-```database``` - Name of SQLite database that was preprocessed. Leave blank if pickle.\
+```preprocessed_files_path``` - Directory where preprocessed files are. Default is current directory.\
 ```one_match``` - (optional) Returns only one match per query peptide. It will output the best match.\
 ```output_df``` - (optional) Returns results in a pandas dataframe, otherwise just as a list of lists.\
 ```output_format``` - (optional) Outputs results into a file (CSV, XLSX, JSON, HTML) or just as a dataframe.\
@@ -59,12 +59,12 @@ Note: For now, due to performance, SQLite is used for exact matching and pickle 
 ```python
 from pepmatch import Preprocessor, Matcher
 
-# proteome, k (split), preprocessed_format, database, gene_priority_proteome
-Preprocessor('proteomes/9606.fasta', 5, 'sql', '9606.db', 'proteomes/9606_small.fasta').preprocess()
+# proteome, k (split), preprocessed_format, target directory, gene_priority_proteome
+Preprocessor('proteomes/9606.fasta', 5, 'sql', '.', 'proteomes/9606_small.fasta').preprocess()
 # PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
 
-# query, proteome, max_mismatches, k (split), database
-Matcher('queries/mhc_ligands_test.fasta', 'proteomes/9606.fasta', 0, 5, '9606.db').match()
+# query, proteome, max_mismatches, k (split), preprocessed files directory
+Matcher('queries/mhc_ligands_test.fasta', 'proteomes/9606.fasta', 0, 5, '.').match()
 ```
 
 ### Mismatching Example
@@ -72,12 +72,12 @@ Matcher('queries/mhc_ligands_test.fasta', 'proteomes/9606.fasta', 0, 5, '9606.db
 ```python
 from pepmatch import Preprocessor, Matcher
 
-# proteome, k (split), preprocessed_format
-Preprocessor('proteomes/9606.fasta', 3, 'pickle').preprocess()
+# proteome, k (split), preprocessed_format, target directory
+Preprocessor('proteomes/9606.fasta', 3, 'pickle', '.').preprocess()
 # PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
 
-# query, proteome, max_mismatches, k (split)
-Matcher('queries/neoepitopes_test.fasta', 'proteomes/9606.fasta', 3, 3).match()
+# query, proteome, max_mismatches, k (split), preprocessed files directory
+Matcher('queries/neoepitopes_test.fasta', 'proteomes/9606.fasta', 3, 3, '.').match()
 ```
 
 ## Outputs

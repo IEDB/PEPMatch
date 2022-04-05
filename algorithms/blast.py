@@ -32,7 +32,7 @@ class BLAST(object):
     def preprocess(self):
         os.system(self.makeblastdb_path + ' -in ' + self.proteome + ' -dbtype prot')
     
-    def blast_search(self, query, proteome):
+    def blast_search(self):
         peptides = parse_fasta(self.query)
         proteins = parse_fasta(self.proteome)
 
@@ -51,16 +51,16 @@ class BLAST(object):
 
         if self.max_mismatches == 0:
             blastx_cline = NcbiblastpCommandline(cmd=self.blastp_path,
-                                                query = query, 
-                                                db = proteome, 
+                                                query = self.query, 
+                                                db = self.proteome, 
                                                 evalue=100, outfmt=10, out='output.csv')
 
             stdout, stderr = blastx_cline()
 
         else:
             blastx_cline = NcbiblastpCommandline(cmd=self.blastp_path, 
-                                                query = query, 
-                                                db = proteome, 
+                                                query = self.query, 
+                                                db = self.proteome, 
                                                 evalue=10000, outfmt=10, out='output.csv')
 
             stdout, stderr = blastx_cline()
@@ -110,7 +110,7 @@ class Benchmarker(BLAST):
         raise TypeError(self.__str__() + ' does not preprocess queries.\n')
 
     def search(self):
-        matches = self.blast_search(self.query, self.proteome)
+        matches = self.blast_search()
 
         all_matches = []
         for match in matches:

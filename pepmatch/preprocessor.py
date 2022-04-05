@@ -43,6 +43,9 @@ class Preprocessor(object):
     if not preprocess_format in ('sql', 'pickle'):
       raise AssertionError('Unexpected value of preprocessing format:', preprocess_format)
 
+    if not os.path.isdir(preprocessed_files_path):
+      raise ValueError('Directory specified does not exist: ', preprocessed_files_path)
+
     self.proteome = proteome
     self.proteome_name = proteome.split('/')[-1].split('.')[0]
     self.split = split

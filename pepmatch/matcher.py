@@ -98,9 +98,6 @@ class Matcher(Preprocessor):
     Read in the already created pickle files for each dictionary in the
     preprocessing step.
     '''
-    print(os.path.abspath('matcher.py'))
-    print(os.path.join(self.preprocessed_files_path, self.proteome_name + '_' +
-              str(self.split) + 'mers.pickle'))
     with open(os.path.join(self.preprocessed_files_path, self.proteome_name + '_' +
               str(self.split) + 'mers.pickle'), 'rb') as f:
 

@@ -37,7 +37,10 @@ class Matcher(Preprocessor):
 
     if type(query) == list:
       self.query = query
-      self.output_name = 'PEPMatch_results'
+      if output_name:
+        self.output_name = output_name
+      else:
+        self.output_name = 'PEPMatch_results'
     else:
       self.query = [str(sequence.seq) for sequence in parse_fasta(query)]
       if output_name:
@@ -259,6 +262,7 @@ class Matcher(Preprocessor):
       rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
     for peptide in peptides:
+
       peptide = peptide.upper()
 
       # record matches in a set so as to not duplicate matches

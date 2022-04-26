@@ -92,8 +92,7 @@ class Matcher(Preprocessor):
     '''
     kmers = []
     for i in range(0, len(seq) - k + 1):
-      kmer = seq[i:i+k]
-      kmers.append(kmer)
+      kmers.append(seq[i:i+k])
     return kmers
 
   def read_pickle_files(self):
@@ -130,6 +129,7 @@ class Matcher(Preprocessor):
 
       peptide = peptide.upper()
 
+      # skip peptide if shorter than the actual k-mer size
       if len(peptide) < self.split:
         continue
 
@@ -220,7 +220,7 @@ class Matcher(Preprocessor):
                             protein_data[0][5],    # protein name
                             0,                     # 0 mismatches for exact matches
                             (match % 100000) + 1,  # index start
-                            (match % 100000) + len(peptide) + 1, # index end
+                            (match % 100000) + len(peptide), # index end
                             protein_data[0][6],    # protein existence level
                             protein_data[0][7]))   # gene priority binary
 
@@ -262,7 +262,7 @@ class Matcher(Preprocessor):
       rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
     for peptide in peptides:
-
+      print(peptide)
       peptide = peptide.upper()
 
       # record matches in a set so as to not duplicate matches
@@ -422,7 +422,7 @@ class Matcher(Preprocessor):
             match[1],                                                        # mismatches count
             [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]], # mutated positions
             (match[2] % 100000) + 1,                                         # index start
-            (match[2] % 100000) + len(peptide) + 1,                          # index end
+            (match[2] % 100000) + len(peptide),                              # index end
             names_dict[(match[2] - (match[2] % 100000)) // 100000][5],       # protein existence level
             names_dict[(match[2] - (match[2] % 100000)) // 100000][6],))     # gene priority binary
 

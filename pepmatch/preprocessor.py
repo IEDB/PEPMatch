@@ -61,8 +61,7 @@ class Preprocessor(object):
     '''
     kmers = []
     for i in range(len(seq)-k + 1):
-      kmer = seq[i:i+k]
-      kmers.append(kmer)
+      kmers.append(seq[i:i+k])
     return kmers
 
   def pickle_proteome(self, kmer_dict, names_dict):

@@ -30,7 +30,7 @@ class Matcher(Preprocessor):
                max_mismatches,
                split=0,
                preprocessed_files_path='.',
-               one_match=False,
+               best_match=False,
                output_df=True,
                output_format='csv',
                output_name=''):
@@ -53,7 +53,7 @@ class Matcher(Preprocessor):
     self.proteome_name = proteome.split('/')[-1].split('.')[0]
     self.max_mismatches = max_mismatches
     self.preprocessed_files_path = preprocessed_files_path
-    self.one_match = one_match
+    self.best_match = best_match
     self.output_df = output_df
     self.output_format = output_format
 
@@ -82,6 +82,9 @@ class Matcher(Preprocessor):
 
     if self.output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError('Invalid output format, please choose dataframe, csv, xlsx, json, or html.')
+
+    if not all([seq.isupper() for seq in self.query]):
+      raise ValueError('A peptide in the query contains a lowercase letter.')
 
     super().__init__(self.proteome, self.split, self.preprocess_format, self.preprocessed_files_path)
 
@@ -244,6 +247,153 @@ class Matcher(Preprocessor):
 
     return splits
 
+  def even_split_mismatching(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
+    '''
+    '''
+    # record matches in a set so as to not duplicate matches
+    matches = set()
+
+    for i in range(0, len(kmers), self.split):
+
+      # find each hit for each k-mer
+      try:
+        for hit in kmer_dict[kmers[i]]:
+
+          mismatches = 0
+
+          # if the k-mer is found in the middle or end, check the neighboring
+          # k-mers to the left
+          for j in range(0, i, self.split):
+            
+            # use reverse dictionary to retrive k-mers for Hamming distance
+            try:
+              mismatches += hamming(rev_kmer_dict[hit+j-i], kmers[j])
+              
+              # if mismatches ever reach threshold, break out of loop
+              if mismatches >= self.max_mismatches + 1:
+                break
+
+            # if first k-mer finds nothing, set mismatches to 100 to disqualify this
+            # peptide from matching with this area
+            except KeyError:
+              mismatches = 100
+
+          # if the k-mer is found in the middle or end, check the neighbors
+          # k-mers to the right
+          for k in range(i+self.split, len(kmers), self.split):
+            try:
+
+              # use reverse dictionary to retrive k-mers for Hamming distance
+              mismatches += hamming(rev_kmer_dict[hit+k-i], kmers[k])
+
+              # if mismatches ever reach threshold, break out of loop
+              if mismatches >= self.max_mismatches + 1:
+                break
+
+            # if last k-mer finds nothing, set mismatches to 100 to disqualify this
+            # peptide from matching with this area
+            except KeyError:
+              mismatches = 100
+
+          # if the mismatches that were calculated is less than threshold
+          # for all neighbors, then it's a match
+          if mismatches < self.max_mismatches + 1:
+            matched_peptide = ''
+
+            try:
+              for s in range(0, peptide_length, self.split):
+                matched_peptide += rev_kmer_dict[hit-i+s]
+            except KeyError:
+              continue
+
+            matches.add((matched_peptide, mismatches, hit - i))
+
+            if self.best_match and not mismatches:
+              return matches
+
+      # if nothing is found, you can check the next k-mer, since it can still be a match
+      except KeyError:
+        continue
+
+    return matches
+
+  def uneven_split_mismatching(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
+    '''
+    '''
+    # record matches in a set so as to not duplicate matches
+    matches = set()
+
+    for i in range(0, len(kmers)):
+
+      # find each hit for each k-mer
+      try:
+        for hit in kmer_dict[kmers[i]]:
+
+          mismatches = 0
+
+          # if the k-mer is found in the middle or end, check the neighbors
+          # k-mers to the left
+          for j in range(0, i,):
+            try:
+              # use reverse dictionary to retrive k-mers and just check the
+              # very first letter since it's a rolling split
+              if rev_kmer_dict[hit+j-i][0] != kmers[j][0]:
+                mismatches += 1
+
+              # if mismatches ever reach threshold, break out of loop
+              if mismatches >= self.max_mismatches + 1:
+                break
+
+            # if first k-mer finds nothing, set mismatches to 100 to disqualify this
+            # peptide from matching with this area
+            except KeyError:
+              mismatches = 100
+
+          # if the k-mer is found in the middle or end, check the neighbors
+          # k-mers to the right
+          for k in range(i+1, len(kmers),):
+            try:
+              # use reverse dictionary to retrive k-mers and just check the
+              # very last letter since it's a rolling split
+              if rev_kmer_dict[hit+k-i][-1] != kmers[k][-1]:
+                mismatches += 1
+
+              # if mismatches ever reach threshold, break out of loop
+              if mismatches >= self.max_mismatches + 1:
+                break
+
+            # if last k-mer finds nothing, set mismatches to 100 to disqualify this
+            # peptide from matching with this area
+            except KeyError:
+              mismatches = 100
+
+          if mismatches >= self.max_mismatches + 1:
+            continue
+
+          # if the mismatches that were calculated is less than threshold
+          # for all neighbors, then it's a match
+          if mismatches < self.max_mismatches + 1:
+            matched_peptide = ''
+            try:
+              for s in range(0, peptide_length, self.split):
+                matched_peptide += rev_kmer_dict[hit-i+s]
+
+            except KeyError:
+              for r in range(1, peptide_length % self.split + 1):
+                matched_peptide += rev_kmer_dict[hit-i+s-(self.split - r)][-1]
+
+            matched_peptide = matched_peptide[0:peptide_length]
+            matches.add((matched_peptide, mismatches, hit - i))
+
+            if self.best_match and not mismatches:
+              return matches
+
+      # if nothing is found, you can check the next k-mer, since it can still be a match
+      except KeyError:
+        continue
+
+    return matches
+
   def mismatching(self):
     '''
     Searches a preprocessed proteome for all matches of a given query of
@@ -262,143 +412,20 @@ class Matcher(Preprocessor):
       rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
     for peptide in peptides:
-      print(peptide)
-      peptide = peptide.upper()
 
-      # record matches in a set so as to not duplicate matches
-      matches = set()
-
-      # split peptide into k-mers (rolling basis)
+      # split peptide into all possible k-mers with size k (self.split)
       kmers = self.split_peptide(peptide, self.split)
 
       # if the peptide length has an even split of k, perform faster search
       if len(peptide) % self.split == 0:
-        for i in range(0, len(kmers), self.split):
-          try:
-
-            # find each hit for each k-mer
-            for hit in kmer_dict[kmers[i]]:
-
-              mismatches = 0
-
-              # if the k-mer is found in the middle or end, check the neighboring
-              # k-mers to the left
-              for j in range(0, i, self.split):
-                try:
-
-                  # use reverse dictionary to retrive k-mers for Hamming distance
-                  mismatches += hamming(rev_kmer_dict[hit+j-i], kmers[j])
-
-                  # if mismatches ever reach threshold, break out of loop
-                  if mismatches >= self.max_mismatches + 1:
-                    break
-
-                # if first k-mer finds nothing, set mismatches to 100 to disqualify this
-                # peptide from matching with this area
-                except KeyError:
-                  mismatches = 100
-
-              # if the k-mer is found in the middle or end, check the neighbors
-              # k-mers to the right
-              for k in range(i+self.split, len(kmers), self.split):
-                try:
-
-                  # use reverse dictionary to retrive k-mers for Hamming distance
-                  mismatches += hamming(rev_kmer_dict[hit+k-i], kmers[k])
-
-                  # if mismatches ever reach threshold, break out of loop
-                  if mismatches >= self.max_mismatches + 1:
-                    break
-
-                # if last k-mer finds nothing, set mismatches to 100 to disqualify this
-                # peptide from matching with this area
-                except KeyError:
-                  mismatches = 100
-
-              # if the mismatches that were calculated is less than threshold
-              # for all neighbors, then it's a match
-              if mismatches < self.max_mismatches + 1:
-                matched_peptide = ''
-
-                try:
-                  for s in range(0, len(peptide), self.split):
-                    matched_peptide += rev_kmer_dict[hit-i+s]
-                except KeyError:
-                  continue
-
-                matches.add((matched_peptide, mismatches, hit - i))
-
-          # if nothing is found, you can check the next k-mer, since it can still be a match
-          except KeyError:
-            continue
+        matches = self.even_split_mismatching(kmers, kmer_dict, rev_kmer_dict, len(peptide))
 
       # if the peptide length does NOT HAVE an even split of k, perform slower search (rolling split)
       else:
-        for i in range(0, len(kmers)):
+        matches = self.uneven_split_mismatching(kmers, kmer_dict, rev_kmer_dict, len(peptide))
 
-          try:
-            # find each hit for each k-mer
-            for hit in kmer_dict[kmers[i]]:
-
-              mismatches = 0
-
-              # if the k-mer is found in the middle or end, check the neighbors
-              # k-mers to the left
-              for j in range(0, i,):
-                try:
-                  # use reverse dictionary to retrive k-mers and just check the
-                  # very first letter since it's a rolling split
-                  if rev_kmer_dict[hit+j-i][0] != kmers[j][0]:
-                    mismatches += 1
-
-                  # if mismatches ever reach threshold, break out of loop
-                  if mismatches >= self.max_mismatches + 1:
-                    break
-
-                # if first k-mer finds nothing, set mismatches to 100 to disqualify this
-                # peptide from matching with this area
-                except KeyError:
-                  mismatches = 100
-
-              # if the k-mer is found in the middle or end, check the neighbors
-              # k-mers to the right
-              for k in range(i+1, len(kmers),):
-                try:
-                  # use reverse dictionary to retrive k-mers and just check the
-                  # very last letter since it's a rolling split
-                  if rev_kmer_dict[hit+k-i][-1] != kmers[k][-1]:
-                    mismatches += 1
-
-                  # if mismatches ever reach threshold, break out of loop
-                  if mismatches >= self.max_mismatches + 1:
-                    break
-
-                # if last k-mer finds nothing, set mismatches to 100 to disqualify this
-                # peptide from matching with this area
-                except KeyError:
-                  mismatches = 100
-
-              if mismatches >= self.max_mismatches + 1:
-                continue
-
-              # if the mismatches that were calculated is less than threshold
-              # for all neighbors, then it's a match
-              if mismatches < self.max_mismatches + 1:
-                matched_peptide = ''
-                try:
-                  for s in range(0, len(peptide), self.split):
-                    matched_peptide += rev_kmer_dict[hit-i+s]
-
-                except KeyError:
-                  for r in range(1, len(peptide) % self.split + 1):
-                    matched_peptide += rev_kmer_dict[hit-i+s-(self.split - r)][-1]
-
-                matched_peptide = matched_peptide[0:len(peptide)]
-                matches.add((matched_peptide, mismatches, hit - i))
-
-          # if nothing is found, you can check the next k-mer, since it can still be a match
-          except KeyError:
-            continue
+      print(peptide)
+      print(matches)
 
       all_matches_dict[peptide] = list(matches)
 
@@ -535,7 +562,7 @@ class Matcher(Preprocessor):
                                'Mismatches', 'Index start', 'Index end',
                                'Protein Existence Level', 'Gene Priority'])
 
-    if self.one_match:
+    if self.best_match:
       if df['Protein Existence Level'].isnull().values.any():
         df.drop_duplicates(['Peptide Sequence'], inplace=True)
         return df
@@ -567,7 +594,7 @@ class Matcher(Preprocessor):
                                'Mismatches', 'Mutated Positions', 'Index start',
                                'Index end', 'Protein Existence Level', 'Gene Priority'])
 
-    if self.one_match:
+    if self.best_match:
       df.drop_duplicates(['Peptide Sequence'], inplace=True)
 
     # drop any columns that are entirely empty (usually gene priority column)

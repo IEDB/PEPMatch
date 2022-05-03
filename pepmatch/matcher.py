@@ -128,9 +128,10 @@ class Matcher(Preprocessor):
     peptides = self.query
     all_matches_dict = {}
 
+    count = 0 
     for peptide in peptides:
 
-      peptide = peptide.upper()
+      print('Searching peptide #%s' % str(count+1))
 
       # skip peptide if shorter than the actual k-mer size
       if len(peptide) < self.split:
@@ -200,6 +201,8 @@ class Matcher(Preprocessor):
         for hit, count in sum_hits.items():
           if count == len(peptide) // self.split + 1:
             all_matches_dict[peptide].append(hit)
+
+      count+=1
 
     all_matches = []
 
@@ -388,7 +391,7 @@ class Matcher(Preprocessor):
             if self.best_match and not mismatches:
               return matches
 
-      # if nothing is found, you can check the next k-mer, since it can still be a match
+      # if nothing is found, you can check the next k-mer, since there can still be a match
       except KeyError:
         continue
 
@@ -411,7 +414,10 @@ class Matcher(Preprocessor):
       kmer_dict, names_dict = self.read_pickle_files()
       rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
+    count = 0
     for peptide in peptides:
+
+      print('Searching peptide #%s' % str(count+1))
 
       # split peptide into all possible k-mers with size k (self.split)
       kmers = self.split_peptide(peptide, self.split)
@@ -424,10 +430,8 @@ class Matcher(Preprocessor):
       else:
         matches = self.uneven_split_mismatching(kmers, kmer_dict, rev_kmer_dict, len(peptide))
 
-      print(peptide)
-      print(matches)
-
       all_matches_dict[peptide] = list(matches)
+      count+=1
 
     all_matches = []
 
@@ -595,8 +599,27 @@ class Matcher(Preprocessor):
                                'Index end', 'Protein Existence Level', 'Gene Priority'])
 
     if self.best_match:
-      df.drop_duplicates(['Peptide Sequence'], inplace=True)
+      idx = df.groupby(['Peptide Sequence'])['Mismatches'].transform('min') == df['Mismatches']
+      df = df[idx]
 
+      if df['Protein Existence Level'].isnull().values.any():
+        df.drop_duplicates(['Peptide Sequence'], inplace=True)
+        return df
+
+      else:
+        idx = df.groupby(['Peptide Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']
+        df = df[idx]
+
+      if df['Gene Priority'].isnull().values.any():
+        df.drop_duplicates(['Peptide Sequence'], inplace=True)
+        return df
+
+      else:
+        idx = df.groupby(['Peptide Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
+        df = df[idx]
+
+      df.drop_duplicates(['Peptide Sequence'], inplace=True)
+      
     # drop any columns that are entirely empty (usually gene priority column)
     df.dropna(how='all', axis=1, inplace=True)
 

@@ -5,6 +5,7 @@ import pandas as pd
 import sqlite3
 import random
 import os
+import argparse
 
 from .parser import parse_fasta
 from .preprocessor import Preprocessor
@@ -128,10 +129,11 @@ class Matcher(Preprocessor):
     peptides = self.query
     all_matches_dict = {}
 
-    count = 0 
+    peptide_counter = 0 
     for peptide in peptides:
 
-      print('Searching peptide #%s' % str(count+1))
+      peptide_counter += 1
+      print('Searching peptide #%s' % str(peptide_counter))
 
       # skip peptide if shorter than the actual k-mer size
       if len(peptide) < self.split:
@@ -201,8 +203,6 @@ class Matcher(Preprocessor):
         for hit, count in sum_hits.items():
           if count == len(peptide) // self.split + 1:
             all_matches_dict[peptide].append(hit)
-
-      count+=1
 
     all_matches = []
 
@@ -414,10 +414,12 @@ class Matcher(Preprocessor):
       kmer_dict, names_dict = self.read_pickle_files()
       rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
-    count = 0
+    peptide_counter = 0
     for peptide in peptides:
 
-      print('Searching peptide #%s' % str(count+1))
+      peptide_counter += 1
+
+      print('Searching peptide #%s' % str(peptide_counter))
 
       # split peptide into all possible k-mers with size k (self.split)
       kmers = self.split_peptide(peptide, self.split)
@@ -431,7 +433,7 @@ class Matcher(Preprocessor):
         matches = self.uneven_split_mismatching(kmers, kmer_dict, rev_kmer_dict, len(peptide))
 
       all_matches_dict[peptide] = list(matches)
-      count+=1
+
 
     all_matches = []
 
@@ -636,3 +638,29 @@ class Matcher(Preprocessor):
       return df.to_json(self.output_name + '.json')
     elif self.output_format == 'html':
       return df.to_html()
+
+
+# run via command line
+
+def parse_arguments():
+  parser = argparse.ArgumentParser()
+
+  parser.add_argument('-q', '--query', required=True)
+  parser.add_argument('-p', '--proteome', required=True)
+  parser.add_argument('-m', '--max_mismatches', type=int, required=True)
+  parser.add_argument('-k', '--kmer_size', type=int, required=True)
+  parser.add_argument('-P', '--preprocessed_files_path', default='.')
+  parser.add_argument('-b', '--best_match', type=bool, default=False)
+  parser.add_argument('-o', '--output_df', type=bool, default=True)
+  parser.add_argument('-f', '--output_format', default='csv')
+  parser.add_argument('-n', '--output_name', default='')
+
+  args = parser.parse_args()
+
+  return args
+
+def run():
+  args = parse_arguments()
+
+  Matcher(args.query, args.proteome, args.max_mismatches, args.kmer_size, args.preprocessed_files_path, 
+          args.best_match, args.output_df, args.output_format, args.output_name).match()

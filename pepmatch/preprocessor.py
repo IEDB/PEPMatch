@@ -2,6 +2,7 @@ import pickle
 import sqlite3
 import re
 import os
+import argparse
 
 from .parser import parse_fasta
 
@@ -196,3 +197,26 @@ class Preprocessor(object):
       self.sql_proteome(kmer_dict, names_dict)
 
     return kmer_dict, names_dict
+
+
+# run via command line
+
+def parse_arguments():
+  parser = argparse.ArgumentParser()
+
+  parser.add_argument('-p', '--proteome', required=True)
+  parser.add_argument('-k', '--kmer_size', type=int, required=True)
+  parser.add_argument('-f', '--format', required=True)
+  parser.add_argument('-P', '--preprocessed_files_path', default='.')
+  parser.add_argument('-g', '--gene_priority_proteome', default='')
+  parser.add_argument('-v', '--versioned_ids', type=bool, default=True)
+
+  args = parser.parse_args()
+
+  return args
+
+def run():
+  args = parse_arguments()
+
+  Preprocessor(args.proteome, args.kmer_size, args.format, args.preprocessed_files_path,
+             args.gene_priority_proteome, args.versioned_ids).preprocess()

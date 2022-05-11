@@ -32,7 +32,6 @@ class Matcher(Preprocessor):
                split=0,
                preprocessed_files_path='.',
                best_match=False,
-               output_df=True,
                output_format='csv',
                output_name=''):
 
@@ -55,7 +54,6 @@ class Matcher(Preprocessor):
     self.max_mismatches = max_mismatches
     self.preprocessed_files_path = preprocessed_files_path
     self.best_match = best_match
-    self.output_df = output_df
     self.output_format = output_format
 
     # use sql format for exact matches
@@ -546,24 +544,22 @@ class Matcher(Preprocessor):
     else:
       raise ValueError('Invalid input of mismatches.')
 
-    # option to output results to a specified format, default is CSV
-    if self.output_df:
-      if self.max_mismatches == 0:
-        df = self.dataframe_exact_matches(all_matches)
-      else:
-        df = self.dataframe_mismatch_matches(all_matches)
+    if self.max_mismatches == 0:
+      df = self.dataframe_exact_matches(all_matches)
+    else:
+      df = self.dataframe_mismatch_matches(all_matches)
 
-      if self.output_format == 'dataframe':
-        return df
-      else:
-        self.output_matches(df)
+    if self.output_format == 'dataframe':
+      return df
+    else:
+      self.output_matches(df)
 
     return all_matches
 
   def dataframe_exact_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
-                      columns=['Peptide Sequence', 'Matched Sequence', 'Taxon ID',
+                      columns=['Peptide Sequence', 'Matched Sequence', 'Proteome',
                                'Species', 'Gene', 'Protein ID', 'Protein Name',
                                'Mismatches', 'Index start', 'Index end',
                                'Protein Existence Level', 'Gene Priority'])
@@ -595,7 +591,7 @@ class Matcher(Preprocessor):
   def dataframe_mismatch_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
-                      columns=['Peptide Sequence', 'Matched Sequence', 'Taxon ID',
+                      columns=['Peptide Sequence', 'Matched Sequence', 'Proteome',
                                'Species', 'Gene', 'Protein ID', 'Protein Name',
                                'Mismatches', 'Mutated Positions', 'Index start',
                                'Index end', 'Protein Existence Level', 'Gene Priority'])
@@ -651,9 +647,8 @@ def parse_arguments():
   parser.add_argument('-k', '--kmer_size', type=int, required=True)
   parser.add_argument('-P', '--preprocessed_files_path', default='.')
   parser.add_argument('-b', '--best_match', type=bool, default=False)
-  parser.add_argument('-o', '--output_df', type=bool, default=True)
   parser.add_argument('-f', '--output_format', default='csv')
-  parser.add_argument('-n', '--output_name', default='')
+  parser.add_argument('-o', '--output_name', default='')
 
   args = parser.parse_args()
 
@@ -663,4 +658,4 @@ def run():
   args = parse_arguments()
 
   Matcher(args.query, args.proteome, args.max_mismatches, args.kmer_size, args.preprocessed_files_path, 
-          args.best_match, args.output_df, args.output_format, args.output_name).match()
+          args.best_match, args.output_format, args.output_name).match()

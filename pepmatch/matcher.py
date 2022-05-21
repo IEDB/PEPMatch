@@ -495,7 +495,7 @@ class Matcher(Preprocessor):
       # separate out peptides that did not match into a new query
       self.query = []
       for match in matches:
-        if match[1] != '':
+        if match[1]:
           all_matches.append(match)
         else:
           self.query.append(match[0])
@@ -510,7 +510,7 @@ class Matcher(Preprocessor):
       # separate out peptides that did not match into a new query
       self.query = []
       for match in matches:
-        if match[1] != '':
+        if match[1]:
           all_matches.append(match)
         else:
           self.query.append(match[0])

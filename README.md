@@ -29,6 +29,7 @@ As a competition to improve tool performance, we created a benchmarking framewor
 pip install pepmatch
 ```
 
+
 ### Inputs
 
 #### Preprocessor
@@ -48,11 +49,17 @@ pip install pepmatch
 ```split``` - k-mer size of the preprocessed proteome.\
 ```preprocessed_files_path``` - Directory where preprocessed files are. Default is current directory.\
 ```one_match``` - (optional) Returns only one match per query peptide. It will output the best match.\
-```output_df``` - (optional) Returns results in a pandas dataframe, otherwise just as a list of lists.\
 ```output_format``` - (optional) Outputs results into a file (CSV, XLSX, JSON, HTML) or just as a dataframe.\
 ```output_name``` - (optional) Specify name of file for output. Leaving blank will generate a name.
 
 Note: For now, due to performance, SQLite is used for exact matching and pickle is used for mismatching.
+
+### Command Line Example
+
+```
+pepmatch-preprocess -p 9606.fasta -k 5 -f sql
+pepmatch-match -q peptides.fasta -p 9606 -m 0 -k 5
+```
 
 ### Exact Matching Example
 
@@ -67,7 +74,8 @@ Preprocessor('proteomes/9606.fasta', 5, 'sql', '.', 'proteomes/9606_small.fasta'
 Matcher('queries/mhc_ligands_test.fasta', 'proteomes/9606.fasta', 0, 5, '.').match()
 ```
 
-### Mismatching Example
+
+### Mismatching Example 
 
 ```python
 from pepmatch import Preprocessor, Matcher

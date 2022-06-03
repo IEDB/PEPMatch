@@ -554,7 +554,7 @@ class Matcher(Preprocessor):
     else:
       self.output_matches(df)
 
-    return all_matches
+    return df
 
   def dataframe_exact_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''

@@ -1,11 +1,11 @@
-from collections import Counter
-from Levenshtein import hamming
-import _pickle as pickle
-import pandas as pd
-import sqlite3
-import random
 import os
 import argparse
+import _pickle as pickle
+import sqlite3
+import pandas as pd
+
+from collections import Counter
+from Levenshtein import hamming
 
 from .parser import parse_fasta
 from .preprocessor import Preprocessor
@@ -46,9 +46,10 @@ class Matcher(Preprocessor):
       if output_name:
         self.output_name = output_name
       else:
-        self.output_name = query.replace('.fasta', '') + '_to_' + proteome.split('/')[-1].split('.')[0]
+        # make output name using query name to proteome name
+        self.output_name = f"{query.replace('.fasta', '')}_to_{proteome.split('/')[-1].split('.')[0]}"
 
-    self.lengths = sorted(list(set([len(peptide) for peptide in self.query])))
+    self.lengths = sorted(set([len(peptide) for peptide in self.query]))
     self.proteome = proteome
     self.proteome_name = proteome.split('/')[-1].split('.')[0]
     self.max_mismatches = max_mismatches
@@ -59,7 +60,7 @@ class Matcher(Preprocessor):
     # use sql format for exact matches
     if split == 0:
       if max_mismatches == 0:
-        self.split = min(self.lengths)
+        self.split = self.lengths[0]
         self.preprocess_format = 'sql'
 
       # use pickle format for mismatching

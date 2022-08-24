@@ -196,7 +196,7 @@ class Preprocessor(object):
     elif self.preprocess_format == 'sql':
       self.sql_proteome(kmer_dict, names_dict)
 
-    return kmer_dict, names_dict
+    return 0
 
 
 # run via command line

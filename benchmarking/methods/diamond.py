@@ -20,6 +20,8 @@ class DIAMOND(object):
         self.max_mismatches = max_mismatches
 
         bin_directory = method_parameters['bin_directory']
+        print(os.listdir(bin_directory))
+
         self.bin_file = os.path.join(bin_directory, 'diamond')
 
     def __str__(self):

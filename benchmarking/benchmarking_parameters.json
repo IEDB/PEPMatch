@@ -60,14 +60,14 @@
                         "name": "diamond",
                         "text_shifting": 0,
                         "method_parameters":{
-                                "bin_directory": "~/apps/diamond/bin"
+                                "bin_directory": "../bin"
                         }
                 },
                 {
                         "name": "mmseqs2",
                         "text_shifting": 0,
                         "method_parameters":{
-                                "bin_directory": "~/apps/mmseqs/bin"
+                                "bin_directory": "../bin/"
                         }
                 },
                 {

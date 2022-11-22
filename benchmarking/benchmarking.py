@@ -83,7 +83,7 @@ def benchmark_methods(benchmark_options):
 
     inputs = benchmarking_parameters['datasets'][dataset]
     methods = benchmarking_parameters['methods']
-       
+    methods= [methods[4]]
     if not include_text_shifting:
         methods = [x for x in methods if not x['text_shifting']]
 

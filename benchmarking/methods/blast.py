@@ -13,7 +13,7 @@ def parse_fasta(file):
 
 
 class BLAST(object):
-    def __init__(self, query, proteome, max_mismatches, algorithm_parameters):
+    def __init__(self, query, proteome, max_mismatches, method_parameters):
         if max_mismatches == -1:
             raise ValueError(self.__str__() + ' does not have a best match feature.\n')
 
@@ -22,7 +22,7 @@ class BLAST(object):
 
         self.max_mismatches = max_mismatches
 
-        bin_directory = algorithm_parameters['bin_directory']
+        bin_directory = method_parameters['bin_directory']
         self.makeblastdb_path = os.path.join(bin_directory, 'makeblastdb')
         self.blastp_path = os.path.join(bin_directory, 'blastp')
 
@@ -91,20 +91,20 @@ class BLAST(object):
 
 
 class Benchmarker(BLAST):
-    def __init__(self, query, proteome, lengths, max_mismatches, algorithm_parameters):
+    def __init__(self, query, proteome, lengths, max_mismatches, method_parameters):
         self.query = query
         self.proteome = proteome
         self.lengths = lengths
         self.max_mismatches = max_mismatches
-        self.algorithm_parameters = algorithm_parameters
+        self.method_parameters = method_parameters
         
-        super().__init__(query, proteome, max_mismatches, algorithm_parameters)
+        super().__init__(query, proteome, max_mismatches, method_parameters)
 
     def __str__(self):
         return 'BLAST'
 
     def preprocess_proteome(self):
-        return self.preprocesss()
+        return self.preprocess()
 
     def preprocess_query(self):
         raise TypeError(self.__str__() + ' does not preprocess queries.\n')

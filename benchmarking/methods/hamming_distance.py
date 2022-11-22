@@ -60,12 +60,12 @@ class HammingDistance(object):
         return all_matches
 
 class Benchmarker(HammingDistance):
-    def __init__(self, query, proteome, lengths, max_mismatches, algorithm_parameters):
+    def __init__(self, query, proteome, lengths, max_mismatches, method_parameters):
         self.query = query
         self.proteome = proteome
         self.lengths = lengths
         self.max_mismatches = max_mismatches
-        self.algorithm_parameters = algorithm_parameters
+        self.method_parameters = method_parameters
         super().__init__(query, proteome, max_mismatches)
 
     def __str__(self):

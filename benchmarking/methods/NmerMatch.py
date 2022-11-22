@@ -19,14 +19,14 @@ class Benchmarker(object):
     # in your PERL5LIB environment variable, that should be passed
     # as the perl_include_path here. E.g., if libraries are installed
     # to 'mylibs', the argument to be passed would be mylibs/lib/perl5
-    def __init__(self, query, proteome, lengths, mismatches, algorithm_parameters):
+    def __init__(self, query, proteome, lengths, mismatches, method_parameters):
         """Initialize the tool to run the benchmarks
 
         Positional arguments:
         mismatches -- the number of mismatches for which to run the benchmark
         nmer_script_path -- path to 'run_nmer_match.pl'
 
-        algorithm_parameters can include:
+        method_parameters can include:
         perl_exe -- the perl executable to use (default: perl)
         perl_include_path -- additional paths to add to the perl include path
         catalog_master_dir -- directory in which to store the database catalogs
@@ -38,9 +38,9 @@ class Benchmarker(object):
 
         self.mismatches = mismatches
 
-        # this must be defined in algorithm_parameters; the rest of the
+        # this must be defined in method_parameters; the rest of the
         # parameters are optional and have defaults
-        self.nmer_script_path = algorithm_parameters['nmer_script_path']
+        self.nmer_script_path = method_parameters['nmer_script_path']
 
         # if it's a relative directory, we assume it is relative to this script
         if not os.path.isabs(self.nmer_script_path):
@@ -48,25 +48,25 @@ class Benchmarker(object):
             self.nmer_script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.nmer_script_path)
             print("Absolute path: " + self.nmer_script_path)
 
-        if 'perl_exe' in algorithm_parameters and algorithm_parameters['perl_exe']:
-            self.perl_exe = algorithm_parameters['perl_exe']
+        if 'perl_exe' in method_parameters and method_parameters['perl_exe']:
+            self.perl_exe = method_parameters['perl_exe']
         else:
             self.perl_exe = 'perl'
 
         # set the catalog & output directories
-        if 'catalog_master_dir' in algorithm_parameters and algorithm_parameters['catalog_master_dir']:
-            self.catalog_master_dir = algorithm_parameters['catalog_master_dir']
+        if 'catalog_master_dir' in method_parameters and method_parameters['catalog_master_dir']:
+            self.catalog_master_dir = method_parameters['catalog_master_dir']
         else:
             self.catalog_master_dir = tempfile.mkdtemp(prefix='catalogs.')
 
-        if 'output_master_dir' in algorithm_parameters and algorithm_parameters['output_master_dir']:
-            self.output_master_dir = algorithm_parameters['output_master_dir']
+        if 'output_master_dir' in method_parameters and method_parameters['output_master_dir']:
+            self.output_master_dir = method_parameters['output_master_dir']
         else:
             self.output_master_dir = tempfile.mkdtemp(prefix='outputs.')
 
         # set the extra perl include paths if given
-        if 'perl_include_path' in algorithm_parameters and algorithm_parameters['perl_include_path']:
-            self.perl_include_path = algorithm_parameters['perl_include_path']
+        if 'perl_include_path' in method_parameters and method_parameters['perl_include_path']:
+            self.perl_include_path = method_parameters['perl_include_path']
         else:
             self.perl_include_path = None
 
@@ -223,7 +223,7 @@ class Benchmarker(object):
 
 def main():
     mismatches = 1
-    algorithm_parameters = {
+    method_parameters = {
         'nmer_script_path': 'NmerMatch/bin/run_nmer_match.pl',
         'perl_include_path': '/Users/jgbaum/perl_envs/nmer_match/lib/perl5'
         }
@@ -232,7 +232,7 @@ def main():
     proteome_file = 'proteomes/tp.fa'
     query_file = 'queries/test_pep.fa'
 
-    tool = Benchmarker(query_file, proteome_file, lengths, mismatches, algorithm_parameters)
+    tool = Benchmarker(query_file, proteome_file, lengths, mismatches, method_parameters)
     tool.preprocess_query()
     tool.preprocess_proteome()
     results = tool.search()

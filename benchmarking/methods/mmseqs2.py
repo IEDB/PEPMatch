@@ -5,7 +5,7 @@ import os, glob
 directory = os.path.dirname(os.path.abspath(__file__))
 
 class MMseqs2(object):
-    def __init__(self, query, proteome, max_mismatches, algorithm_parameters):
+    def __init__(self, query, proteome, max_mismatches, method_parameters):
         if max_mismatches == -1:
             raise ValueError(self.__str__() + ' does not have a best match feature.\n')
 
@@ -15,7 +15,7 @@ class MMseqs2(object):
 
         self.max_mismatches = max_mismatches
 
-        bin_directory = algorithm_parameters['bin_directory']
+        bin_directory = method_parameters['bin_directory']
         self.bin_file = os.path.join(bin_directory, 'mmseqs')
 
     def __str__(self):
@@ -51,14 +51,14 @@ class MMseqs2(object):
 
 
 class Benchmarker(MMseqs2):
-    def __init__(self, query, proteome, lengths, max_mismatches, algorithm_parameters):
+    def __init__(self, query, proteome, lengths, max_mismatches, method_parameters):
         self.query = query
         self.proteome = proteome
         self.lengths = lengths
         self.max_mismatches = max_mismatches
-        self.algorithm_parameters = algorithm_parameters
+        self.method_parameters = method_parameters
         
-        super().__init__(query, proteome, max_mismatches, algorithm_parameters)
+        super().__init__(query, proteome, max_mismatches, method_parameters)
 
     def __str__(self):
         return 'MMseqs2'

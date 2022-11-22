@@ -54,7 +54,7 @@ class Horspool(object):
 
 
 class Benchmarker(Horspool):
-    def __init__(self, query, proteome, lengths, max_mismatches, algorithm_parameters):
+    def __init__(self, query, proteome, lengths, max_mismatches, method_parameters):
         if max_mismatches > 0:
             raise ValueError(self.__str__() + ' cannot do any mismatching.\n')
         elif max_mismatches == -1:
@@ -64,7 +64,7 @@ class Benchmarker(Horspool):
         self.proteome = proteome
         self.lengths = lengths
         self.max_mismatches = max_mismatches
-        self.algorithm_parameters = algorithm_parameters
+        self.method_parameters = method_parameters
         
         super().__init__(query, proteome)
 

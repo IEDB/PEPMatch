@@ -30,18 +30,18 @@
                 }
         },
        
-        "algorithms": [
+        "methods": [
                 {
                         "name": "PEPMatch",
                         "text_shifting": 0,
-                        "algorithm_parameters":{
+                        "method_parameters":{
                                 "output_format": "dataframe"
                         }
                 },
                 {
                         "name": "NmerMatch",
                         "text_shifting": 0,
-                        "algorithm_parameters":{
+                        "method_parameters":{
                                 "nmer_script_path": "NmerMatch/bin/run_nmer_match.pl",
                                 "perl_exe": "",
                                 "perl_include_path": "",
@@ -52,43 +52,43 @@
                 {
                         "name": "blast",
                         "text_shifting": 0,
-                        "algorithm_parameters":{
+                        "method_parameters":{
                                 "bin_directory": "~/apps/ncbi-blast-2.10.0+/bin"
                         }
                 },
                 {
                         "name": "diamond",
                         "text_shifting": 0,
-                        "algorithm_parameters":{
+                        "method_parameters":{
                                 "bin_directory": "~/apps/diamond/bin"
                         }
                 },
                 {
                         "name": "mmseqs2",
                         "text_shifting": 0,
-                        "algorithm_parameters":{
+                        "method_parameters":{
                                 "bin_directory": "~/apps/mmseqs/bin"
                         }
                 },
                 {
                         "name": "horspool",
                         "text_shifting": 1,
-                        "algorithm_parameters":{}
+                        "method_parameters":{}
                 },
                 {
                         "name": "boyer_moore",
                         "text_shifting": 1,
-                        "algorithm_parameters":{}
+                        "method_parameters":{}
                 },
                 {
                         "name": "knuth_morris_pratt",
                         "text_shifting": 1,
-                        "algorithm_parameters":{}
+                        "method_parameters":{}
                 },
                 {
                         "name": "z",
                         "text_shifting": 1,
-                        "algorithm_parameters":{}
+                        "method_parameters":{}
                 }
         ]
 }

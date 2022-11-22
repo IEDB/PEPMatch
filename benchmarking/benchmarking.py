@@ -14,6 +14,7 @@ from pathlib import Path
 # global variables for generalization
 benchmark_columns = ['Name', 'Preprocessing Proteome (s)', 'Preprocessing Query (s)',
                      'Searching Time (s)', 'Total Time (s)', 'Memory Usage (MB)', 'Accuracy (%)']
+valid_datasets = ['mhc_ligands', 'milk', 'coronavirus', 'neoepitopes']
 
 directory = os.path.dirname(os.path.abspath(__file__))
 
@@ -21,7 +22,9 @@ directory = os.path.dirname(os.path.abspath(__file__))
 pepmatch_dir = str(Path(directory).parent)
 sys.path.insert(0, pepmatch_dir)
 
-valid_datasets = ['mhc_ligands', 'milk', 'coronavirus', 'neoepitopes']
+# adding the methods directory to the system path so we can import all other methods
+methods_dir = str(Path(directory)) + '/methods'
+sys.path.insert(0, methods_dir)
 
 def parse_arguments():
     # add arguments
@@ -33,7 +36,7 @@ def parse_arguments():
     # skip_memory_benchmark - a Boolean for whether to skip the memory benchmark
     parser.add_argument('-s', '--skip_mem', action='store_true')
 
-    # include text-shifting algorithms for benchmarking
+    # include text-shifting methods for benchmarking
     parser.add_argument('-t', '--text_shifting', action='store_true')
 
     arguments = parser.parse_args()
@@ -70,7 +73,7 @@ def accuracy(results, expected_file):
     return len(set(results).intersection(set(expected))) / (len(expected)) * 100
 
 
-def benchmark_algorithms(benchmark_options):
+def benchmark_methods(benchmark_options):
     dataset = benchmark_options[0]
     skip_mem = benchmark_options[1]
     include_text_shifting = benchmark_options[2]
@@ -79,24 +82,36 @@ def benchmark_algorithms(benchmark_options):
         benchmarking_parameters = json.load(file)
 
     inputs = benchmarking_parameters['datasets'][dataset]
-    algorithms = benchmarking_parameters['algorithms']
-
+    methods = benchmarking_parameters['methods']
+    
+    
+    
+    
+    
+    methods = [methods[2]]
+    
+    
+    
+    
+    
     if not include_text_shifting:
-        algorithms = [x for x in algorithms if not x['text_shifting']]
+        methods = [x for x in methods if not x['text_shifting']]
 
     benchmark_df = pd.DataFrame(columns = benchmark_columns)
-    for algorithm in algorithms:
-        print('Initializing method...: ' + algorithm['name'] + '\n')
+    for method in methods:
+        print('Initializing method...: ' + method['name'] + '\n')
         try:
-            if (algorithm['name'] == 'PEPMatch'):
+            if (method['name'] == 'PEPMatch'):
                 get_benchmark_object = getattr(importlib.import_module('pepmatch.benchmarker'), 'Benchmarker')
             else:
-                get_benchmark_object = getattr(importlib.import_module(os.path.join('algorithms', algorithm['name'])), 'Benchmarker')
+                get_benchmark_object = getattr(importlib.import_module(method['name']), 'Benchmarker')
+            
             benchmark_tool = get_benchmark_object(
                 os.path.join(directory, inputs['query']),  
                 os.path.join(directory, inputs['proteome']), 
                 inputs['lengths'], inputs['mismatches'], 
-                algorithm['algorithm_parameters'])
+                method['method_parameters'])
+        
         except ValueError as error:
             print(error)
             continue
@@ -157,7 +172,7 @@ def benchmark_algorithms(benchmark_options):
 def main():
     benchmark_options = parse_arguments()
     
-    master_df = benchmark_algorithms(benchmark_options)
+    master_df = benchmark_methods(benchmark_options)
     master_df['Searching Time (s)'] = pd.to_numeric(master_df['Searching Time (s)'])
 
     print(master_df.round(3))

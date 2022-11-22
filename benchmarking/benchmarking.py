@@ -3,18 +3,23 @@
 import os
 import argparse
 import time
+import sys
 import pandas as pd
 import tracemalloc
 import importlib
 import json
 
-##########################################################################
+from pathlib import Path
 
 # global variables for generalization
 benchmark_columns = ['Name', 'Preprocessing Proteome (s)', 'Preprocessing Query (s)',
                      'Searching Time (s)', 'Total Time (s)', 'Memory Usage (MB)', 'Accuracy (%)']
 
 directory = os.path.dirname(os.path.abspath(__file__))
+
+# adding the toplevel directory to the system path so we can import pepmatch
+pepmatch_dir = str(Path(directory).parent)
+sys.path.insert(0, pepmatch_dir)
 
 valid_datasets = ['mhc_ligands', 'milk', 'coronavirus', 'neoepitopes']
 
@@ -81,9 +86,12 @@ def benchmark_algorithms(benchmark_options):
 
     benchmark_df = pd.DataFrame(columns = benchmark_columns)
     for algorithm in algorithms:
-        print('Initializing algorithm...\n')
+        print('Initializing method...: ' + algorithm['name'] + '\n')
         try:
-            get_benchmark_object = getattr(importlib.import_module(os.path.join('algorithms', algorithm['name'])), 'Benchmarker')
+            if (algorithm['name'] == 'PEPMatch'):
+                get_benchmark_object = getattr(importlib.import_module('pepmatch.benchmarker'), 'Benchmarker')
+            else:
+                get_benchmark_object = getattr(importlib.import_module(os.path.join('algorithms', algorithm['name'])), 'Benchmarker')
             benchmark_tool = get_benchmark_object(
                 os.path.join(directory, inputs['query']),  
                 os.path.join(directory, inputs['proteome']), 
@@ -92,8 +100,6 @@ def benchmark_algorithms(benchmark_options):
         except ValueError as error:
             print(error)
             continue
-
-        print('Benchmarking with', str(benchmark_tool))
 
         total_time = 0
         print('Preprocessing query...\n')

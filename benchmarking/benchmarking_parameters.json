@@ -3,38 +3,40 @@
                 "mhc_ligands": {
                         "lengths": [9],
                         "mismatches": 0,
-                        "query": "queries/mhc_ligands_test.fa",
-                        "proteome": "proteomes/9606_uniprot_small.fa",
+                        "query": "queries/mhc_ligands_test.fasta",
+                        "proteome": "proteomes/9606_small.fasta",
                         "expected": "expected/mhc_ligands_expected.txt"
                 },
                 "milk": {
                         "lengths": [15, 18],
                         "mismatches": -1,
-                        "query": "queries/milk_peptides_test.fa",
-                        "proteome": "proteomes/9606_uniprot_small.fa",
+                        "query": "queries/milk_peptides_test.fasta",
+                        "proteome": "proteomes/9606_small.fasta",
                         "expected": "expected/milk_peptides_expected.txt"
                 },
                 "coronavirus": {
                         "lengths": [8, 9, 10, 11, 12, 13, 14, 15],
                         "mismatches": 2,
-                        "query": "queries/coronavirus_test.fa",
-                        "proteome": "proteomes/coronaviruses.fa",
+                        "query": "queries/coronavirus_test.fasta",
+                        "proteome": "proteomes/coronaviruses.fasta",
                         "expected": "expected/coronavirus_expected.txt"
                 },
                 "neoepitopes": {
                         "lengths": [15],
                         "mismatches": 3,
-                        "query": "queries/neoepitopes_test.fa",
-                        "proteome": "proteomes/9606_uniprot_large.fa",
+                        "query": "queries/neoepitopes_test.fasta",
+                        "proteome": "proteomes/9606.fasta",
                         "expected": "expected/neoepitopes_expected.txt"
                 }
         },
        
         "algorithms": [
                 {
-                        "name": "PEPMatch.pepmatch",
+                        "name": "PEPMatch",
                         "text_shifting": 0,
-                        "algorithm_parameters":{}
+                        "algorithm_parameters":{
+                                "output_format": "dataframe"
+                        }
                 },
                 {
                         "name": "NmerMatch",

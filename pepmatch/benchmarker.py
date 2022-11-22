@@ -1,5 +1,7 @@
 from .matcher import Matcher
 
+import os, glob
+
 class Benchmarker(Matcher):
   '''
   Object used for benchmarking the PEPMatch code for the various applications.
@@ -13,9 +15,9 @@ class Benchmarker(Matcher):
     self.proteome = proteome
     self.max_mismatches = max_mismatches
     self.lengths = lengths
-    self.algorithm_parameters = algorithm_parameters
+    self.algorithm_parameters = algorithm_parameters    
     
-    super().__init__(query, proteome, max_mismatches)
+    super().__init__(query, proteome, max_mismatches, output_format=algorithm_parameters['output_format'])
 
   def __str__(self):
     return 'PEPMatch'
@@ -39,6 +41,8 @@ class Benchmarker(Matcher):
     needed to calculate accuracy.
     '''
     matches = self.match()
+
+    print(matches)
 
     all_matches = []
     for match in matches:

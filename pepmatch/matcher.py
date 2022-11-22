@@ -6,6 +6,7 @@ import pandas as pd
 
 from collections import Counter
 from Levenshtein import hamming
+from numba import jit, njit
 
 from .parser import parse_fasta
 from .preprocessor import Preprocessor
@@ -249,6 +250,7 @@ class Matcher(Preprocessor):
 
     return splits
 
+  @jit
   def even_split_mismatching(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
     '''
     '''
@@ -319,6 +321,7 @@ class Matcher(Preprocessor):
 
     return matches
 
+  @jit
   def uneven_split_mismatching(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
     '''
     '''
@@ -517,7 +520,7 @@ class Matcher(Preprocessor):
           self.query.append(match[0])
 
     return all_matches
-
+  
   def match(self):
     '''
     Overarching function that calls the appropriate search matching function
@@ -554,13 +557,11 @@ class Matcher(Preprocessor):
       return df
     else:
       self.output_matches(df)
-
-    return df
-
+      
   def dataframe_exact_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
-                      columns=['Peptide Sequence', 'Matched Sequence', 'Proteome',
+                      columns=['Query Sequence', 'Matched Sequence', 'Proteome',
                                'Species', 'Gene', 'Protein ID', 'Protein Name',
                                'Mismatches', 'Index start', 'Index end',
                                'Protein Existence Level', 'Gene Priority'])
@@ -592,7 +593,7 @@ class Matcher(Preprocessor):
   def dataframe_mismatch_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
-                      columns=['Peptide Sequence', 'Matched Sequence', 'Proteome',
+                      columns=['Query Sequence', 'Matched Sequence', 'Proteome',
                                'Species', 'Gene', 'Protein ID', 'Protein Name',
                                'Mismatches', 'Mutated Positions', 'Index start',
                                'Index end', 'Protein Existence Level', 'Gene Priority'])
@@ -626,7 +627,6 @@ class Matcher(Preprocessor):
 
   def output_matches(self, df):
     '''Write Pandas dataframe to format that is specified'''
-    # results_id = ''.join(random.choice('0123456789ABCDEFabcdef') for i in range(6))
     if self.output_format == 'csv':
       return df.to_csv(self.output_name + '.csv')
     elif self.output_format == 'xlsx':

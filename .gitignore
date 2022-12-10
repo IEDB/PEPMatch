@@ -5,9 +5,9 @@ bin/
 build/
 data/
 dist/
+notebooks/
 old_code/
 pepmatch.egg-info/
-jupyter_notebooks/
 pepmatch/__pycache__
 proteomes/*.pdb
 proteomes/*.phr

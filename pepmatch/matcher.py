@@ -6,7 +6,6 @@ import pandas as pd
 
 from collections import Counter
 from Levenshtein import hamming
-from numba import jit, njit
 
 from .parser import parse_fasta
 from .preprocessor import Preprocessor
@@ -250,7 +249,6 @@ class Matcher(Preprocessor):
 
     return splits
 
-  @jit
   def even_split_mismatching(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
     '''
     '''
@@ -321,7 +319,6 @@ class Matcher(Preprocessor):
 
     return matches
 
-  @jit
   def uneven_split_mismatching(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
     '''
     '''

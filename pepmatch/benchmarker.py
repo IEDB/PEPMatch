@@ -58,7 +58,7 @@ class Benchmarker(Matcher):
 
     # remove files after benchmarking as the only purpose is to extract benchmarks
     try:
-      os.remove(self.database)
+      os.remove(self.proteome + '.db')
     except FileNotFoundError:
       for file in glob.glob(os.path.dirname(self.proteome) + '/*.pickle'):
         os.remove(file)

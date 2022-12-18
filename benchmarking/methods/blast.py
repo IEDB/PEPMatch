@@ -118,6 +118,8 @@ class Benchmarker(BLAST):
             for i in match:
                 if i == match[-1]:
                     match_string += str(i)
+                elif i == match[2]:
+                    match_string += str(i).split('|')[1]
                 else:
                     match_string += str(i) + ','
 

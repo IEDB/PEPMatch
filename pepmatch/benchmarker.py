@@ -15,7 +15,7 @@ class Benchmarker(Matcher):
     self.proteome = proteome
     self.max_mismatches = max_mismatches
     self.lengths = lengths
-    self.algorithm_parameters = algorithm_parameters    
+    self.algorithm_parameters = algorithm_parameters
     
     super().__init__(query, proteome, max_mismatches, output_format=algorithm_parameters['output_format'])
 
@@ -28,12 +28,8 @@ class Benchmarker(Matcher):
 
   def preprocess_proteome(self):
     '''Preprocess proteome once or multiple times for each split calculated.'''
-    if self.max_mismatches == 0:
-      self.preprocess()
-    else:
-      for split in self.splits:
-        self.split = split
-        self.preprocess()
+    print(self.__dict__)
+    self.preprocess()
 
   def search(self):
     '''
@@ -42,24 +38,28 @@ class Benchmarker(Matcher):
     '''
     matches = self.match()
 
-    print(matches)
-
+    print(matches.columns)
     all_matches = []
-    for match in matches:
-      if match[1] == '':
-        continue
-      match_string = ''
-      for i in range(0, len(match)):
-        if i == len(match) - 1:
-          match_string += str(match[i])
-        else:
-          match_string += str(match[i]) + ','
-      all_matches.append(match_string)
-
+    with open('expected.txt', 'w') as f:
+      for i, match in matches.iterrows():
+        match_string = ''
+        match_string += match['Query Sequence'] + ','
+        match_string += match['Matched Sequence'] + ','
+        match_string += match['Protein ID'].split('.')[0] + ','
+        match_string += str(match['Mismatches']) + ','
+        try:
+          match_string += str(match['Index start'] - 1)
+        except TypeError:
+          match_string += ''
+        f.write(match_string + '\n')
+        print(match_string)
+        all_matches.append(match_string)
+  
     # remove files after benchmarking as the only purpose is to extract benchmarks
     try:
       os.remove(self.proteome + '.db')
     except FileNotFoundError:
       for file in glob.glob(os.path.dirname(self.proteome) + '/*.pickle'):
         os.remove(file)
+    
     return all_matches

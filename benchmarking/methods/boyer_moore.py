@@ -235,6 +235,8 @@ class Benchmarker(BoyerMoore):
 
                 if i == len(match) - 1:
                     match_string += str(match[i])
+                elif i == 2:
+                    match_string += match[i].split('|')[1]
                 else:
                     match_string += str(match[i]) + ','
 

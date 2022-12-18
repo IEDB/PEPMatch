@@ -132,7 +132,7 @@ class Matcher(Preprocessor):
     for peptide in peptides:
 
       peptide_counter += 1
-      print('Searching peptide #%s' % str(peptide_counter))
+      # print('Searching peptide #%s' % str(peptide_counter))
 
       # skip peptide if shorter than the actual k-mer size
       if len(peptide) < self.split:
@@ -204,6 +204,8 @@ class Matcher(Preprocessor):
             all_matches_dict[peptide].append(hit)
 
     all_matches = []
+
+    print(all_matches)
 
     # compile all matches into format used for benchmarking (comma separated)
     for peptide, matches in all_matches_dict.items():

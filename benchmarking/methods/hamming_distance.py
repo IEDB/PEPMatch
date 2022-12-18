@@ -90,10 +90,11 @@ class Benchmarker(HammingDistance):
 
                 if i == len(match) - 1:
                     match_string += str(match[i])
+                elif i == 2:
+                    match_string += match[i].split('|')[1]
                 else:
                     match_string += str(match[i]) + ','
 
             all_matches.append(match_string)
-            f.write(match_string + '\n')
         
         return all_matches

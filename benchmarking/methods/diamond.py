@@ -80,16 +80,9 @@ class Benchmarker(DIAMOND):
 
         all_matches = []
         for match in matches:
-            match_string = ''
-            for i in match:
-                if i == match[-1]:
-                    match_string += str(i)
-                elif i == match[2]:
-                    match_string += str(i).split('|')[1]
-                else:
-                    match_string += str(i) + ','
-
-            all_matches.append(match_string)
+            match = list(match)
+            match[2] = match[2].split('|')[1]
+            all_matches.append(','.join([str(i) for i in match]))
 
         # for extension in ['source', 'dbtype', 'index', 'idx', 'lookup', 'pot', 'pto']:
         #     os.remove(glob.glob(os.path.dirname(self.proteome) + '/*.' + extension)[0])

@@ -28,7 +28,6 @@ class Benchmarker(Matcher):
 
   def preprocess_proteome(self):
     '''Preprocess proteome once or multiple times for each split calculated.'''
-    print(self.__dict__)
     self.preprocess()
 
   def search(self):
@@ -38,7 +37,6 @@ class Benchmarker(Matcher):
     '''
     matches = self.match()
 
-    print(matches.columns)
     all_matches = []
     with open('expected.txt', 'w') as f:
       for i, match in matches.iterrows():

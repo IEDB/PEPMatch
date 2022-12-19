@@ -25,15 +25,15 @@ class HammingDistance(object):
 
         return mismatches
 
-    def mismatching_search(self):
+    def search(self):
         query = list(parse_fasta(self.query))
         proteome = list(parse_fasta(self.proteome))
 
         peptide_sequences = []
         matched_peptides = []
         protein_hits = []
-        index_start = []
         mismatches = []
+        index_start = []
 
         for peptide in query:
             k = len(peptide.seq)
@@ -43,20 +43,27 @@ class HammingDistance(object):
                     if distance != None:
                         peptide_sequences.append(str(peptide.seq))
                         matched_peptides.append(str(protein.seq[i:i+k]))
-                        protein_hits.append(str(protein.description).split(' ')[0])
-                        index_start.append(i)
+                        protein_hits.append(str(protein.description).split('|')[1])
                         mismatches.append(distance)
+                        index_start.append(i)
 
         all_matches = []
         for i in range(len(peptide_sequences)):
-            all_matches.append((
+            all_matches.append(
+                (
                 peptide_sequences[i], 
                 matched_peptides[i], 
-                protein_hits[i], 
-                index_start[i],
-                mismatches[i])
+                protein_hits[i],
+                mismatches[i],
+                index_start[i]
+                )
             )
-
+        
+        with open('expected.txt', 'w') as f:
+            for match in all_matches:
+                f.write(','.join([str(match[i]) for i in range(5)]))
+                f.write('\n')
+                
         return all_matches
 
 class Benchmarker(HammingDistance):
@@ -78,7 +85,7 @@ class Benchmarker(HammingDistance):
         raise TypeError(self.__str__() + ' does not preprocess queries.\n')
 
     def search(self, query, proteome):
-        matches = self.mismatching_search()
+        matches = self.search()
 
         all_matches = []
         for match in matches:
@@ -98,3 +105,7 @@ class Benchmarker(HammingDistance):
             all_matches.append(match_string)
         
         return all_matches
+
+
+if __name__ == '__main__':
+    HammingDistance('../queries/mhc_ligands_test.fasta', '../proteomes/human.fasta', 0).search()

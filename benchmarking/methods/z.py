@@ -90,16 +90,8 @@ class Benchmarker(Z):
 
         all_matches = []
         for match in matches:
-            match_string = ''
-            for i in range(0, len(match)):
-
-                if i == len(match) - 1:
-                    match_string += str(match[i])
-                elif i == 2:
-                    match_string += match[i].split('|')[1]
-                else:
-                    match_string += str(match[i]) + ','
-
-            all_matches.append(match_string)
+            match = list(match)
+            match[2] = match[2].split('|')[1]
+            all_matches.append(','.join([str(i) for i in match]))
 
         return all_matches

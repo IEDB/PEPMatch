@@ -154,7 +154,6 @@ def benchmark_methods(benchmark_options):
         benchmark_df = pd.concat([benchmark_df, new_df], ignore_index = True)
 
         print('Done benchmarking', str(benchmark_tool), '\n\n')
-        print(benchmark_df)
 
     return benchmark_df
 

@@ -86,6 +86,4 @@ class Benchmarker(Horspool):
             match[2] = match[2].split('|')[1]
             all_matches.append(','.join([str(i) for i in match]))
 
-            all_matches.append(match_string)
-
         return all_matches

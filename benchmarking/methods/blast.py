@@ -115,7 +115,7 @@ class Benchmarker(BLAST):
         all_matches = []
         for match in matches:
             match = list(match)
-            match[2] = match[2].split('|')[1]
+            match[2] = match[2]
             all_matches.append(','.join([str(i) for i in match]))
 
         for extension in ['pdb', 'phr', 'pin', 'psq', 'ptf', 'pot', 'pto']:

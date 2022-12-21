@@ -155,6 +155,8 @@ def benchmark_methods(benchmark_options):
 
         print('Done benchmarking', str(benchmark_tool), '\n\n')
 
+        print(benchmark_df)
+
     return benchmark_df
 
 

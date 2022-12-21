@@ -33,13 +33,13 @@ class Preprocessor(object):
   '''
   def __init__(self,
                proteome,
-               split,
+               k,
                preprocess_format,
                preprocessed_files_path='.',
-               gene_priority_proteome='',
-               versioned_ids = True):
+               versioned_ids = True,
+               gene_priority_proteome=''):
 
-    assert split >= 2, 'k-sized split is invalid. Cannot be less than 2.'
+    assert k >= 2, 'k-sized split is invalid. Cannot be less than 2.'
 
     if not preprocess_format in ('sql', 'pickle'):
       raise AssertionError('Unexpected value of preprocessing format:', preprocess_format)
@@ -49,7 +49,7 @@ class Preprocessor(object):
 
     self.proteome = proteome
     self.proteome_name = proteome.split('/')[-1].split('.')[0]
-    self.split = split
+    self.k = k
     self.preprocess_format = preprocess_format
     self.preprocessed_files_path = preprocessed_files_path
     self.gene_priority_proteome = gene_priority_proteome
@@ -72,7 +72,7 @@ class Preprocessor(object):
     for being able to load the data in when a query is called.
     '''
     with open(os.path.join(self.preprocessed_files_path, self.proteome_name + '_' +
-              str(self.split) + 'mers.pickle'), 'wb') as f:
+              str(self.k) + 'mers.pickle'), 'wb') as f:
 
       pickle.dump(kmer_dict, f)
 
@@ -87,7 +87,7 @@ class Preprocessor(object):
     k-mer and names dictionaries created. These SQLite tables can then be used
     for searching. This is much faster for exact matching.
     '''
-    kmers_table = self.proteome_name + '_' + str(self.split) + 'mers'
+    kmers_table = self.proteome_name + '_' + str(self.k) + 'mers'
     names_table = self.proteome_name + '_names'
 
     conn = sqlite3.connect(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db'))
@@ -136,7 +136,7 @@ class Preprocessor(object):
         gene_priority_proteome_ids.append(protein_id)
 
     for protein in proteome:
-      kmers = self.split_protein(str(protein.seq), self.split)
+      kmers = self.split_protein(str(protein.seq), self.k)
       for i in range(len(kmers)):
         if kmers[i] in kmer_dict.keys():
           kmer_dict[kmers[i]].append(protein_count * 100000 + i) # add index to k-mer list
@@ -208,8 +208,8 @@ def parse_arguments():
   parser.add_argument('-k', '--kmer_size', type=int, required=True)
   parser.add_argument('-f', '--format', required=True)
   parser.add_argument('-P', '--preprocessed_files_path', default='.')
-  parser.add_argument('-g', '--gene_priority_proteome', default='')
   parser.add_argument('-v', '--versioned_ids', type=bool, default=True)
+  parser.add_argument('-g', '--gene_priority_proteome', default='')
 
   args = parser.parse_args()
 

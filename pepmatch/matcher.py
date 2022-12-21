@@ -4,14 +4,13 @@ import _pickle as pickle
 import sqlite3
 import pandas as pd
 
-from collections import Counter
+from collections import Counter, defaultdict
 from Levenshtein import hamming
 
 from .parser import parse_fasta
 from .preprocessor import Preprocessor
 
 
-splits = []
 VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'xlsx', 'json', 'html']
 
 class Matcher(Preprocessor):
@@ -22,25 +21,33 @@ class Matcher(Preprocessor):
   mismatches. There are multiple methods that will do exact/mismatch/best match
   searching against the proteome.
 
+  If best match is selected and mismatching is to be done, one of two things
+  will happen: 
+  1. A k is specified already - just run mismatching and get the best match.
+  2. A k is not specified - run best match code which preprocesses the proteome
+  multiple times to get the best match quickly.
+
   Optional: output and output_format arguments to write results to file.
   Supported formats are "csv", "xlsx", "json", and "html".
   '''
   def __init__(self,
                query,
                proteome,
-               max_mismatches,
-               split=0,
+               max_mismatches=-1,
+               k=0,
                preprocessed_files_path='.',
                best_match=False,
                output_format='csv',
-               output_name=''):
-
+               output_name='',
+               versioned_ids=True):
+    
     if type(query) == list:
       self.query = query
       if output_name:
         self.output_name = output_name
       else:
         self.output_name = 'PEPMatch_results'
+    
     else:
       self.query = [str(sequence.seq) for sequence in parse_fasta(query)]
       if output_name:
@@ -56,29 +63,36 @@ class Matcher(Preprocessor):
     self.preprocessed_files_path = preprocessed_files_path
     self.best_match = best_match
     self.output_format = output_format
+    self.versioned_ids = versioned_ids
 
-    # use sql format for exact matches
-    if split == 0:
-      if max_mismatches == 0:
-        self.split = self.lengths[0]
-        self.preprocess_format = 'sql'
+    # select format based on # of mismatches to pass to Preprocessor
+    # SQLite for exact matching - pickle for mismatching
+    self.preprocess_format = 'sql' if not max_mismatches else 'pickle'
+    
+    # use k that is specified if it is
+    if k > 1:
+      self.k = k
 
-      # use pickle format for mismatching
-      # calculate optimal k-splits by the query passed
-      elif max_mismatches > 0:
-        self.splits = self.mismatching_splits(self.lengths)
-        self.split = self.splits[0]
-        self.preprocess_format = 'pickle'
-      elif max_mismatches == -1:
-        self.splits = self.best_match_splits(min(self.lengths))
-        self.split = self.splits[0]
-        self.preprocess_format = 'pickle'
-    else:
-      self.split = split
-      if self.max_mismatches == 0:
-        self.preprocess_format = 'sql'
-      else:
-        self.preprocess_format = 'pickle'
+    # for exact matching, if no k is specified, use smallest length in query as k
+    if not max_mismatches and not k:
+      self.k = self.lengths[0]
+
+    # for mismatching, if no k is specified, batch the peptides by length
+    # then later we will use the ideal k to search them
+    if max_mismatches > 0 and not k:
+      self.batched_peptides = self.batch_query()
+
+    # best match where no mismatches is specified means we will preprocess
+    # the proteome by the smallest length, try to find exact matches,
+    # then preprocess by half the length and search for more and repeat
+    # until every peptide in the query has a match
+    if max_mismatches == -1:
+      self.ks = self.best_match_ks()
+
+    assert k >= 0, 'Invalid k value given.'
+
+    if max_mismatches == -1:
+      assert best_match, 'Number of mismatches not specified.'
 
     if self.output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError('Invalid output format, please choose dataframe, csv, xlsx, json, or html.')
@@ -86,7 +100,38 @@ class Matcher(Preprocessor):
     if not all([seq.isupper() for seq in self.query]):
       raise ValueError('A peptide in the query contains a lowercase letter.')
 
-    super().__init__(self.proteome, self.split, self.preprocess_format, self.preprocessed_files_path)
+    super().__init__(self.proteome, self.k, self.preprocess_format, self.preprocessed_files_path, self.versioned_ids)
+
+  def batch_query(self):
+    '''
+    Batch peptides together by length so the ideal k can be used when searching.
+    '''
+    batched_peptides = defaultdict(list)
+    for seq in self.query:
+        batched_peptides[len(seq)].append(seq)
+    
+    return dict(batched_peptides)
+
+  def best_match_ks(self, lengths):
+    '''
+    For the special case where mismatching is to be done, k is not 
+    specified and best match is selected, we need to get all the k values
+    to preprocess the proteome multiple times. Starting with the length 
+    of the smallest peptide and then halving until we get to 2.
+    '''
+    k = self.lengths[0]
+    ks = [k]
+
+    # halve the length and add k values until we get to 2 
+    # and make sure 2 is a k in the list
+    while k > 2:
+      k = k // 2
+      if k == 1:
+        ks.append(2)
+      else:
+        ks.append(k)
+
+    return ks
 
   def split_peptide(self, seq, k):
     '''
@@ -104,7 +149,7 @@ class Matcher(Preprocessor):
     preprocessing step.
     '''
     with open(os.path.join(self.preprocessed_files_path, self.proteome_name + '_' +
-              str(self.split) + 'mers.pickle'), 'rb') as f:
+              str(self.k) + 'mers.pickle'), 'rb') as f:
 
       kmer_dict = pickle.load(f)
 
@@ -115,11 +160,11 @@ class Matcher(Preprocessor):
 
     return kmer_dict, names_dict
 
-  def sql_exact_match(self):
+  def exact_match(self):
     '''
     Use the preprocessed SQLite DB to perform the exact search query.
     '''
-    kmers_table_name = self.proteome_name + '_' + str(self.split) + 'mers'
+    kmers_table_name = self.proteome_name + '_' + str(self.k) + 'mers'
     names_table_name = self.proteome_name + '_names'
 
     conn = sqlite3.connect(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db'))
@@ -135,19 +180,19 @@ class Matcher(Preprocessor):
       print('Searching peptide #%s' % str(peptide_counter))
 
       # skip peptide if shorter than the actual k-mer size
-      if len(peptide) < self.split:
+      if len(peptide) < self.k:
         continue
 
       all_matches_dict[peptide] = []
-      kmers = self.split_peptide(peptide, self.split)
+      kmers = self.split_peptide(peptide, self.k)
 
       # lookup each k-mer in the preprocessed proteome and subtract the offset
       # of the k-mer position in the peptide and keep track in a list
       # if the k split evenly divides the length of the peptide, the number of
       # lookups can be limited
       hit_list = []
-      if len(peptide) % self.split == 0:
-        for i in range(0, len(kmers), self.split):
+      if len(peptide) % self.k == 0:
+        for i in range(0, len(kmers), self.k):
 
           get_positions = 'SELECT position FROM "{kmer_table}" WHERE kmer = "{actual_kmer}"'.format(kmer_table = kmers_table_name, actual_kmer = kmers[i])
           c.execute(get_positions)
@@ -164,7 +209,7 @@ class Matcher(Preprocessor):
         # the number of k-mer lookups, this will be a match
         sum_hits = Counter(hit_list)
         for hit, count in sum_hits.items():
-          if count == len(peptide) // self.split:
+          if count == len(peptide) // self.k:
             all_matches_dict[peptide].append(hit)
 
       # if the k split does not evenly divide the peptide, then all k-mers
@@ -182,7 +227,7 @@ class Matcher(Preprocessor):
                 hit_list.append(hit[0] - i)
             except:
               continue
-            i += self.split
+            i += self.k
 
           # if i + k k-mer is out of range of k-mers, just check the final k-mer
           except IndexError:
@@ -194,13 +239,13 @@ class Matcher(Preprocessor):
                 hit_list.append(hit[0] - (len(kmers) - 1))
             except:
               continue
-            i += self.split
+            i += self.k
 
         # if the position shows up as many times as there are k-mers, that means
         # they all agree to the same location and that is a match
         sum_hits = Counter(hit_list)
         for hit, count in sum_hits.items():
-          if count == len(peptide) // self.split + 1:
+          if count == len(peptide) // self.k + 1:
             all_matches_dict[peptide].append(hit)
 
     all_matches = []
@@ -234,28 +279,13 @@ class Matcher(Preprocessor):
 
     return all_matches
 
-  def mismatching_splits(self, lengths):
-    '''
-    There is an ideal k split for each peptide and max # of mismatches.
-    Some queries have many lengths, so we can calculate all the optimal k-size
-    splits we would need for optimal searching here.
-    '''
-    splits = set()
-    for length in lengths:
-      if length // (self.max_mismatches + 1) not in [0,1]:
-        splits.add(length // (self.max_mismatches + 1))
-
-    splits = sorted(list(splits), reverse = True)
-
-    return splits
-
   def even_split_mismatching(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
     '''
     '''
     # record matches in a set so as to not duplicate matches
     matches = set()
 
-    for i in range(0, len(kmers), self.split):
+    for i in range(0, len(kmers), self.k):
 
       # find each hit for each k-mer
       try:
@@ -265,7 +295,7 @@ class Matcher(Preprocessor):
 
           # if the k-mer is found in the middle or end, check the neighboring
           # k-mers to the left
-          for j in range(0, i, self.split):
+          for j in range(0, i, self.k):
             
             # use reverse dictionary to retrive k-mers for Hamming distance
             try:
@@ -282,7 +312,7 @@ class Matcher(Preprocessor):
 
           # if the k-mer is found in the middle or end, check the neighbors
           # k-mers to the right
-          for k in range(i+self.split, len(kmers), self.split):
+          for k in range(i+self.k, len(kmers), self.k):
             try:
 
               # use reverse dictionary to retrive k-mers for Hamming distance
@@ -303,7 +333,7 @@ class Matcher(Preprocessor):
             matched_peptide = ''
 
             try:
-              for s in range(0, peptide_length, self.split):
+              for s in range(0, peptide_length, self.k):
                 matched_peptide += rev_kmer_dict[hit-i+s]
             except KeyError:
               continue
@@ -377,12 +407,12 @@ class Matcher(Preprocessor):
           if mismatches < self.max_mismatches + 1:
             matched_peptide = ''
             try:
-              for s in range(0, peptide_length, self.split):
+              for s in range(0, peptide_length, self.k):
                 matched_peptide += rev_kmer_dict[hit-i+s]
 
             except KeyError:
-              for r in range(1, peptide_length % self.split + 1):
-                matched_peptide += rev_kmer_dict[hit-i+s-(self.split - r)][-1]
+              for r in range(1, peptide_length % self.k + 1):
+                matched_peptide += rev_kmer_dict[hit-i+s-(self.k - r)][-1]
 
             matched_peptide = matched_peptide[0:peptide_length]
             matches.add((matched_peptide, mismatches, hit - i))
@@ -405,6 +435,9 @@ class Matcher(Preprocessor):
     all_matches_dict = {}
 
     peptides = self.query
+
+    # try reading in the preprocessed pickle files, if they don't exist
+    # we'll need to preprocess the proteome using self.k
     try:
       kmer_dict, names_dict = self.read_pickle_files()
       rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
@@ -420,11 +453,11 @@ class Matcher(Preprocessor):
 
       print('Searching peptide #%s' % str(peptide_counter))
 
-      # split peptide into all possible k-mers with size k (self.split)
-      kmers = self.split_peptide(peptide, self.split)
+      # split peptide into all possible k-mers with size k (self.k)
+      kmers = self.split_peptide(peptide, self.k)
 
       # if the peptide length has an even split of k, perform faster search
-      if len(peptide) % self.split == 0:
+      if len(peptide) % self.k == 0:
         matches = self.even_split_mismatching(kmers, kmer_dict, rev_kmer_dict, len(peptide))
 
       # if the peptide length does NOT HAVE an even split of k, perform slower search (rolling split)
@@ -460,22 +493,6 @@ class Matcher(Preprocessor):
 
     return all_matches
 
-  def best_match_splits(self, length):
-    '''
-    For best matching, we start with the lowest length then divide by half.
-    We continue to divide subsequent k by half until we reach k = 2. Then we
-    use these splits for multiple lookups until we find a match for every
-    peptide.
-    '''
-    splits.append(length)
-    if length > 3:
-      return self.best_match_splits(length // 2)
-    elif length == 2:
-      return splits
-    else:
-      splits.append(2)
-      return splits
-
   def best_match(self):
     '''
     After calculating the splits we would need (starting with lowest peptide
@@ -484,12 +501,12 @@ class Matcher(Preprocessor):
     '''
     all_matches = []
 
-    for split in self.splits:
-      self.split = split
+    for k in self.ks:
+      self.k = k
 
       # calculate maximum possible # of mismatches that can guaranteed to be found
       # using the lowest length and k-split
-      self.max_mismatches = (min(self.lengths) // self.split)
+      self.max_mismatches = (self.lengths[0] // self.k) - 1
 
       matches = self.mismatching()
 
@@ -523,35 +540,19 @@ class Matcher(Preprocessor):
     Overarching function that calls the appropriate search matching function
     based on the parameters.
     '''
-    if self.max_mismatches == 0:
-      all_matches = self.sql_exact_match()
+    if self.max_mismatches == -1:
+      df = self.dataframe_mismatch_matches(self.best_match())
 
-    # if we specify the # of mismatches, we can the use the optimal k-split
-    # given the lengths and # of mismatches
     elif self.max_mismatches > 0:
-      if self.split:
-        all_matches = self.mismatching()
-      else:
-        all_matches = []
-        query = self.query
-        for split in self.splits:
-          self.split = split
-          self.query = [peptide for peptide in query if (len(peptide) // (self.max_mismatches + 1)) == split]
-          all_matches.extend(self.mismatching())
-
-    elif self.max_mismatches == -1:
-      all_matches = self.best_match()
-
+      df = self.dataframe_mismatch_matches(self.mismatching())
+    
     else:
-      raise ValueError('Invalid input of mismatches.')
+      df = self.dataframe_exact_matches(self.exact_match())
 
-    if self.max_mismatches == 0:
-      df = self.dataframe_exact_matches(all_matches)
-    else:
-      df = self.dataframe_mismatch_matches(all_matches)
-
+    # return a dataframe instead of outputting file if specified
     if self.output_format == 'dataframe':
       return df
+    
     else:
       self.output_matches(df)
       
@@ -655,5 +656,6 @@ def parse_arguments():
 def run():
   args = parse_arguments()
 
-  Matcher(args.query, args.proteome, args.max_mismatches, args.kmer_size, args.preprocessed_files_path, 
+  Matcher(args.query, args.proteome, args.max_mismatches, 
+          args.kmer_size, args.preprocessed_files_path, 
           args.best_match, args.output_format, args.output_name).match()

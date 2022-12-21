@@ -17,7 +17,7 @@ class Benchmarker(Matcher):
     self.lengths = lengths
     self.algorithm_parameters = algorithm_parameters
     
-    super().__init__(query, proteome, max_mismatches, output_format=algorithm_parameters['output_format'])
+    super().__init__(query, proteome, max_mismatches, output_format=algorithm_parameters['output_format'], versioned_ids=False)
 
   def __str__(self):
     return 'PEPMatch'
@@ -43,14 +43,13 @@ class Benchmarker(Matcher):
         match_string = ''
         match_string += match['Query Sequence'] + ','
         match_string += match['Matched Sequence'] + ','
-        match_string += match['Protein ID'].split('.')[0] + ','
+        match_string += match['Protein ID'] + ','
         match_string += str(match['Mismatches']) + ','
         try:
           match_string += str(match['Index start'] - 1)
         except TypeError:
           match_string += ''
         f.write(match_string + '\n')
-        print(match_string)
         all_matches.append(match_string)
   
     # remove files after benchmarking as the only purpose is to extract benchmarks

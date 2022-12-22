@@ -72,6 +72,9 @@ class Matcher(Preprocessor):
     # use k that is specified if it is
     if k > 1:
       self.k = k
+      self.k_specified = True
+    else:
+      self.k_specified = False
 
     # for exact matching, if no k is specified, use smallest length in query as k
     if not max_mismatches and not k:
@@ -79,8 +82,10 @@ class Matcher(Preprocessor):
 
     # for mismatching, if no k is specified, batch the peptides by length
     # then later we will use the ideal k to search them
-    if max_mismatches > 0 and not k:
+    if max_mismatches > 0:
       self.batched_peptides = self.batch_query()
+      if not k:
+        self.k = 0
 
     # best match where no mismatches is specified means we will preprocess
     # the proteome by the smallest length, try to find exact matches,
@@ -88,6 +93,7 @@ class Matcher(Preprocessor):
     # until every peptide in the query has a match
     if max_mismatches == -1:
       self.ks = self.best_match_ks()
+      self.k = 0
 
     assert k >= 0, 'Invalid k value given.'
 
@@ -104,15 +110,15 @@ class Matcher(Preprocessor):
 
   def batch_query(self):
     '''
-    Batch peptides together by length so the ideal k can be used when searching.
+    Batch peptides together by ideal k so it can be used when searching.
     '''
     batched_peptides = defaultdict(list)
     for seq in self.query:
-        batched_peptides[len(seq)].append(seq)
+      batched_peptides[len(seq) // (self.max_mismatches + 1)].append(seq)
     
     return dict(batched_peptides)
 
-  def best_match_ks(self, lengths):
+  def best_match_ks(self):
     '''
     For the special case where mismatching is to be done, k is not 
     specified and best match is selected, we need to get all the k values
@@ -130,6 +136,8 @@ class Matcher(Preprocessor):
         ks.append(2)
       else:
         ks.append(k)
+    # mismatching function uses batched peptides, for best match, batch into one
+    self.batched_peptides = {0: self.query}
 
     return ks
 
@@ -160,10 +168,13 @@ class Matcher(Preprocessor):
 
     return kmer_dict, names_dict
 
-  def exact_match(self):
+  def exact_match_search(self):
     '''
     Use the preprocessed SQLite DB to perform the exact search query.
     '''
+    if not os.path.isfile(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db')):
+      self.preprocess()
+
     kmers_table_name = self.proteome_name + '_' + str(self.k) + 'mers'
     names_table_name = self.proteome_name + '_names'
 
@@ -426,7 +437,7 @@ class Matcher(Preprocessor):
 
     return matches
 
-  def mismatching(self):
+  def mismatching_search(self):
     '''
     Searches a preprocessed proteome for all matches of a given query of
     peptides in FASTA format up to a number of specified mismatches that was
@@ -434,37 +445,39 @@ class Matcher(Preprocessor):
     '''
     all_matches_dict = {}
 
-    peptides = self.query
+    for k, peptides in self.batched_peptides.items():
+      if not self.k_specified:
+        self.k = k
 
-    # try reading in the preprocessed pickle files, if they don't exist
-    # we'll need to preprocess the proteome using self.k
-    try:
-      kmer_dict, names_dict = self.read_pickle_files()
-      rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
-    except FileNotFoundError:
-      self.preprocess()
-      kmer_dict, names_dict = self.read_pickle_files()
-      rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
+      # try reading in the preprocessed pickle files, if they don't exist
+      # we'll need to preprocess the proteome using self.k
+      try:
+        kmer_dict, names_dict = self.read_pickle_files()
+        rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
+      except FileNotFoundError:
+        self.preprocess()
+        kmer_dict, names_dict = self.read_pickle_files()
+        rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
-    peptide_counter = 0
-    for peptide in peptides:
+      peptide_counter = 0
+      for peptide in peptides:
 
-      peptide_counter += 1
+        peptide_counter += 1
 
-      print('Searching peptide #%s' % str(peptide_counter))
+        print('Searching peptide #%s' % str(peptide_counter))
 
-      # split peptide into all possible k-mers with size k (self.k)
-      kmers = self.split_peptide(peptide, self.k)
+        # split peptide into all possible k-mers with size k (self.k)
+        kmers = self.split_peptide(peptide, self.k)
 
-      # if the peptide length has an even split of k, perform faster search
-      if len(peptide) % self.k == 0:
-        matches = self.even_split_mismatching(kmers, kmer_dict, rev_kmer_dict, len(peptide))
+        # if the peptide length has an even split of k, perform faster search
+        if len(peptide) % self.k == 0:
+          matches = self.even_split_mismatching(kmers, kmer_dict, rev_kmer_dict, len(peptide))
 
-      # if the peptide length does NOT HAVE an even split of k, perform slower search (rolling split)
-      else:
-        matches = self.uneven_split_mismatching(kmers, kmer_dict, rev_kmer_dict, len(peptide))
+        # if the peptide length does NOT HAVE an even split of k, perform slower search (rolling split)
+        else:
+          matches = self.uneven_split_mismatching(kmers, kmer_dict, rev_kmer_dict, len(peptide))
 
-      all_matches_dict[peptide] = list(matches)
+        all_matches_dict[peptide] = list(matches)
 
 
     all_matches = []
@@ -493,22 +506,25 @@ class Matcher(Preprocessor):
 
     return all_matches
 
-  def best_match(self):
+  def best_match_search(self):
     '''
     After calculating the splits we would need (starting with lowest peptide
     length in query), we can then call the mismatching function. We use
     the maximum # of mismatches calculated from the each length and split.
     '''
-    all_matches = []
 
+    all_matches = []
+    # once we reach k = 2, we will just increase the # of mismatches until we find some
+    # match for each peptide in the query
     for k in self.ks:
       self.k = k
+      self.k_specified = True
 
       # calculate maximum possible # of mismatches that can guaranteed to be found
       # using the lowest length and k-split
       self.max_mismatches = (self.lengths[0] // self.k) - 1
 
-      matches = self.mismatching()
+      matches = self.mismatching_search()
 
       # separate out peptides that did not match into a new query
       self.query = []
@@ -518,20 +534,10 @@ class Matcher(Preprocessor):
         else:
           self.query.append(match[0])
 
-    # once we reach k = 2, we will just increase the # of mismatches until we find some
-    # match for each peptide in the query
-    while self.query != []:
-      self.max_mismatches += 1
-
-      matches = self.mismatching()
-
-      # separate out peptides that did not match into a new query
-      self.query = []
-      for match in matches:
-        if match[1]:
-          all_matches.append(match)
-        else:
-          self.query.append(match[0])
+      if not self.query:
+        return all_matches
+      
+      self.batched_peptides = {0: self.query}
 
     return all_matches
   
@@ -541,13 +547,13 @@ class Matcher(Preprocessor):
     based on the parameters.
     '''
     if self.max_mismatches == -1:
-      df = self.dataframe_mismatch_matches(self.best_match())
+      df = self.dataframe_mismatch_matches(self.best_match_search())
 
     elif self.max_mismatches > 0:
-      df = self.dataframe_mismatch_matches(self.mismatching())
+      df = self.dataframe_mismatch_matches(self.mismatching_search())
     
     else:
-      df = self.dataframe_exact_matches(self.exact_match())
+      df = self.dataframe_exact_matches(self.exact_match_search())
 
     # return a dataframe instead of outputting file if specified
     if self.output_format == 'dataframe':
@@ -566,22 +572,22 @@ class Matcher(Preprocessor):
 
     if self.best_match:
       if df['Protein Existence Level'].isnull().values.any():
-        df.drop_duplicates(['Peptide Sequence'], inplace=True)
+        df.drop_duplicates(['Query Sequence'], inplace=True)
         return df
 
       else:
-        idx = df.groupby(['Peptide Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']
+        idx = df.groupby(['Query Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']
         df = df[idx]
 
       if df['Gene Priority'].isnull().values.any():
-        df.drop_duplicates(['Peptide Sequence'], inplace=True)
+        df.drop_duplicates(['Query Sequence'], inplace=True)
         return df
 
       else:
-        idx = df.groupby(['Peptide Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
+        idx = df.groupby(['Query Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
         df = df[idx]
 
-      df.drop_duplicates(['Peptide Sequence'], inplace=True)
+      df.drop_duplicates(['Query Sequence'], inplace=True)
 
     # drop any columns that are entirely empty (usually gene priority column)
     df.dropna(how='all', axis=1, inplace=True)
@@ -597,26 +603,26 @@ class Matcher(Preprocessor):
                                'Index end', 'Protein Existence Level', 'Gene Priority'])
 
     if self.best_match:
-      idx = df.groupby(['Peptide Sequence'])['Mismatches'].transform('min') == df['Mismatches']
+      idx = df.groupby(['Query Sequence'])['Mismatches'].transform('min') == df['Mismatches']
       df = df[idx]
 
       if df['Protein Existence Level'].isnull().values.any():
-        df.drop_duplicates(['Peptide Sequence'], inplace=True)
+        df.drop_duplicates(['Query Sequence'], inplace=True)
         return df
 
       else:
-        idx = df.groupby(['Peptide Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']
+        idx = df.groupby(['Query Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']
         df = df[idx]
 
       if df['Gene Priority'].isnull().values.any():
-        df.drop_duplicates(['Peptide Sequence'], inplace=True)
+        df.drop_duplicates(['Query Sequence'], inplace=True)
         return df
 
       else:
-        idx = df.groupby(['Peptide Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
+        idx = df.groupby(['Query Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
         df = df[idx]
 
-      df.drop_duplicates(['Peptide Sequence'], inplace=True)
+      df.drop_duplicates(['Query Sequence'], inplace=True)
       
     # drop any columns that are entirely empty (usually gene priority column)
     df.dropna(how='all', axis=1, inplace=True)

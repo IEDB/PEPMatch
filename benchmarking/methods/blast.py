@@ -82,7 +82,7 @@ class BLAST(object):
             all_matches.append((
                 row['Peptide Sequence'], 
                 protein_dict[row['Protein ID']][row['Index start']:int(row['Index start'])+len(row['Peptide Sequence'])], 
-                row['Protein ID'],
+                row['Protein ID'].split('|')[1],
                 row['Mismatches'],
                 row['Index start'],
                 ))

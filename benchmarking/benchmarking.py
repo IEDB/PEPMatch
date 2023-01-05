@@ -8,12 +8,14 @@ import pandas as pd
 import tracemalloc
 import importlib
 import json
+import glob
 
 from pathlib import Path
 
 # global variables for generalization
 benchmark_columns = ['Name', 'Preprocessing Proteome (s)', 'Preprocessing Query (s)',
                      'Searching Time (s)', 'Total Time (s)', 'Memory Usage (MB)', 'Accuracy (%)']
+
 valid_datasets = ['mhc_ligands', 'milk', 'coronavirus', 'neoepitopes']
 
 directory = os.path.dirname(os.path.abspath(__file__))
@@ -77,6 +79,8 @@ def benchmark_methods(benchmark_options):
     dataset = benchmark_options[0]
     skip_mem = benchmark_options[1]
     include_text_shifting = benchmark_options[2]
+    
+    print('Benchmarking %s dataset...\n' % dataset)
 
     with open('benchmarking_parameters.json', 'r') as file:
         benchmarking_parameters = json.load(file)
@@ -167,8 +171,14 @@ def main():
     master_df = benchmark_methods(benchmark_options)
     master_df['Searching Time (s)'] = pd.to_numeric(master_df['Searching Time (s)'])
 
-    print(master_df.round(3))
-    master_df.round(3).to_excel('benchmarking.xlsx')
+    master_df.round(3).to_excel('%s_benchmarking.xlsx' % benchmark_options[0], index=False)
+
+    # remove files after benchmarking
+    try:
+      os.remove('*.db')
+    except FileNotFoundError:
+      for file in glob.glob('*.pickle'):
+        os.remove(file)
 
 if __name__ == '__main__':
     main()

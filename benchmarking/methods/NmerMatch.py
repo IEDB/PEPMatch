@@ -213,7 +213,10 @@ class Benchmarker(object):
                     all_matching_proteins_positions = row[4].split('; ')
                     for mpp in all_matching_proteins_positions:
                         prot, pos = mpp.split(':')
-                        results.append(",".join([row[0], row[1], prot, row[2], pos]))
+                        try:
+                            results.append(",".join([row[0], row[1], prot.split('|')[1], row[2], pos]))
+                        except IndexError:
+                            results.append(",".join([row[0], row[1], prot, row[2], pos]))
 
         return results
 

@@ -40,7 +40,7 @@
                 },
                 {
                         "name": "NmerMatch",
-                        "text_shifting": 1,
+                        "text_shifting": 0,
                         "method_parameters":{
                                 "nmer_script_path": "NmerMatch/bin/run_nmer_match.pl",
                                 "perl_exe": "",
@@ -51,21 +51,21 @@
                 },
                 {
                         "name": "blast",
-                        "text_shifting": 1,
+                        "text_shifting": 0,
                         "method_parameters":{
                                 "bin_directory": "../bin"
                         }
                 },
                 {
                         "name": "diamond",
-                        "text_shifting": 1,
+                        "text_shifting": 0,
                         "method_parameters":{
                                 "bin_directory": "../bin"
                         }
                 },
                 {
                         "name": "mmseqs2",
-                        "text_shifting": 1,
+                        "text_shifting": 0,
                         "method_parameters":{
                                 "bin_directory": "../bin/"
                         }

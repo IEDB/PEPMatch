@@ -33,16 +33,10 @@ class Preprocessor(object):
   '''
   def __init__(self,
                proteome,
-               k,
                preprocess_format,
                preprocessed_files_path='.',
                versioned_ids = True,
                gene_priority_proteome=''):
-
-    if k == 0:
-      pass
-    else:
-      assert k >= 2, 'k-sized split is invalid. Cannot be less than 2.'
 
     if not preprocess_format in ('sql', 'pickle'):
       raise AssertionError('Unexpected value of preprocessing format:', preprocess_format)
@@ -52,7 +46,6 @@ class Preprocessor(object):
 
     self.proteome = proteome
     self.proteome_name = proteome.split('/')[-1].split('.')[0]
-    self.k = k
     self.preprocess_format = preprocess_format
     self.preprocessed_files_path = preprocessed_files_path
     self.gene_priority_proteome = gene_priority_proteome
@@ -68,14 +61,14 @@ class Preprocessor(object):
       kmers.append(seq[i:i+k])
     return kmers
 
-  def pickle_proteome(self, kmer_dict, names_dict):
+  def pickle_proteome(self, kmer_dict, names_dict, k):
     '''
     Takes the preprocessed proteome (below) and creates a pickle file for
     both k-mer and names dictionaries created. This is for compression and
     for being able to load the data in when a query is called.
     '''
     with open(os.path.join(self.preprocessed_files_path, self.proteome_name + '_' +
-              str(self.k) + 'mers.pickle'), 'wb') as f:
+              str(k) + 'mers.pickle'), 'wb') as f:
 
       pickle.dump(kmer_dict, f)
 
@@ -84,13 +77,13 @@ class Preprocessor(object):
 
       pickle.dump(names_dict, f)
 
-  def sql_proteome(self, kmer_dict, names_dict):
+  def sql_proteome(self, kmer_dict, names_dict, k):
     '''
     Takes the preprocessed proteome (below) and creates SQLite tables for both the
     k-mer and names dictionaries created. These SQLite tables can then be used
     for searching. This is much faster for exact matching.
     '''
-    kmers_table = self.proteome_name + '_' + str(self.k) + 'mers'
+    kmers_table = self.proteome_name + '_' + str(k) + 'mers'
     names_table = self.proteome_name + '_names'
 
     conn = sqlite3.connect(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db'))
@@ -117,7 +110,7 @@ class Preprocessor(object):
     c.close()
     conn.close()
 
-  def preprocess(self):
+  def preprocess(self, k):
     '''
     Method which preprocessed the given proteome, by splitting each protein into k-mers
     and assigninga unique index to each unique k-mer within each protein. This is done by
@@ -126,6 +119,8 @@ class Preprocessor(object):
     guarantees a unique index for each and every possible k-mer. Also, each protein #
     assigned is also mappedto the protein ID to be read back later after searching.
     '''
+    assert k >= 2, 'k-sized split is invalid. Cannot be less than 2.'
+
     proteome = parse_fasta(self.proteome)
     kmer_dict = {}
     names_dict = {}
@@ -139,7 +134,7 @@ class Preprocessor(object):
         gene_priority_proteome_ids.append(protein_id)
 
     for protein in proteome:
-      kmers = self.split_protein(str(protein.seq), self.k)
+      kmers = self.split_protein(str(protein.seq), k)
       for i in range(len(kmers)):
         if kmers[i] in kmer_dict.keys():
           kmer_dict[kmers[i]].append(protein_count * 100000 + i) # add index to k-mer list
@@ -195,9 +190,9 @@ class Preprocessor(object):
 
     # store data based on format specified
     if self.preprocess_format == 'pickle':
-      self.pickle_proteome(kmer_dict, names_dict)
+      self.pickle_proteome(kmer_dict, names_dict, k)
     elif self.preprocess_format == 'sql':
-      self.sql_proteome(kmer_dict, names_dict)
+      self.sql_proteome(kmer_dict, names_dict, k)
 
     return 0
 
@@ -221,5 +216,5 @@ def parse_arguments():
 def run():
   args = parse_arguments()
 
-  Preprocessor(args.proteome, args.kmer_size, args.format, args.preprocessed_files_path,
-             args.gene_priority_proteome, args.versioned_ids).preprocess()
+  Preprocessor(args.proteome, args.format, args.preprocessed_files_path,
+             args.gene_priority_proteome, args.versioned_ids).preprocess(args.kmer_size)

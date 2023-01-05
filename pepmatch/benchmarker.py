@@ -16,8 +16,10 @@ class Benchmarker(Matcher):
     self.max_mismatches = max_mismatches
     self.lengths = lengths
     self.algorithm_parameters = algorithm_parameters
+
+    best_match = True if max_mismatches == -1 else False
     
-    super().__init__(query, proteome, max_mismatches, output_format=algorithm_parameters['output_format'], versioned_ids=False)
+    super().__init__(query, proteome, max_mismatches, output_format=algorithm_parameters['output_format'], best_match=best_match, versioned_ids=False)
 
   def __str__(self):
     return 'PEPMatch'
@@ -28,7 +30,11 @@ class Benchmarker(Matcher):
 
   def preprocess_proteome(self):
     '''Preprocess proteome once or multiple times for each split calculated.'''
-    self.preprocess()
+    if self.max_mismatches == -1:
+      pass
+    else:
+      for k in self.batch_query().keys():
+        self.preprocess(k)
 
   def search(self):
     '''
@@ -51,12 +57,5 @@ class Benchmarker(Matcher):
           match_string += ''
         f.write(match_string + '\n')
         all_matches.append(match_string)
-  
-    # remove files after benchmarking as the only purpose is to extract benchmarks
-    try:
-      os.remove(self.proteome + '.db')
-    except FileNotFoundError:
-      for file in glob.glob(os.path.dirname(self.proteome) + '/*.pickle'):
-        os.remove(file)
     
     return all_matches

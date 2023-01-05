@@ -106,7 +106,7 @@ class Matcher(Preprocessor):
     if not all([seq.isupper() for seq in self.query]):
       raise ValueError('A peptide in the query contains a lowercase letter.')
 
-    super().__init__(self.proteome, self.k, self.preprocess_format, self.preprocessed_files_path, self.versioned_ids)
+    super().__init__(self.proteome, self.preprocess_format, self.preprocessed_files_path, self.versioned_ids)
 
   def batch_query(self):
     '''
@@ -173,7 +173,7 @@ class Matcher(Preprocessor):
     Use the preprocessed SQLite DB to perform the exact search query.
     '''
     if not os.path.isfile(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db')):
-      self.preprocess()
+      self.preprocess(self.k)
 
     kmers_table_name = self.proteome_name + '_' + str(self.k) + 'mers'
     names_table_name = self.proteome_name + '_names'
@@ -455,7 +455,7 @@ class Matcher(Preprocessor):
         kmer_dict, names_dict = self.read_pickle_files()
         rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
       except FileNotFoundError:
-        self.preprocess()
+        self.preprocess(self.k)
         kmer_dict, names_dict = self.read_pickle_files()
         rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 

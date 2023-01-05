@@ -51,8 +51,6 @@ class DIAMOND(object):
 
                 all_matches.append(match)
 
-            print(all_matches)
-
         return all_matches
 
 
@@ -81,8 +79,11 @@ class Benchmarker(DIAMOND):
         all_matches = []
         for match in matches:
             match = list(match)
-            match[2] = match[2]
+            # take the UniProt ID
+            match[2] = match[2].split('|')[1]
             all_matches.append(','.join([str(i) for i in match]))
+
+        print(all_matches)
 
         # for extension in ['source', 'dbtype', 'index', 'idx', 'lookup', 'pot', 'pto']:
         #     os.remove(glob.glob(os.path.dirname(self.proteome) + '/*.' + extension)[0])

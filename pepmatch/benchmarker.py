@@ -31,7 +31,8 @@ class Benchmarker(Matcher):
   def preprocess_proteome(self):
     '''Preprocess proteome once or multiple times for each split calculated.'''
     if self.max_mismatches == -1:
-      pass
+      for k in self.best_match_ks():
+        self.preprocess(k)
     else:
       for k in self.batch_query().keys():
         self.preprocess(k)

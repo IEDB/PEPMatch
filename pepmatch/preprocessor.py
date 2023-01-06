@@ -217,4 +217,4 @@ def run():
   args = parse_arguments()
 
   Preprocessor(args.proteome, args.format, args.preprocessed_files_path,
-             args.gene_priority_proteome, args.versioned_ids).preprocess(args.kmer_size)
+               args.versioned_ids, args.gene_priority_proteome).preprocess(args.kmer_size)

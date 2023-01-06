@@ -57,7 +57,7 @@ Note: For now, due to performance, SQLite is used for exact matching and pickle 
 ### Command Line Example
 
 ```bash
-pepmatch-preprocess -p 9606.fasta -k 5 -f sql
+pepmatch-preprocess -p human.fasta -k 5 -f sql
 pepmatch-match -q peptides.fasta -p 9606 -m 0 -k 5
 ```
 
@@ -67,7 +67,7 @@ pepmatch-match -q peptides.fasta -p 9606 -m 0 -k 5
 from pepmatch import Preprocessor, Matcher
 
 # proteome, k, preprocessed_format, target directory, gene_priority_proteome
-Preprocessor('proteomes/9606.fasta', 'sql', '.', 'proteomes/9606_small.fasta').preprocess(k=5)
+Preprocessor('proteomes/human.fasta', 'sql', '.', 'proteomes/human_gp.fasta').preprocess(k=5)
 # PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
 
 # query, proteome, max_mismatches, k, preprocessed files directory
@@ -81,11 +81,11 @@ Matcher('queries/mhc_ligands_test.fasta', 'proteomes/9606.fasta', 0, 5, '.').mat
 from pepmatch import Preprocessor, Matcher
 
 # proteome, k, preprocessed_format, target directory
-Preprocessor('proteomes/9606.fasta', 'pickle', '.').preprocess(k=3)
+Preprocessor('proteomes/human.fasta', 'pickle', '.').preprocess(k=3)
 # PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
 
 # query, proteome, max_mismatches, k, preprocessed files directory
-Matcher('queries/neoepitopes_test.fasta', 'proteomes/9606.fasta', 3, 3, '.').match()
+Matcher('queries/neoepitopes_test.fasta', 'proteomes/human.fasta', 3, 3, '.').match()
 ```
 
 ## Outputs

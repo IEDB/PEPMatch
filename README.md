@@ -12,7 +12,7 @@ Two step process: preprocessing and matching.
 
 Preprocessed data is stored in a SQLite or pickle format and only has to be performed once.
 
-As a competition to improve tool performance, we created a benchmarking framework with instructions below.
+As a competition to improve tool performance, we created a benchmarking framework with instructions [here](./benchmarking).
 
 ### Requirements
 
@@ -56,7 +56,7 @@ Note: For now, due to performance, SQLite is used for exact matching and pickle 
 
 ### Command Line Example
 
-```
+```bash
 pepmatch-preprocess -p 9606.fasta -k 5 -f sql
 pepmatch-match -q peptides.fasta -p 9606 -m 0 -k 5
 ```
@@ -66,11 +66,11 @@ pepmatch-match -q peptides.fasta -p 9606 -m 0 -k 5
 ```python
 from pepmatch import Preprocessor, Matcher
 
-# proteome, k (split), preprocessed_format, target directory, gene_priority_proteome
-Preprocessor('proteomes/9606.fasta', 5, 'sql', '.', 'proteomes/9606_small.fasta').preprocess()
+# proteome, k, preprocessed_format, target directory, gene_priority_proteome
+Preprocessor('proteomes/9606.fasta', 'sql', '.', 'proteomes/9606_small.fasta').preprocess(k=5)
 # PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
 
-# query, proteome, max_mismatches, k (split), preprocessed files directory
+# query, proteome, max_mismatches, k, preprocessed files directory
 Matcher('queries/mhc_ligands_test.fasta', 'proteomes/9606.fasta', 0, 5, '.').match()
 ```
 
@@ -80,26 +80,20 @@ Matcher('queries/mhc_ligands_test.fasta', 'proteomes/9606.fasta', 0, 5, '.').mat
 ```python
 from pepmatch import Preprocessor, Matcher
 
-# proteome, k (split), preprocessed_format, target directory
-Preprocessor('proteomes/9606.fasta', 3, 'pickle', '.').preprocess()
+# proteome, k, preprocessed_format, target directory
+Preprocessor('proteomes/9606.fasta', 'pickle', '.').preprocess(k=3)
 # PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
 
-# query, proteome, max_mismatches, k (split), preprocessed files directory
+# query, proteome, max_mismatches, k, preprocessed files directory
 Matcher('queries/neoepitopes_test.fasta', 'proteomes/9606.fasta', 3, 3, '.').match()
 ```
 
 ## Outputs
 
-As mentioned above, outputs can be specified with the ```output_format``` parameter in tha ```Matcher``` class. The following formats are allowed: 'dataframe', 'csv', 'xlsx', 'json', and 'html'.
+As mentioned above, outputs can be specified with the ```output_format``` parameter in the ```Matcher``` class. The following formats are allowed: 'dataframe', 'csv', 'xlsx', 'json', and 'html'.
 
 If specifying 'dataframe', the ```match()``` method will return a pandas dataframe which can be stored as a variable as so:
 
 ```python
 df = Matcher('queries/neoepitopes_test.fasta', '9606', 3, 3, output_format='dataframe').match()
 ```
-
-### TODO
-
-- Allow more data format inputs
-- Multiprocessing and/or GPU programming capability
-- Matching rank by amino acid substitution scores

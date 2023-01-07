@@ -71,7 +71,7 @@ def accuracy(results, expected_file):
 
     # return intersection of real and expected matches divided by number of expected 
     # times 100 for percentage
-
+    
     return len(set(results).intersection(set(expected))) / (len(expected)) * 100
 
 

@@ -15,12 +15,11 @@ class DIAMOND(object):
 
         self.query = query
         self.proteome = proteome
-        self.proteome_name = proteome.replace('.fa', '')
+        self.proteome_name = proteome.replace('.fasta', '')
 
         self.max_mismatches = max_mismatches
 
         bin_directory = method_parameters['bin_directory']
-        print(os.listdir(bin_directory))
 
         self.bin_file = os.path.join(bin_directory, 'diamond')
 
@@ -37,9 +36,6 @@ class DIAMOND(object):
         all_matches = []
         with open('matches.m8', 'r') as file:
             lines = file.readlines()
-
-            print(lines)
-
             for line in lines:
                 match = []
                 result = line.split('\t')
@@ -79,15 +75,18 @@ class Benchmarker(DIAMOND):
         all_matches = []
         for match in matches:
             match = list(match)
-            # take the UniProt ID
-            match[2] = match[2].split('|')[1]
+            # try taking the UniProt ID - else do nothing 
+            try:
+                match[2] = match[2].split('|')[1]
+            except IndexError:
+                pass
             all_matches.append(','.join([str(i) for i in match]))
-
-        print(all_matches)
 
         # for extension in ['source', 'dbtype', 'index', 'idx', 'lookup', 'pot', 'pto']:
         #     os.remove(glob.glob(os.path.dirname(self.proteome) + '/*.' + extension)[0])
 
         os.remove('matches.m8')
+        os.remove(os.path.dirname(self.proteome) + '/%s.dmnd' % self.proteome_name.split('/')[-1])
+        # os.remove(os.path.dirname(self.proteome) + '/%s.dmnd' % self.proteome_name.split('/')[-1])
 
         return all_matches

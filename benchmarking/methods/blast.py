@@ -37,17 +37,15 @@ class BLAST(object):
         proteins = parse_fasta(self.proteome)
 
         peptide_dict = {}
-
-        i = 0
         for peptide in peptides:
             peptide_dict[str(peptide.id)] = str(peptide.seq)
-            i += 1
 
         protein_dict = {}
-        i = 0
         for protein in proteins:
-            protein_dict[str(protein.id)] = str(protein.seq)
-            i += 1
+            try:
+                protein_dict[str(protein.id).split('|')[1]] = str(protein.seq)
+            except IndexError:
+                protein_dict[str(protein.id)] = str(protein.seq)
 
         if self.max_mismatches == 0:
             blastx_cline = NcbiblastpCommandline(cmd=self.blastp_path,
@@ -75,14 +73,19 @@ class BLAST(object):
 
         df['Index start'] = df['Index start'].apply(lambda x: x - 1)
 
-        df.to_csv('blast_results_aaaaaa.csv')
+        df.to_csv('blast_results.csv')
 
         all_matches = []
         for i, row in df.iterrows():
+            try:
+                # for UniProt IDs - betacoronaviruses have different NCBI IDs
+                row['Protein ID'] = row['Protein ID'].split('|')[1]
+            except IndexError:
+                pass
             all_matches.append((
                 row['Peptide Sequence'], 
                 protein_dict[row['Protein ID']][row['Index start']:int(row['Index start'])+len(row['Peptide Sequence'])], 
-                row['Protein ID'].split('|')[1],
+                row['Protein ID'],
                 row['Mismatches'],
                 row['Index start'],
                 ))
@@ -115,12 +118,17 @@ class Benchmarker(BLAST):
         all_matches = []
         for match in matches:
             match = list(match)
-            match[2] = match[2]
+            # try taking the UniProt ID - else do nothing 
+            try:
+                match[2] = match[2].split('|')[1]
+            except IndexError:
+                pass
             all_matches.append(','.join([str(i) for i in match]))
 
         for extension in ['pdb', 'phr', 'pin', 'psq', 'ptf', 'pot', 'pto']:
             os.remove(glob.glob(os.path.dirname(self.proteome) + '/*.' + extension)[0])
 
         os.remove('output.csv')
+        os.remove('blast_results.csv')
 
         return all_matches

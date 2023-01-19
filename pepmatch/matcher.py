@@ -41,6 +41,8 @@ class Matcher(Preprocessor):
                output_name='',
                versioned_ids=True):
     
+    # passing a Python list is possible, call results generic name 
+    # if none is specified
     if type(query) == list:
       self.query = query
       if output_name:
@@ -48,6 +50,7 @@ class Matcher(Preprocessor):
       else:
         self.output_name = 'PEPMatch_results'
     
+    # parse from FASTA if not Python list
     else:
       self.query = [str(sequence.seq) for sequence in parse_fasta(query)]
       if output_name:
@@ -69,7 +72,7 @@ class Matcher(Preprocessor):
     # SQLite for exact matching - pickle for mismatching
     self.preprocess_format = 'sql' if not max_mismatches else 'pickle'
     
-    # use k that is specified if it is
+    # use the k that is specified if it is given in the parameters
     if k > 1:
       self.k = k
       self.k_specified = True
@@ -97,8 +100,8 @@ class Matcher(Preprocessor):
 
     assert k >= 0, 'Invalid k value given.'
 
-    if max_mismatches == -1:
-      assert best_match, 'Number of mismatches not specified.'
+    # if max_mismatches == -1:
+    #   assert best_match, 'Number of mismatches not specified.'
 
     if self.output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError('Invalid output format, please choose dataframe, csv, xlsx, json, or html.')
@@ -184,11 +187,7 @@ class Matcher(Preprocessor):
     peptides = self.query
     all_matches_dict = {}
 
-    peptide_counter = 0 
     for peptide in peptides:
-
-      peptide_counter += 1
-      print('Searching peptide #%s' % str(peptide_counter))
 
       # skip peptide if shorter than the actual k-mer size
       if len(peptide) < self.k:
@@ -459,12 +458,7 @@ class Matcher(Preprocessor):
         kmer_dict, names_dict = self.read_pickle_files()
         rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
-      peptide_counter = 0
       for peptide in peptides:
-
-        peptide_counter += 1
-
-        print('Searching peptide #%s' % str(peptide_counter))
 
         # split peptide into all possible k-mers with size k (self.k)
         kmers = self.split_peptide(peptide, self.k)

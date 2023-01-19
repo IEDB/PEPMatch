@@ -71,7 +71,7 @@ Preprocessor('proteomes/human.fasta', 'sql', '.', 'proteomes/human_gp.fasta').pr
 # PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
 
 # query, proteome, max_mismatches, k, preprocessed files directory
-Matcher('queries/mhc_ligands_test.fasta', 'proteomes/9606.fasta', 0, 5, '.').match()
+Matcher('queries/mhc_ligands_test.fasta', 'proteomes/human.fasta', 0, 5, '.').match()
 ```
 
 
@@ -95,5 +95,5 @@ As mentioned above, outputs can be specified with the ```output_format``` parame
 If specifying 'dataframe', the ```match()``` method will return a pandas dataframe which can be stored as a variable as so:
 
 ```python
-df = Matcher('queries/neoepitopes_test.fasta', '9606', 3, 3, output_format='dataframe').match()
+df = Matcher('queries/neoepitopes_test.fasta', 'human.fasta', 3, 3, output_format='dataframe').match()
 ```

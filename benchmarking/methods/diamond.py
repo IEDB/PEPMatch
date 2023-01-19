@@ -11,7 +11,7 @@ def parse_fasta(file):
 class DIAMOND(object):
     def __init__(self, query, proteome, max_mismatches, method_parameters):
         if max_mismatches == -1:
-            raise ValueError(self.__str__() + ' does not have a best match feature.\n')
+            max_mismatches = 7
 
         self.query = query
         self.proteome = proteome

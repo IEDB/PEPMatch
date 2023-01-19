@@ -16,10 +16,8 @@ class Benchmarker(Matcher):
     self.max_mismatches = max_mismatches
     self.lengths = lengths
     self.algorithm_parameters = algorithm_parameters
-
-    best_match = True if max_mismatches == -1 else False
     
-    super().__init__(query, proteome, max_mismatches, output_format=algorithm_parameters['output_format'], best_match=best_match, versioned_ids=False)
+    super().__init__(query, proteome, max_mismatches, output_format=algorithm_parameters['output_format'], versioned_ids=False)
 
   def __str__(self):
     return 'PEPMatch'
@@ -42,21 +40,25 @@ class Benchmarker(Matcher):
     Call overarching match function. Then convert results into the standard format
     needed to calculate accuracy.
     '''
+    if self.max_mismatches == -1:
+      self.k_specified = True
+      self.k = 2
+      self.max_mismatches = 7
+
     matches = self.match()
 
     all_matches = []
-    with open('expected.txt', 'w') as f:
-      for i, match in matches.iterrows():
-        match_string = ''
-        match_string += match['Query Sequence'] + ','
-        match_string += match['Matched Sequence'] + ','
-        match_string += match['Protein ID'] + ','
-        match_string += str(match['Mismatches']) + ','
-        try:
-          match_string += str(match['Index start'] - 1)
-        except TypeError:
-          match_string += ''
-        f.write(match_string + '\n')
-        all_matches.append(match_string)
+    for i, match in matches.iterrows():
+      match_string = ''
+      match_string += match['Query Sequence'] + ','
+      match_string += match['Matched Sequence'] + ','
+      match_string += match['Protein ID'] + ','
+      match_string += str(match['Mismatches']) + ','
+      try:
+        match_string += str(match['Index start'] - 1)
+      except TypeError:
+        match_string += ''
+        
+      all_matches.append(match_string)
     
     return all_matches

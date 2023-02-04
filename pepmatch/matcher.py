@@ -279,6 +279,7 @@ class Matcher(Preprocessor):
                             protein_data[0][4],    # protein ID
                             protein_data[0][5],    # protein name
                             0,                     # 0 mismatches for exact matches
+                            [],                    # mutated positions (none)
                             (match % 100000) + 1,  # index start
                             (match % 100000) + len(peptide), # index end
                             protein_data[0][6],    # protein existence level
@@ -541,13 +542,13 @@ class Matcher(Preprocessor):
     based on the parameters.
     '''
     if self.max_mismatches == -1:
-      df = self.dataframe_mismatch_matches(self.best_match_search())
+      df = self.dataframe_matches(self.best_match_search())
 
     elif self.max_mismatches > 0:
-      df = self.dataframe_mismatch_matches(self.mismatching_search())
+      df = self.dataframe_matches(self.mismatching_search())
     
     else:
-      df = self.dataframe_exact_matches(self.exact_match_search())
+      df = self.dataframe_matches(self.exact_match_search())
 
     # return a dataframe instead of outputting file if specified
     if self.output_format == 'dataframe':
@@ -556,79 +557,47 @@ class Matcher(Preprocessor):
     else:
       self.output_matches(df)
       
-  def dataframe_exact_matches(self, all_matches):
+  def dataframe_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
                       columns=['Query Sequence', 'Matched Sequence', 'Proteome',
                                'Species', 'Gene', 'Protein ID', 'Protein Name',
-                               'Mismatches', 'Index start', 'Index end',
-                               'Protein Existence Level', 'Gene Priority'])
-
-    if self.best_match:
-      if df['Protein Existence Level'].isnull().values.any():
-        df.drop_duplicates(['Query Sequence'], inplace=True)
-        return df
-
-      else:
-        idx = df.groupby(['Query Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']
-        df = df[idx]
-
-      if df['Gene Priority'].isnull().values.any():
-        df.drop_duplicates(['Query Sequence'], inplace=True)
-        return df
-
-      else:
-        idx = df.groupby(['Query Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
-        df = df[idx]
-
-      df.drop_duplicates(['Query Sequence'], inplace=True)
-
-    # drop any columns that are entirely empty (usually gene priority column)
-    df.dropna(how='all', axis=1, inplace=True)
-
-    return df
-
-  def dataframe_mismatch_matches(self, all_matches):
-    '''Return Pandas dataframe of the results.'''
-    df = pd.DataFrame(all_matches,
-                      columns=['Query Sequence', 'Matched Sequence', 'Proteome',
-                               'Species', 'Gene', 'Protein ID', 'Protein Name',
-                               'Mismatches', 'Mutated Positions', 'Index start',
+                               'Mismatches', 'Mutated Positions', 'Index start', 
                                'Index end', 'Protein Existence Level', 'Gene Priority'])
 
     if self.best_match:
-      idx = df.groupby(['Query Sequence'])['Mismatches'].transform('min') == df['Mismatches']
-      df = df[idx]
-
-      if df['Protein Existence Level'].isnull().values.any():
-        df.drop_duplicates(['Query Sequence'], inplace=True)
-        return df
-
-      else:
-        idx = df.groupby(['Query Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']
+      if self.max_mismatches > 0:
+        # take matches with the least number of mismatches
+        idx = df.groupby(['Query Sequence'])['Mismatches'].transform('min') == df['Mismatches']
         df = df[idx]
 
-      if df['Gene Priority'].isnull().values.any():
-        df.drop_duplicates(['Query Sequence'], inplace=True)
-        return df
-
-      else:
+      # take matches that are in the gene priority proteome and with the best protein
+      # existence level - if these data aren't available, just pass 
+      try:
         idx = df.groupby(['Query Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
         df = df[idx]
 
+        idx = df.groupby(['Query Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']
+        df = df[idx]
+      except:
+        pass
+
+      # sort values by protein ID and drop duplicates, guaranteeing same results 
+      df.sort_values(by='Protein ID', inplace=True)
       df.drop_duplicates(['Query Sequence'], inplace=True)
-      
+
     # drop any columns that are entirely empty (usually gene priority column)
     df.dropna(how='all', axis=1, inplace=True)
 
     return df
+
 
   def output_matches(self, df):
     '''Write Pandas dataframe to format that is specified'''
     if self.output_format == 'csv':
-      return df.to_csv(self.output_name + '.csv')
+      return df.to_csv(self.output_name + '.csv', index=False)
     elif self.output_format == 'xlsx':
-      return df.to_excel(self.output_name + '.xlsx')
+      return df.to_excel(self.output_name + '.xlsx', index=False)
     elif self.output_format == 'json':
       return df.to_json(self.output_name + '.json')
     elif self.output_format == 'html':

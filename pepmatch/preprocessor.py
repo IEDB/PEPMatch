@@ -126,6 +126,7 @@ class Preprocessor(object):
     names_dict = {}
     protein_count = 1
 
+    # get all gene priority IDs to check for them
     if self.gene_priority_proteome:
       gene_priority_proteome_ids = []
       gene_priority_proteome = parse_fasta(self.gene_priority_proteome)
@@ -140,11 +141,6 @@ class Preprocessor(object):
           kmer_dict[kmers[i]].append(protein_count * 100000 + i) # add index to k-mer list
         else:
           kmer_dict[kmers[i]] = [protein_count * 100000 + i]     # create entry for new k-mer
-
-      if self.gene_priority_proteome:
-        gene_priority = 1 if protein_id in gene_priority_proteome_ids else 0
-      else:
-        gene_priority = None
 
       # grab UniProt ID which is usually in the middle of two vetical bars
       try:
@@ -177,6 +173,11 @@ class Preprocessor(object):
         pe_level = int(re.search('PE=(.*?) ', protein.description).group(1))
       except AttributeError:
         pe_level = None
+
+      if self.gene_priority_proteome:
+        gene_priority = 1 if protein_id in gene_priority_proteome_ids else 0
+      else:
+        gene_priority = None
 
       if self.versioned_ids:
         try:

@@ -172,12 +172,13 @@ class Preprocessor(object):
       try:
         pe_level = int(re.search('PE=(.*?) ', protein.description).group(1))
       except AttributeError:
-        pe_level = None
+        pe_level = 0
 
+      # label protein record as being in gene priority proteome if it's found there
       if self.gene_priority_proteome:
         gene_priority = 1 if protein_id in gene_priority_proteome_ids else 0
       else:
-        gene_priority = None
+        gene_priority = 0
 
       if self.versioned_ids:
         try:

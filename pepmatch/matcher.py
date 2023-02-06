@@ -562,7 +562,11 @@ class Matcher(Preprocessor):
       # sort values by protein ID and drop duplicates, guaranteeing same results 
       df.sort_values(by='Protein ID', inplace=True)
       df.drop_duplicates(['Query Sequence'], inplace=True)
-
+    
+    else:
+      # gene priority and protein existence levels not needed if not best match
+      df.drop(columns=['Gene Priority', 'Protein Existence Level'], inplace=True)
+    
     # drop any columns that are entirely empty (usually gene priority column)
     df.dropna(how='all', axis=1, inplace=True)
 

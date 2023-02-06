@@ -535,27 +535,6 @@ class Matcher(Preprocessor):
       self.batched_peptides = {0: self.query}
 
     return all_matches
-  
-  def match(self):
-    '''
-    Overarching function that calls the appropriate search matching function
-    based on the parameters.
-    '''
-    if self.max_mismatches == -1:
-      df = self.dataframe_matches(self.best_match_search())
-
-    elif self.max_mismatches > 0:
-      df = self.dataframe_matches(self.mismatching_search())
-    
-    else:
-      df = self.dataframe_matches(self.exact_match_search())
-
-    # return a dataframe instead of outputting file if specified
-    if self.output_format == 'dataframe':
-      return df
-    
-    else:
-      self.output_matches(df)
       
   def dataframe_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
@@ -566,21 +545,19 @@ class Matcher(Preprocessor):
                                'Index end', 'Protein Existence Level', 'Gene Priority'])
 
     if self.best_match:
-      if self.max_mismatches > 0:
-        # take matches with the least number of mismatches
-        idx = df.groupby(['Query Sequence'])['Mismatches'].transform('min') == df['Mismatches']
-        df = df[idx]
+      # take matches with the least number of mismatches   
+      idx = df.groupby(['Query Sequence'])['Mismatches'].transform(min) == df['Mismatches']
+      df = df[idx]
 
       # take matches that are in the gene priority proteome and with the best protein
-      # existence level - if these data aren't available, just pass 
-      try:
-        idx = df.groupby(['Query Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']
-        df = df[idx]
+      # existence level - first fill NaN values with 0 - otherwise pandas will drop the rows
+      df[['Gene Priority', 'Protein Existence Level']] = df[['Gene Priority','Protein Existence Level']].fillna(value=0)
+      
+      idx = df.groupby(['Query Sequence'])['Gene Priority'].transform(max) == df['Gene Priority']
+      df = df[idx]
 
-        idx = df.groupby(['Query Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']
-        df = df[idx]
-      except:
-        pass
+      idx = df.groupby(['Query Sequence'])['Protein Existence Level'].transform(min) == df['Protein Existence Level']
+      df = df[idx]
 
       # sort values by protein ID and drop duplicates, guaranteeing same results 
       df.sort_values(by='Protein ID', inplace=True)
@@ -603,6 +580,27 @@ class Matcher(Preprocessor):
     elif self.output_format == 'html':
       return df.to_html()
 
+  def match(self):
+    '''
+    Overarching function that calls the appropriate search matching function
+    based on the parameters.
+    '''
+    if self.max_mismatches == -1:
+      df = self.dataframe_matches(self.best_match_search())
+
+    elif self.max_mismatches > 0:
+      df = self.dataframe_matches(self.mismatching_search())
+    
+    else:
+      df = self.dataframe_matches(self.exact_match_search())
+
+    # return a dataframe instead of outputting file if specified
+    if self.output_format == 'dataframe':
+      return df
+    
+    else:
+      self.output_matches(df)
+
 
 # run via command line
 
@@ -614,7 +612,7 @@ def parse_arguments():
   parser.add_argument('-m', '--max_mismatches', type=int, required=True)
   parser.add_argument('-k', '--kmer_size', type=int, required=True)
   parser.add_argument('-P', '--preprocessed_files_path', default='.')
-  parser.add_argument('-b', '--best_match', type=bool, default=False)
+  parser.add_argument('-b', '--best_match', default=False, action='store_true')
   parser.add_argument('-f', '--output_format', default='csv')
   parser.add_argument('-o', '--output_name', default='')
 

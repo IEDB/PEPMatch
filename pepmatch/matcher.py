@@ -159,13 +159,13 @@ class Matcher(Preprocessor):
     Read in the already created pickle files for each dictionary in the
     preprocessing step.
     '''
-    with open(os.path.join(self.preprocessed_files_path, self.proteome_name + '_' +
-              str(self.k) + 'mers.pickle'), 'rb') as f:
+    with open(os.path.join(self.preprocessed_files_path, 
+      f'{self.proteome_name}_{str(self.k)}mers.pickle'), 'rb') as f:
 
       kmer_dict = pickle.load(f)
 
-    with open(os.path.join(self.preprocessed_files_path, self.proteome_name +
-              '_names.pickle'), 'rb') as f:
+    with open(os.path.join(self.preprocessed_files_path, 
+      f'{self.proteome_name}_names.pickle'), 'rb') as f:
 
       names_dict = pickle.load(f)
 
@@ -178,10 +178,10 @@ class Matcher(Preprocessor):
     if not os.path.isfile(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db')):
       self.preprocess(self.k)
 
-    kmers_table_name = self.proteome_name + '_' + str(self.k) + 'mers'
-    names_table_name = self.proteome_name + '_names'
+    kmers_table_name = f'{self.proteome_name}_{str(self.k)}mers'
+    names_table_name = f'{self.proteome_name}_names'
 
-    conn = sqlite3.connect(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db'))
+    conn = sqlite3.connect(os.path.join(self.preprocessed_files_path, f'{self.proteome_name}.db'))
     c = conn.cursor()
 
     peptides = self.query
@@ -204,7 +204,7 @@ class Matcher(Preprocessor):
       if len(peptide) % self.k == 0:
         for i in range(0, len(kmers), self.k):
 
-          get_positions = 'SELECT position FROM "{kmer_table}" WHERE kmer = "{actual_kmer}"'.format(kmer_table = kmers_table_name, actual_kmer = kmers[i])
+          get_positions = f'SELECT position FROM "{kmers_table_name}" WHERE kmer = "{kmers[i]}"'
           c.execute(get_positions)
           positions_fetch = c.fetchall()
 
@@ -228,7 +228,7 @@ class Matcher(Preprocessor):
         i = 0
         while i < len(peptide):
           try:
-            get_positions = 'SELECT position FROM "{kmer_table}" WHERE kmer = "{actual_kmer}"'.format(kmer_table = kmers_table_name, actual_kmer = kmers[i])
+            get_positions = f'SELECT position FROM "{kmers_table_name}" WHERE kmer = "{kmers[i]}"'
             c.execute(get_positions)
             positions_fetch = c.fetchall()
 
@@ -241,7 +241,7 @@ class Matcher(Preprocessor):
 
           # if i + k k-mer is out of range of k-mers, just check the final k-mer
           except IndexError:
-            get_positions = 'SELECT position FROM "{kmer_table}" WHERE kmer = "{actual_kmer}"'.format(kmer_table = kmers_table_name, actual_kmer = kmers[-1])
+            get_positions = f'SELECT position FROM "{kmers_table_name}" WHERE kmer = "{kmers[-1]}"'
             c.execute(get_positions)
             positions_fetch = c.fetchall()
             try:
@@ -266,8 +266,7 @@ class Matcher(Preprocessor):
         all_matches.append((peptide, '', '', '', '', '', '', '', '', '', '', ''))
       for match in matches:
         # retrieve protein IDs from the other created table
-        get_protein_data = 'SELECT * FROM "{names_table}" WHERE protein_number = "{protein_number}"'.format(
-                  names_table = names_table_name, protein_number = (match - (match % 100000)) // 100000)
+        get_protein_data = f'SELECT * FROM "{names_table_name}" WHERE protein_number = "{(match - (match % 100000)) // 100000)}"'
         c.execute(get_protein_data)
         protein_data = c.fetchall()
 
@@ -576,11 +575,11 @@ class Matcher(Preprocessor):
   def output_matches(self, df):
     '''Write Pandas dataframe to format that is specified'''
     if self.output_format == 'csv':
-      return df.to_csv(self.output_name + '.csv', index=False)
+      return df.to_csv(f'{self.output_name}.csv', index=False)
     elif self.output_format == 'xlsx':
-      return df.to_excel(self.output_name + '.xlsx', index=False)
+      return df.to_excel(f'{self.output_name}.xlsx', index=False)
     elif self.output_format == 'json':
-      return df.to_json(self.output_name + '.json')
+      return df.to_json(f'{self.output_name}.json')
     elif self.output_format == 'html':
       return df.to_html()
 

@@ -67,13 +67,13 @@ class Preprocessor(object):
     both k-mer and names dictionaries created. This is for compression and
     for being able to load the data in when a query is called.
     '''
-    with open(os.path.join(self.preprocessed_files_path, self.proteome_name + '_' +
-              str(k) + 'mers.pickle'), 'wb') as f:
+    with open(os.path.join(self.preprocessed_files_path, 
+      f'{self.proteome_name}_{str(k)}mers.pickle'), 'wb') as f:
 
       pickle.dump(kmer_dict, f)
 
-    with open(os.path.join(self.preprocessed_files_path, self.proteome_name +
-              '_names.pickle'), 'wb') as f:
+    with open(os.path.join(self.preprocessed_files_path, 
+      f'{self.proteome_name}_names.pickle'), 'wb') as f:
 
       pickle.dump(names_dict, f)
 
@@ -83,28 +83,28 @@ class Preprocessor(object):
     k-mer and names dictionaries created. These SQLite tables can then be used
     for searching. This is much faster for exact matching.
     '''
-    kmers_table = self.proteome_name + '_' + str(k) + 'mers'
-    names_table = self.proteome_name + '_names'
+    kmers_table = f'{self.proteome_name}_{str(k)}mers'
+    names_table = f'{self.proteome_name}_names'
 
     conn = sqlite3.connect(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db'))
     c = conn.cursor()
 
-    c.execute('CREATE TABLE IF NOT EXISTS "{k}"(kmer TEXT, position INT)'.format(k = kmers_table))
-    c.execute('CREATE TABLE IF NOT EXISTS "{n}"(protein_number INT, taxon INT, species TEXT, gene TEXT, protein_id TEXT, protein_name TEXT, pe_level INT, gene_priority INT)'.format(n = names_table))
+    c.execute(f'CREATE TABLE IF NOT EXISTS "{kmers_table}"(kmer TEXT, position INT)')
+    c.execute(f'CREATE TABLE IF NOT EXISTS "{names_table}"(protein_number INT, taxon INT, species TEXT, gene TEXT, protein_id TEXT, protein_name TEXT, pe_level INT, gene_priority INT)')
 
     # make a row for each unique k-mer and position mapping
     for kmer, positions in kmer_dict.items():
       for position in positions:
-        c.execute('INSERT INTO "{k}" (kmer, position) VALUES (?, ?)'.format(k = kmers_table), (str(kmer), position,))
+        c.execute(f'INSERT INTO "{kmers_table}" (kmer, position) VALUES (?, ?)', (str(kmer), position,))
 
     # make a row for each number to protein ID mapping
     for protein_number, protein_data in names_dict.items():
-      c.execute('INSERT INTO "{n}"(protein_number, taxon, species, gene, protein_id, protein_name, pe_level, gene_priority) VALUES(?, ?, ?, ?, ?, ?, ?, ?)'.format(n = names_table),
+      c.execute(f'INSERT INTO "{names_table}"(protein_number, taxon, species, gene, protein_id, protein_name, pe_level, gene_priority) VALUES(?, ?, ?, ?, ?, ?, ?, ?)',
         (protein_number, protein_data[0], protein_data[1], protein_data[2], protein_data[3], protein_data[4], protein_data[5], protein_data[6]))
 
     # create indexes for both k-mer, unique position, and name tables
-    c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{k}"(kmer)'.format(id = kmers_table + '_kmer_id', k = kmers_table))
-    c.execute('CREATE INDEX IF NOT EXISTS "{id}" ON "{n}"(protein_number)'.format(id = names_table + '_id', n = names_table))
+    c.execute(f'CREATE INDEX IF NOT EXISTS "{f'{kmers_table}_kmer_id'}" ON "{kmers_table}"(kmer)')
+    c.execute(f'CREATE INDEX IF NOT EXISTS "{f'{names_table}_id'}" ON "{names_table}"(protein_number)')
 
     conn.commit()
     c.close()

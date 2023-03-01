@@ -6,7 +6,7 @@
 
 #### Author: Daniel Marrama
 
-Peptide search against reference proteome(s) with specified mismatches.
+Peptide search against a reference proteome, or sets of proteins, with residue subtitutions.
 
 Two step process: preprocessing and matching.
 
@@ -17,11 +17,9 @@ As a competition to improve tool performance, we created a benchmarking framewor
 ### Requirements
 
 - Python 3.7+
-- Numpy
-- Pandas
-- Biopython
-- Levenshtein
-- SciPy
+- [Pandas](https://pandas.pydata.org/)
+- [Biopython](https://biopython.org/)
+- [Levenshtein](https://pypi.org/project/python-Levenshtein/)
 
 ### Installation
 
@@ -88,7 +86,7 @@ Preprocessor('proteomes/human.fasta', 'pickle', '.').preprocess(k=3)
 Matcher('queries/neoepitopes_test.fasta', 'proteomes/human.fasta', 3, 3, '.').match()
 ```
 
-## Outputs
+### Outputs
 
 As mentioned above, outputs can be specified with the ```output_format``` parameter in the ```Matcher``` class. The following formats are allowed: 'dataframe', 'csv', 'xlsx', 'json', and 'html'.
 
@@ -97,3 +95,8 @@ If specifying 'dataframe', the ```match()``` method will return a pandas datafra
 ```python
 df = Matcher('queries/neoepitopes_test.fasta', 'human.fasta', 3, 3, output_format='dataframe').match()
 ```
+
+### TODO
+- Add test workflows for GitHub Actions
+- Add multithreading option
+- Remove dependency on Levenshtein (this is not maintained very well)

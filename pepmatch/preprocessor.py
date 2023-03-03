@@ -103,8 +103,8 @@ class Preprocessor(object):
         (protein_number, protein_data[0], protein_data[1], protein_data[2], protein_data[3], protein_data[4], protein_data[5], protein_data[6]))
 
     # create indexes for both k-mer, unique position, and name tables
-    c.execute(f'CREATE INDEX IF NOT EXISTS "{f'{kmers_table}_kmer_id'}" ON "{kmers_table}"(kmer)')
-    c.execute(f'CREATE INDEX IF NOT EXISTS "{f'{names_table}_id'}" ON "{names_table}"(protein_number)')
+    c.execute(f'CREATE INDEX IF NOT EXISTS "{kmers_table}_kmer_id" ON "{kmers_table}"(kmer)')
+    c.execute(f'CREATE INDEX IF NOT EXISTS "{names_table}_id" ON "{names_table}"(protein_number)')
 
     conn.commit()
     c.close()

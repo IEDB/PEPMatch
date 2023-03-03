@@ -266,7 +266,7 @@ class Matcher(Preprocessor):
         all_matches.append((peptide, '', '', '', '', '', '', '', '', '', '', ''))
       for match in matches:
         # retrieve protein IDs from the other created table
-        get_protein_data = f'SELECT * FROM "{names_table_name}" WHERE protein_number = "{(match - (match % 100000)) // 100000)}"'
+        get_protein_data = f'SELECT * FROM "{names_table_name}" WHERE protein_number = "{(match - (match % 100000)) // 100000}"'
         c.execute(get_protein_data)
         protein_data = c.fetchall()
 

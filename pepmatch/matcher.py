@@ -263,7 +263,7 @@ class Matcher(Preprocessor):
     # compile all matches into format used for benchmarking (comma separated)
     for peptide, matches in all_matches_dict.items():
       if matches == []:
-        all_matches.append((peptide, '', '', '', '', '', '', '', '', '', '', ''))
+        all_matches.append((peptide, '', '', '', '', '', '', '', '', '', '', '', ''))
       for match in matches:
         # retrieve protein IDs from the other created table
         get_protein_data = f'SELECT * FROM "{names_table_name}" WHERE protein_number = "{(match - (match % 100000)) // 100000}"'

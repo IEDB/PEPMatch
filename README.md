@@ -18,6 +18,7 @@ As a competition to improve tool performance, we created a benchmarking framewor
 
 - Python 3.7+
 - [Pandas](https://pandas.pydata.org/)
+- [NumPy](https://numpy.org/)
 - [Biopython](https://biopython.org/)
 - [Levenshtein](https://pypi.org/project/python-Levenshtein/)
 

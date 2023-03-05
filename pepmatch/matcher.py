@@ -39,8 +39,7 @@ class Matcher(Preprocessor):
                preprocessed_files_path='.',
                best_match=False,
                output_format='csv',
-               output_name='',
-               versioned_ids=True):
+               output_name=''):
     
     # passing a Python list is possible, call results generic name 
     # if none is specified
@@ -67,7 +66,6 @@ class Matcher(Preprocessor):
     self.preprocessed_files_path = preprocessed_files_path
     self.best_match = best_match
     self.output_format = output_format
-    self.versioned_ids = versioned_ids
 
     # select format based on # of mismatches to pass to Preprocessor
     # SQLite for exact matching - pickle for mismatching
@@ -110,7 +108,7 @@ class Matcher(Preprocessor):
     if not all([seq.isupper() for seq in self.query]):
       raise ValueError('A peptide in the query contains a lowercase letter.')
 
-    super().__init__(self.proteome, self.preprocess_format, self.preprocessed_files_path, self.versioned_ids)
+    super().__init__(self.proteome, self.preprocess_format, self.preprocessed_files_path, True)
 
   def batch_query(self):
     '''

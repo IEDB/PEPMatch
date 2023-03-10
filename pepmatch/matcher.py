@@ -561,6 +561,9 @@ class Matcher(Preprocessor):
       df.sort_values(by='Protein ID', inplace=True)
       df.drop_duplicates(['Query Sequence'], inplace=True)
 
+    # drop "Gene Priority" column
+    df.drop(columns=['Gene Priority'], inplace=True)
+
     return df
 
 

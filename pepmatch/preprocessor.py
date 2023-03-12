@@ -89,6 +89,13 @@ class Preprocessor(object):
     conn = sqlite3.connect(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db'))
     c = conn.cursor()
 
+    # check if kmers table already exists and return if it does - for some reason
+    # writing to the same table multiple times messes up results
+    if c.execute(f'SELECT name FROM sqlite_master WHERE type="table" AND name="{kmers_table}";').fetchone():
+      c.close()
+      conn.close()
+      return
+
     c.execute(f'CREATE TABLE IF NOT EXISTS "{kmers_table}"(kmer TEXT, position INT)')
     c.execute(f'CREATE TABLE IF NOT EXISTS "{names_table}"(protein_number INT, taxon INT, species TEXT, gene TEXT, protein_id TEXT, protein_name TEXT, pe_level INT, gene_priority INT)')
 

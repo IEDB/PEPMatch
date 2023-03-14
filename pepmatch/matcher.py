@@ -59,6 +59,9 @@ class Matcher(Preprocessor):
         # make output name using query name to proteome name
         self.output_name = f"{query.replace('.fasta', '')}_to_{proteome.split('/')[-1].split('.')[0]}"
 
+    # make sure all query peptides are uppercase
+    self.query = [seq.upper() for seq in self.query]
+
     # check if there are any discontinuous epitopes in the query
     self.d_epitopes = []
     for peptide in self.query:
@@ -108,14 +111,8 @@ class Matcher(Preprocessor):
 
     assert k >= 0, 'Invalid k value given.'
 
-    # if max_mismatches == -1:
-    #   assert best_match, 'Number of mismatches not specified.'
-
     if self.output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError('Invalid output format, please choose dataframe, csv, xlsx, json, or html.')
-
-    if not all([seq.isupper() for seq in self.query]):
-      raise ValueError('A peptide in the query contains a lowercase letter.')
 
     super().__init__(self.proteome, self.preprocess_format, self.preprocessed_files_path, True)
 

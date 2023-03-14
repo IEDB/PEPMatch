@@ -63,11 +63,11 @@ class Matcher(Preprocessor):
     self.query = [seq.upper() for seq in self.query]
 
     # check if there are any discontinuous epitopes in the query
-    self.d_epitopes = []
+    self.discontinuous_epitopes = []
     for peptide in self.query:
       try:
-        d_epitope = [(x[0], int(x[1:])) for x in peptide.split(', ')]
-        self.d_epitopes.append(d_epitope)
+        discontinuous_epitope = [(x[0], int(x[1:])) for x in peptide.split(', ')]
+        self.discontinuous_epitopes.append(discontinuous_epitope)
       except ValueError:
         continue
 
@@ -540,6 +540,32 @@ class Matcher(Preprocessor):
 
     return all_matches
       
+  def discontinuous_search(self):
+    """Find matches for discontinuous epitopes."""
+    all_matches = []
+    for discontinuous_epitope in self.discontinuous_epitopes:
+      for protein in parse_fasta(self.proteome):
+        try:
+          residue_matches = sum([x[0] == protein.seq[x[1] - 1] for x in discontinuous_epitope])
+          if residue_matches >= (len(discontinuous_epitope) - self.max_mismatches):
+            all_matches.append((''.join([x[0] + str(x[1]) for x in discontinuous_epitope]), 
+                                ''.join([protein.seq[x[1] - 1] + str(x[1]) for x in discontinuous_epitope]),
+                                np.nan,
+                                np.nan,
+                                np.nan,
+                                np.nan,
+                                np.nan,
+                                len(discontinuous_epitope) - residue_matches,
+                                [x[1] for x in discontinuous_epitope if x[0] != protein.seq[x[1] - 1]] else '',
+                                discontinuous_epitope[0][1],
+                                discontinuous_epitope[-1][1],
+                                np.nan,
+                                np.nan))
+        except IndexError:
+          continue
+    
+    return all_matches
+
   def dataframe_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
@@ -572,7 +598,6 @@ class Matcher(Preprocessor):
 
     return df
 
-
   def output_matches(self, df):
     '''Write Pandas dataframe to format that is specified'''
     if self.output_format == 'csv':
@@ -597,6 +622,10 @@ class Matcher(Preprocessor):
     
     else:
       df = self.dataframe_matches(self.exact_match_search())
+
+    # search for discontinuous epitopes if they exist
+    if self.discontinuous_epitopes:
+      df = df.append(self.dataframe_matches(self.discontinuous_search()))
 
     # return a dataframe instead of outputting file if specified
     if self.output_format == 'dataframe':

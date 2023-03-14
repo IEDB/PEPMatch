@@ -548,15 +548,15 @@ class Matcher(Preprocessor):
         try:
           residue_matches = sum([x[0] == protein.seq[x[1] - 1] for x in discontinuous_epitope])
           if residue_matches >= (len(discontinuous_epitope) - self.max_mismatches):
-            all_matches.append((''.join([x[0] + str(x[1]) for x in discontinuous_epitope]), 
-                                ''.join([protein.seq[x[1] - 1] + str(x[1]) for x in discontinuous_epitope]),
+            all_matches.append((', '.join([x[0] + str(x[1]) for x in discontinuous_epitope]), 
+                                ', '.join([protein.seq[x[1] - 1] + str(x[1]) for x in discontinuous_epitope]),
                                 np.nan,
                                 np.nan,
                                 np.nan,
                                 np.nan,
                                 np.nan,
                                 len(discontinuous_epitope) - residue_matches,
-                                [x[1] for x in discontinuous_epitope if x[0] != protein.seq[x[1] - 1]] else '',
+                                [x[1] for x in d_epitope if x[0] != protein.seq[x[1] - 1]],
                                 discontinuous_epitope[0][1],
                                 discontinuous_epitope[-1][1],
                                 np.nan,

@@ -40,8 +40,8 @@ class Matcher(Preprocessor):
                best_match=False,
                output_format='csv',
                output_name=''):
-    
-    # passing a Python list is possible, call results generic name 
+
+    # passing a Python list is possible, call results generic name
     # if none is specified
     if type(query) == list:
       self.query = query
@@ -59,9 +59,6 @@ class Matcher(Preprocessor):
         # make output name using query name to proteome name
         self.output_name = f"{query.replace('.fasta', '')}_to_{proteome.split('/')[-1].split('.')[0]}"
 
-    # make sure all query peptides are uppercase
-    self.query = [seq.upper() for seq in self.query]
-
     # check if there are any discontinuous epitopes in the query
     self.discontinuous_epitopes = []
     for peptide in self.query:
@@ -70,6 +67,14 @@ class Matcher(Preprocessor):
         self.discontinuous_epitopes.append(discontinuous_epitope)
       except ValueError:
         continue
+
+    # remove discontinuous epitopes from query
+    self.query = list(set(self.query) - set([', '.join([x[0] + str(x[1]) for x in self.discontinuous_epitopes[i]]) for i in range(len(self.discontinuous_epitopes))]))
+
+    # make sure all query peptides are uppercase
+    self.query = [seq.upper() for seq in self.query]
+
+    assert self.query, 'No peptides found in query.'
 
     self.lengths = sorted(set([len(peptide) for peptide in self.query]))
     self.proteome = proteome

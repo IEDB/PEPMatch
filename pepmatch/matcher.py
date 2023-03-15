@@ -1,4 +1,5 @@
 import os
+import re
 import argparse
 import _pickle as pickle
 import sqlite3
@@ -542,27 +543,60 @@ class Matcher(Preprocessor):
       self.batched_peptides = {0: self.query}
 
     return all_matches
-      
+
+  def get_protein_metadata(self, protein_record):
+    '''Extracts protein metadata from a protein record in FASTA format.'''
+    protein_id = protein_record.id.split('|')[1] if '|' in protein_record.id else protein_record.id
+    
+    # use regex to get all other data from the UniProt FASTA header
+    try:
+      taxon_id = int(re.search('OX=(.*?) ', protein_record.description).group(1))
+    except AttributeError:
+      taxon_id = None
+
+    try:
+      species = re.search('OS=(.*) OX=', protein_record.description).group(1)
+    except AttributeError:
+      species = None
+
+    try:
+      gene = re.search('GN=(.*?) ', protein_record.description).group(1)
+    except AttributeError:
+      gene = None
+
+    try:
+      protein_name = re.search(' (.*) OS', protein_record.description).group(1)
+    except AttributeError:
+      protein_name = None
+
+    try:
+      pe_level = int(re.search('PE=(.*?) ', protein_record.description).group(1))
+    except AttributeError:
+      pe_level = 0
+
+    return (taxon_id, species, gene, protein_id, protein_name, pe_level)
+
   def discontinuous_search(self):
     """Find matches for discontinuous epitopes."""
     all_matches = []
     for discontinuous_epitope in self.discontinuous_epitopes:
-      for protein in parse_fasta(self.proteome):
+      for protein_record in parse_fasta(self.proteome):
         try:
-          residue_matches = sum([x[0] == protein.seq[x[1] - 1] for x in discontinuous_epitope])
+          residue_matches = sum([x[0] == protein_record.seq[x[1] - 1] for x in discontinuous_epitope])
           if residue_matches >= (len(discontinuous_epitope) - self.max_mismatches):
+            protein_metadata = self.get_protein_metadata(protein_record)
             all_matches.append((', '.join([x[0] + str(x[1]) for x in discontinuous_epitope]), 
-                                ', '.join([protein.seq[x[1] - 1] + str(x[1]) for x in discontinuous_epitope]),
-                                np.nan,
-                                np.nan,
-                                np.nan,
-                                np.nan,
-                                np.nan,
+                                ', '.join([protein_record.seq[x[1] - 1] + str(x[1]) for x in discontinuous_epitope]),
+                                protein_metadata[0],
+                                protein_metadata[1],
+                                protein_metadata[2],
+                                protein_metadata[3],
+                                protein_metadata[4],
                                 len(discontinuous_epitope) - residue_matches,
-                                [x[1] for x in discontinuous_epitope if x[0] != protein.seq[x[1] - 1]],
+                                [x[1] for x in discontinuous_epitope if x[0] != protein_record.seq[x[1] - 1]],
                                 discontinuous_epitope[0][1],
                                 discontinuous_epitope[-1][1],
-                                np.nan,
+                                protein_metadata[5],
                                 np.nan))
         except IndexError:
           continue

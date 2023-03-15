@@ -97,7 +97,7 @@ class Preprocessor(object):
       return
 
     c.execute(f'CREATE TABLE IF NOT EXISTS "{kmers_table}"(kmer TEXT, position INT)')
-    c.execute(f'CREATE TABLE IF NOT EXISTS "{names_table}"(protein_number INT, taxon INT, species TEXT, gene TEXT, protein_id TEXT, protein_name TEXT, pe_level INT, gene_priority INT)')
+    c.execute(f'CREATE TABLE IF NOT EXISTS "{names_table}"(protein_number INT, taxon_id INT, species TEXT, gene TEXT, protein_id TEXT, protein_name TEXT, pe_level INT, gene_priority INT)')
 
     # make a row for each unique k-mer and position mapping
     for kmer, positions in kmer_dict.items():
@@ -106,7 +106,7 @@ class Preprocessor(object):
 
     # make a row for each number to protein ID mapping
     for protein_number, protein_data in names_dict.items():
-      c.execute(f'INSERT INTO "{names_table}"(protein_number, taxon, species, gene, protein_id, protein_name, pe_level, gene_priority) VALUES(?, ?, ?, ?, ?, ?, ?, ?)',
+      c.execute(f'INSERT INTO "{names_table}"(protein_number, taxon_id, species, gene, protein_id, protein_name, pe_level, gene_priority) VALUES(?, ?, ?, ?, ?, ?, ?, ?)',
         (protein_number, protein_data[0], protein_data[1], protein_data[2], protein_data[3], protein_data[4], protein_data[5], protein_data[6]))
 
     # create indexes for both k-mer, unique position, and name tables
@@ -150,16 +150,13 @@ class Preprocessor(object):
           kmer_dict[kmers[i]] = [protein_count * 100000 + i]     # create entry for new k-mer
 
       # grab UniProt ID which is usually in the middle of two vetical bars
-      try:
-        protein_id = protein.id.split('|')[1]
-      except IndexError:
-        protein_id = protein.id
+      protein_id = protein.id.split('|')[1] if '|' in protein.id else protein.id
 
       # use regex to get all data from the UniProt FASTA header
       try:
-        taxon = int(re.search('OX=(.*?) ', protein.description).group(1))
+        taxon_id = int(re.search('OX=(.*?) ', protein.description).group(1))
       except AttributeError:
-        taxon = None
+        taxon_id = None
 
       try:
         species = re.search('OS=(.*) OX=', protein.description).group(1)
@@ -194,7 +191,7 @@ class Preprocessor(object):
         except AttributeError:
           versioned_id = None
 
-      names_dict[protein_count] = (taxon, species, gene, protein_id, protein_name, pe_level, gene_priority)
+      names_dict[protein_count] = (taxon_id, species, gene, protein_id, protein_name, pe_level, gene_priority)
       protein_count += 1
 
     # store data based on format specified

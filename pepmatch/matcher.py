@@ -660,14 +660,17 @@ class Matcher(Preprocessor):
       
       else:
         query_df = self.dataframe_matches(self.exact_match_search())
+    else:
+      query_df = pd.DataFrame()
 
     # search for discontinuous epitopes if they exist
     if self.discontinuous_epitopes:
       discontinuous_df = self.dataframe_matches(self.discontinuous_search())
+    else:
+      discontinuous_df = pd.DataFrame()
 
     # combine the dataframes if both query and discontinuous epitopes exist
-    if self.query and self.discontinuous_epitopes:
-      df = pd.concat([query_df, discontinuous_df], ignore_index=True)
+    df = pd.concat([query_df, discontinuous_df], ignore_index=True)
 
     # return a dataframe instead of outputting file if specified
     if self.output_format == 'dataframe':

@@ -53,6 +53,10 @@ pip install pepmatch
 
 Note: For now, due to performance, SQLite is used for exact matching and pickle is used for mismatching.
 
+Note: PEPMatch can also search for discontinuous epitopes in the residue:index format. Example: 
+
+"R377, Q408, Q432, H433, F436, V441, S442, S464, K467, K489, I491, S492, N497"
+
 ### Command Line Example
 
 ```bash
@@ -99,5 +103,4 @@ df = Matcher('queries/neoepitopes_test.fasta', 'human.fasta', 3, 3, output_forma
 
 ### TODO
 - Add test workflows for GitHub Actions
-- Add multithreading option
 - Remove dependency on Levenshtein (this is not maintained very well)

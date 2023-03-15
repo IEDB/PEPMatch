@@ -74,8 +74,6 @@ class Matcher(Preprocessor):
     # make sure all query peptides are uppercase
     self.query = [seq.upper() for seq in self.query]
 
-    assert self.query, 'No peptides found in query.'
-
     self.lengths = sorted(set([len(peptide) for peptide in self.query]))
     self.proteome = proteome
     self.proteome_name = proteome.split('/')[-1].split('.')[0]
@@ -96,7 +94,7 @@ class Matcher(Preprocessor):
       self.k_specified = False
 
     # for exact matching, if no k is specified, use smallest length in query as k
-    if not max_mismatches and not k:
+    if not max_mismatches and not k and self.query:
       self.k = self.lengths[0]
 
     # for mismatching, if no k is specified, batch the peptides by length
@@ -561,7 +559,7 @@ class Matcher(Preprocessor):
                                 np.nan,
                                 np.nan,
                                 len(discontinuous_epitope) - residue_matches,
-                                [x[1] for x in d_epitope if x[0] != protein.seq[x[1] - 1]],
+                                [x[1] for x in discontinuous_epitope if x[0] != protein.seq[x[1] - 1]],
                                 discontinuous_epitope[0][1],
                                 discontinuous_epitope[-1][1],
                                 np.nan,
@@ -619,18 +617,23 @@ class Matcher(Preprocessor):
     Overarching function that calls the appropriate search matching function
     based on the parameters.
     '''
-    if self.max_mismatches == -1:
-      df = self.dataframe_matches(self.best_match_search())
+    if self.query:
+      if self.max_mismatches == -1:
+        query_df = self.dataframe_matches(self.best_match_search())
 
-    elif self.max_mismatches > 0:
-      df = self.dataframe_matches(self.mismatching_search())
-    
-    else:
-      df = self.dataframe_matches(self.exact_match_search())
+      elif self.max_mismatches > 0:
+        query_df = self.dataframe_matches(self.mismatching_search())
+      
+      else:
+        query_df = self.dataframe_matches(self.exact_match_search())
 
     # search for discontinuous epitopes if they exist
     if self.discontinuous_epitopes:
-      df = df.append(self.dataframe_matches(self.discontinuous_search()))
+      discontinuous_df = self.dataframe_matches(self.discontinuous_search())
+
+    # combine the dataframes if both query and discontinuous epitopes exist
+    if self.query and self.discontinuous_epitopes:
+      df = pd.concat([query_df, discontinuous_df], ignore_index=True)
 
     # return a dataframe instead of outputting file if specified
     if self.output_format == 'dataframe':

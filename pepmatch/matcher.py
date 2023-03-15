@@ -572,7 +572,7 @@ class Matcher(Preprocessor):
   def dataframe_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
-                      columns=['Query Sequence', 'Matched Sequence', 'Proteome',
+                      columns=['Query Sequence', 'Matched Sequence', 'Taxon ID',
                                'Species', 'Gene', 'Protein ID', 'Protein Name',
                                'Mismatches', 'Mutated Positions', 'Index start', 
                                'Index end', 'Protein Existence Level', 'Gene Priority'])

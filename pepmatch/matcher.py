@@ -638,13 +638,13 @@ class Matcher(Preprocessor):
   def output_matches(self, df):
     '''Write Pandas dataframe to format that is specified'''
     if self.output_format == 'csv':
-      return df.to_csv(f'{self.output_name}.csv', index=False)
+      return df.to_csv(f'{self.preprocessed_files_path}/{self.output_name}.csv', index=False)
     elif self.output_format == 'xlsx':
-      return df.to_excel(f'{self.output_name}.xlsx', index=False)
+      return df.to_excel(f'{self.preprocessed_files_path}/{self.output_name}.xlsx', index=False)
     elif self.output_format == 'json':
-      return df.to_json(f'{self.output_name}.json')
+      return df.to_json(f'{self.preprocessed_files_path}/{self.output_name}.json', index=False)
     elif self.output_format == 'html':
-      return df.to_html()
+      return df.to_html(f'{self.preprocessed_files_path}/{self.output_name}.html', index=False)
 
   def match(self):
     '''

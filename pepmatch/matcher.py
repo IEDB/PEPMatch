@@ -58,7 +58,7 @@ class Matcher(Preprocessor):
         self.output_name = output_name
       else:
         # make output name using query name to proteome name
-        self.output_name = f"{query.replace('.fasta', '')}_to_{proteome.split('/')[-1].split('.')[0]}"
+        self.output_name = f"{query.split('/')[-1].split('.')[0]}_to_{proteome.split('/')[-1].split('.')[0]}"
 
     # check if there are any discontinuous epitopes in the query
     self.discontinuous_epitopes = []

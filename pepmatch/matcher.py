@@ -265,7 +265,7 @@ class Matcher(Preprocessor):
         all_matches.append((peptide, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan))
       for match in matches:
         # retrieve protein IDs from the other created table
-        get_protein_data = f'SELECT * FROM "{names_table_name}" WHERE protein_number = "{(match - (match % 100000)) // 100000}"'
+        get_protein_data = f'SELECT * FROM "{names_table_name}" WHERE protein_number = "{(match - (match % 1000000)) // 1000000}"'
         c.execute(get_protein_data)
         protein_data = c.fetchall()
 
@@ -278,8 +278,8 @@ class Matcher(Preprocessor):
                             protein_data[0][5],    # protein name
                             0,                     # 0 mismatches for exact matches
                             [],                    # mutated positions (none)
-                            (match % 100000) + 1,  # index start
-                            (match % 100000) + len(peptide), # index end
+                            (match % 1000000) + 1,  # index start
+                            (match % 1000000) + len(peptide), # index end
                             protein_data[0][6],    # protein existence level
                             protein_data[0][7]))   # gene priority binary
 
@@ -485,17 +485,17 @@ class Matcher(Preprocessor):
           all_matches.append((
             peptide,                                                         # query peptide
             match[0],                                                        # matched peptide
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][0],       # taxon ID
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][1],       # species name
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][2],       # gene
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][3],       # protein ID
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][4],       # protein name
+            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][0],       # taxon ID
+            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][1],       # species name
+            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][2],       # gene
+            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][3],       # protein ID
+            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][4],       # protein name
             match[1],                                                        # mismatches count
             [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]], # mutated positions
-            (match[2] % 100000) + 1,                                         # index start
-            (match[2] % 100000) + len(peptide),                              # index end
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][5],       # protein existence level
-            names_dict[(match[2] - (match[2] % 100000)) // 100000][6],))     # gene priority binary
+            (match[2] % 1000000) + 1,                                         # index start
+            (match[2] % 1000000) + len(peptide),                              # index end
+            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][5],       # protein existence level
+            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][6],))     # gene priority binary
 
     return all_matches
 

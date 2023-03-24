@@ -145,9 +145,9 @@ class Preprocessor(object):
       kmers = split_sequence(str(protein.seq), k)
       for i in range(len(kmers)):
         if kmers[i] in kmer_dict.keys():
-          kmer_dict[kmers[i]].append(protein_count * 100000 + i) # add index to k-mer list
+          kmer_dict[kmers[i]].append(protein_count * 1000000 + i) # add index to k-mer list
         else:
-          kmer_dict[kmers[i]] = [protein_count * 100000 + i]     # create entry for new k-mer
+          kmer_dict[kmers[i]] = [protein_count * 1000000 + i]     # create entry for new k-mer
 
       # grab UniProt ID which is usually in the middle of two vetical bars
       protein_id = protein.id.split('|')[1] if '|' in protein.id else protein.id

@@ -4,7 +4,7 @@ import re
 import os
 import argparse
 
-from .parser import parse_fasta
+from .helpers import parse_fasta, split_sequence
 
 
 class Preprocessor(object):
@@ -57,7 +57,7 @@ class Preprocessor(object):
     Ex: k = 4, NSLFLTDLY --> ['NSLF', 'SLFL', 'LFLT', 'FLTD', 'LTDL', 'TDLY']
     '''
     kmers = []
-    for i in range(len(seq)-k + 1):
+    for i in range(len(seq) - k + 1):
       kmers.append(seq[i:i+k])
     return kmers
 
@@ -142,7 +142,7 @@ class Preprocessor(object):
         gene_priority_proteome_ids.append(protein_id)
 
     for protein in proteome:
-      kmers = self.split_protein(str(protein.seq), k)
+      kmers = split_sequence(str(protein.seq), k)
       for i in range(len(kmers)):
         if kmers[i] in kmer_dict.keys():
           kmer_dict[kmers[i]].append(protein_count * 100000 + i) # add index to k-mer list

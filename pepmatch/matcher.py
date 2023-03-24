@@ -9,7 +9,7 @@ import numpy as np
 from collections import Counter, defaultdict
 from Levenshtein import hamming
 
-from .parser import parse_fasta
+from .helpers import parse_fasta, split_sequence
 from .preprocessor import Preprocessor
 
 
@@ -153,16 +153,6 @@ class Matcher(Preprocessor):
 
     return ks
 
-  def split_peptide(self, seq, k):
-    '''
-    Splits a peptide into equal sized k-mers on a rolling basis.
-    Ex: k = 4, NSLFLTDLY --> ['NSLF', 'SLFL', 'LFLT', 'FLTD', 'LTDL', 'TDLY']
-    '''
-    kmers = []
-    for i in range(0, len(seq) - k + 1):
-      kmers.append(seq[i:i+k])
-    return kmers
-
   def read_pickle_files(self):
     '''
     Read in the already created pickle files for each dictionary in the
@@ -203,7 +193,7 @@ class Matcher(Preprocessor):
         continue
 
       all_matches_dict[peptide] = []
-      kmers = self.split_peptide(peptide, self.k)
+      kmers = split_sequence(peptide, self.k)
 
       # lookup each k-mer in the preprocessed proteome and subtract the offset
       # of the k-mer position in the peptide and keep track in a list
@@ -470,7 +460,7 @@ class Matcher(Preprocessor):
       for peptide in peptides:
 
         # split peptide into all possible k-mers with size k (self.k)
-        kmers = self.split_peptide(peptide, self.k)
+        kmers = split_sequence(peptide, self.k)
 
         # if the peptide length has an even split of k, perform faster search
         if len(peptide) % self.k == 0:

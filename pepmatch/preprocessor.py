@@ -7,212 +7,237 @@ import argparse
 from .helpers import parse_fasta, split_sequence
 
 
-class Preprocessor(object):
+class Preprocessor:
   '''
-  Object class that takes in a proteome FASTA file, k for k-mer size (split), and format to
-  store preprocessed data.
+  Class that takes in a proteome FASTA file and preprocesses the file to be
+  used in the matching portion of PEPMatch.
 
-  With the preprocess method, it will break the proteome into equal size k-mers and map
-  them to locations within the individual proteins. The mapped keys and values will then
-  be stored in either pickle files or a SQLite database.
+  Two tables are stored after the preprocessing:
+  1. kmers - stores the k-mers and the index location of the k-mer within the
+             entire proteome. The index is the protein_number * 1000000 + 
+             the index within the protein.
+  2. metadata - stores the metadata of the proteome. The metadata includes
+                the protein ID, protein name, species, taxon ID, gene,
+                protein existence level, sequence version, and gene priority
+                (1 if the protein is in the gene priority proteome, 0 otherwise).
 
-  The proteins within the proteome will be assigned numbers along with the index position of
-  each k-mer within the protein.
+  The tables are stored in a SQLite database file or in pickle files.
+
+  ** SQLite for exact matching and pickle files for mismatching. **
 
   Optional:
-  preprocessed_files_path - default is current directory. This is the location where either
-  the .db file will be stored (for exact matching) or the .pickle files will be stored (for
-  mismatching).
+  preprocessed_files_path - location of where to put the preprocessed files.
 
-  gene_priority_proteome - used by UniProt proteomes which contain a prioritized protein
-  sequence per gene. This will be used in the search and prioritize these sequences when
-  one match is requested.
-
-  versioned_ids - protein IDs can be versioned, so the versioned_ids argument can be passed
-  as True to store them as versioned.
+  gene_priority_proteome - another proteome FASTA file that contains the proteins
+                           the canonical sequence for every gene of the species
+                           of the proteome. If this is specified, the GP=1 will
+                           be appended to the FASTA header of the proteins in
+                           this proteome. Otherwise, GP=0.
   '''
   def __init__(self,
                proteome,
-               preprocess_format,
                preprocessed_files_path='.',
-               versioned_ids = True,
                gene_priority_proteome=''):
-
-    if not preprocess_format in ('sql', 'pickle'):
-      raise AssertionError('Unexpected value of preprocessing format:', preprocess_format)
 
     if not os.path.isdir(preprocessed_files_path):
       raise ValueError('Directory specified does not exist: ', preprocessed_files_path)
 
-    self.proteome = proteome
-    self.proteome_name = proteome.split('/')[-1].split('.')[0]
-    self.preprocess_format = preprocess_format
     self.preprocessed_files_path = preprocessed_files_path
-    self.gene_priority_proteome = gene_priority_proteome
-    self.versioned_ids = versioned_ids
 
-  def split_protein(self, seq, k):
-    '''
-    Splits a protein into equal sized k-mers on a rolling basis.
-    Ex: k = 4, NSLFLTDLY --> ['NSLF', 'SLFL', 'LFLT', 'FLTD', 'LTDL', 'TDLY']
-    '''
-    kmers = []
-    for i in range(len(seq) - k + 1):
-      kmers.append(seq[i:i+k])
-    return kmers
+    # appending GP=# to the header of the proteome
+    self.proteome = self.append_gp_to_header(proteome, gene_priority_proteome)
 
-  def pickle_proteome(self, kmer_dict, names_dict, k):
-    '''
-    Takes the preprocessed proteome (below) and creates a pickle file for
-    both k-mer and names dictionaries created. This is for compression and
-    for being able to load the data in when a query is called.
-    '''
+    # extracting the proteome name from the file path
+    self.proteome_name = proteome.split('/')[-1].split('.')[0]
+
+    # extract all the data from the proteome
+    self.seqs, self.metadata = self.get_data_from_proteome()
+
+  def append_gp_to_header(self, proteome, gene_priority_proteome):
+    """
+    Appends GP=1 or GP=0 to the FASTA header of a proteome depending on
+    if the protein is in the gene priority proteome.
+    """
+    proteome_records = parse_fasta(proteome)
+    try:
+      gp_proteome_records = parse_fasta(gene_priority_proteome)
+    except FileNotFoundError:
+      gp_proteome_records = []
+
+    gp_ids = []
+    for record in gp_proteome_records:
+      gp_ids.append(record.id)
+    
+    records = []
+    for record in proteome_records:
+      if 'GP=' in record.description:
+        records.append(record)
+        continue
+      
+      if record.id in gp_ids:
+        GP = 'GP=1 '
+      else:
+        GP = 'GP=0 '
+
+      record.description += f' {GP}'
+      records.append(record)
+
+    return records
+
+  def get_data_from_proteome(self):
+    """
+    Extract all the data from a FASTA file and returns two lists:
+    
+    1. A list of sequences
+    2. A list of metadata tuples with the following fields:
+        protein_id
+        protein_name
+        species
+        taxon_id
+        gene
+        pe_level
+        sequence_version
+    """
+    regex_pattern = r"(?x)"\
+      r"(?:(sp|tr)\|)?"\
+      r"(?P<protein_id>[^|]+)"\
+      r"(\|[^|\s]+)?"\
+      r"(?:\s(?P<protein_name>.+?))?\s"\
+      r"(?:OS=(?P<species>.+?))?\s"\
+      r"(?:OX=(?P<taxon_id>\d+))?\s"\
+      r"(?:GN=(?P<gene>.+?))?\s"\
+      r"(?:PE=(?P<pe_level>\d+))?\s"\
+      r"(?:SV=(?P<sequence_version>\d+))?\s"\
+      r"(?:GP=(?P<gene_priority>\d+))?\s"
+
+    seqs = []
+    metadata = []
+    protein_number = 1
+    for record in self.proteome:
+      seqs.append(str(record.seq))
+      
+      match = re.match(regex_pattern, record.description)
+      metadata.append((
+        protein_number,
+        match.group('protein_id'),
+        match.group('protein_name'),
+        match.group('species'),
+        match.group('taxon_id'),
+        match.group('gene'),
+        match.group('pe_level'),
+        match.group('sequence_version'),
+        match.group('gene_priority')))
+      
+      protein_number += 1
+
+    return seqs, metadata
+
+  def pickle_proteome(self, k):
+    """
+    Pickles the proteome into a dictionary of k-mers and a dictionary of metadata.
+    """
+    # create kmer_dict and metadata_dict out of self.seqs and self.metadata
+    kmer_dict = {}
+    for protein_count, seq in enumerate(self.seqs):
+      for j, kmer in enumerate(split_sequence(seq, k)):
+        if kmer in kmer_dict.keys():
+          kmer_dict[kmer].append((protein_count + 1) * 100000 + j) # add index to k-mer list
+        else:
+          kmer_dict[kmer] = [(protein_count + 1) * 100000 + j] # create entry for new k-mer
+    
+    metadata_dict = {}
+    for data in self.metadata:
+      metadata_dict[data[0]] = data[1:]
+    
     with open(os.path.join(self.preprocessed_files_path, 
       f'{self.proteome_name}_{str(k)}mers.pickle'), 'wb') as f:
-
       pickle.dump(kmer_dict, f)
 
     with open(os.path.join(self.preprocessed_files_path, 
-      f'{self.proteome_name}_names.pickle'), 'wb') as f:
+      f'{self.proteome_name}_metadata.pickle'), 'wb') as f:
+      pickle.dump(metadata_dict, f)
 
-      pickle.dump(names_dict, f)
+  def create_tables(self, cursor, kmers_table, metadata_table):
+    cursor.execute(
+      f'CREATE TABLE IF NOT EXISTS {kmers_table} ('\
+        'kmer TEXT NOT NULL,'\
+        'idx  INTEGER NOT NULL)'
+      )
+    cursor.execute(
+      f'CREATE TABLE IF NOT EXISTS {metadata_table} ('\
+        'protein_number   INTEGER NOT NULL,'\
+        'protein_id       TEXT NOT NULL,'\
+        'protein_name     TEXT NOT NULL,'\
+        'species          TEXT NOT NULL,'\
+        'taxon_id         INTEGER NOT NULL,'\
+        'gene             TEXT NOT NULL,'\
+        'pe_level         INTEGER NOT NULL,'\
+        'sequence_version INTEGER NOT NULL,'\
+        'gene_priority    INTEGER NOT NULL)'\
+    )
 
-  def sql_proteome(self, kmer_dict, names_dict, k):
-    '''
-    Takes the preprocessed proteome (below) and creates SQLite tables for both the
-    k-mer and names dictionaries created. These SQLite tables can then be used
-    for searching. This is much faster for exact matching.
-    '''
+  def create_indexes(self, cursor, kmers_table, metadata_table):
+    cursor.execute(f'CREATE INDEX IF NOT EXISTS {kmers_table}_kmer_idx ON {kmers_table} (kmer)')
+    cursor.execute(f'CREATE INDEX IF NOT EXISTS {metadata_table}_protein_number_idx ON {metadata_table} (protein_number)')
+
+  def insert_kmers(self, cursor, kmers_table, k):
+    kmer_rows = []
+    for protein_count, seq in enumerate(self.seqs):
+        for j, kmer in enumerate(split_sequence(seq, k)):
+            kmer_rows.append((kmer, (protein_count + 1) * 100000 + j))
+    cursor.executemany(f'INSERT INTO {kmers_table} VALUES (?, ?)', kmer_rows)
+
+  def insert_metadata(self, cursor, metadata_table):
+    cursor.executemany(f'INSERT INTO {metadata_table} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', self.metadata)
+
+  def sql_proteome(self, k):
+    """
+    Writes the kmers_table and metadata_table to a SQLite database.
+    """
+    # create table names
     kmers_table = f'{self.proteome_name}_{str(k)}mers'
-    names_table = f'{self.proteome_name}_names'
+    metadata_table = f'{self.proteome_name}_metadata'
+    
+    # connect to database
+    db_path = os.path.join(self.preprocessed_files_path, f'{self.proteome_name}.db')
+    with sqlite3.connect(db_path) as conn:
+      cursor = conn.cursor()
 
-    conn = sqlite3.connect(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db'))
-    c = conn.cursor()
+      # check if kmers table already exists and exit if it does
+      # for some reason writing to the same table multiple times messes up results
+      if cursor.execute(f'SELECT name FROM sqlite_master WHERE type="table" AND name="{kmers_table}";').fetchone():
+          return
 
-    # check if kmers table already exists and return if it does - for some reason
-    # writing to the same table multiple times messes up results
-    if c.execute(f'SELECT name FROM sqlite_master WHERE type="table" AND name="{kmers_table}";').fetchone():
-      c.close()
-      conn.close()
-      return
+      self.create_tables(cursor, kmers_table, metadata_table)
+      self.insert_kmers(cursor, kmers_table, k)
+      self.insert_metadata(cursor, metadata_table)
+      self.create_indexes(cursor, kmers_table, metadata_table)
 
-    c.execute(f'CREATE TABLE IF NOT EXISTS "{kmers_table}"(kmer TEXT, position INT)')
-    c.execute(f'CREATE TABLE IF NOT EXISTS "{names_table}"(protein_number INT, taxon_id INT, species TEXT, gene TEXT, protein_id TEXT, protein_name TEXT, pe_level INT, gene_priority INT)')
+      conn.commit()
 
-    # make a row for each unique k-mer and position mapping
-    for kmer, positions in kmer_dict.items():
-      for position in positions:
-        c.execute(f'INSERT INTO "{kmers_table}" (kmer, position) VALUES (?, ?)', (str(kmer), position,))
+  def preprocess(self, preprocess_format, k):
+    """
+    Preprocesses the proteome and stores it in the specified format.
+    """
+    if not preprocess_format in ('sql', 'pickle'):
+      raise AssertionError('Unexpected value of preprocessing format:', preprocess_format)
 
-    # make a row for each number to protein ID mapping
-    for protein_number, protein_data in names_dict.items():
-      c.execute(f'INSERT INTO "{names_table}"(protein_number, taxon_id, species, gene, protein_id, protein_name, pe_level, gene_priority) VALUES(?, ?, ?, ?, ?, ?, ?, ?)',
-        (protein_number, protein_data[0], protein_data[1], protein_data[2], protein_data[3], protein_data[4], protein_data[5], protein_data[6]))
-
-    # create indexes for both k-mer, unique position, and name tables
-    c.execute(f'CREATE INDEX IF NOT EXISTS "{kmers_table}_kmer_id" ON "{kmers_table}"(kmer)')
-    c.execute(f'CREATE INDEX IF NOT EXISTS "{names_table}_id" ON "{names_table}"(protein_number)')
-
-    conn.commit()
-    c.close()
-    conn.close()
-
-  def preprocess(self, k):
-    '''
-    Method which preprocessed the given proteome, by splitting each protein into k-mers
-    and assigninga unique index to each unique k-mer within each protein. This is done by
-    assigning a number to each protein and for each k-mer, multiplying the protein number
-    by 100,000 and adding the index position of the index within the protein. This
-    guarantees a unique index for each and every possible k-mer. Also, each protein #
-    assigned is also mappedto the protein ID to be read back later after searching.
-    '''
     assert k >= 2, 'k-sized split is invalid. Cannot be less than 2.'
 
-    proteome = parse_fasta(self.proteome)
-    kmer_dict = {}
-    names_dict = {}
-    protein_count = 1
-
-    # get all gene priority IDs to check for them
-    if self.gene_priority_proteome:
-      gene_priority_proteome_ids = []
-      gene_priority_proteome = parse_fasta(self.gene_priority_proteome)
-      for protein in gene_priority_proteome:
-        protein_id = protein.id.split('|')[1]
-        gene_priority_proteome_ids.append(protein_id)
-
-    for protein in proteome:
-      kmers = split_sequence(str(protein.seq), k)
-      for i in range(len(kmers)):
-        if kmers[i] in kmer_dict.keys():
-          kmer_dict[kmers[i]].append(protein_count * 100000 + i) # add index to k-mer list
-        else:
-          kmer_dict[kmers[i]] = [protein_count * 100000 + i]     # create entry for new k-mer
-
-      # grab UniProt ID which is usually in the middle of two vetical bars
-      protein_id = protein.id.split('|')[1] if '|' in protein.id else protein.id
-
-      # use regex to get all data from the UniProt FASTA header
-      try:
-        taxon_id = int(re.search('OX=(.*?) ', protein.description).group(1))
-      except AttributeError:
-        taxon_id = None
-
-      try:
-        species = re.search('OS=(.*) OX=', protein.description).group(1)
-      except AttributeError:
-        species = None
-
-      try:
-        gene = re.search('GN=(.*?) ', protein.description).group(1)
-      except AttributeError:
-        gene = None
-
-      try:
-        protein_name = re.search(' (.*) OS', protein.description).group(1)
-      except AttributeError:
-        protein_name = None
-
-      try:
-        pe_level = int(re.search('PE=(.*?) ', protein.description).group(1))
-      except AttributeError:
-        pe_level = 0
-
-      # label protein record as being in gene priority proteome if it's found there
-      if self.gene_priority_proteome:
-        gene_priority = 1 if protein_id in gene_priority_proteome_ids else 0
-      else:
-        gene_priority = 0
-
-      if self.versioned_ids:
-        try:
-          versioned_id = re.search('SV=(.*)', protein.description).group(1)
-          protein_id += '.' + versioned_id
-        except AttributeError:
-          versioned_id = None
-
-      names_dict[protein_count] = (taxon_id, species, gene, protein_id, protein_name, pe_level, gene_priority)
-      protein_count += 1
-
     # store data based on format specified
-    if self.preprocess_format == 'pickle':
-      self.pickle_proteome(kmer_dict, names_dict, k)
-    elif self.preprocess_format == 'sql':
-      self.sql_proteome(kmer_dict, names_dict, k)
-
-    return 0
-
+    if preprocess_format == 'pickle':
+      self.pickle_proteome(k)
+    elif preprocess_format == 'sql':
+      self.sql_proteome(k)
 
 # run via command line
-
 def parse_arguments():
   parser = argparse.ArgumentParser()
 
   parser.add_argument('-p', '--proteome', required=True)
   parser.add_argument('-k', '--kmer_size', type=int, required=True)
-  parser.add_argument('-f', '--format', required=True)
+  parser.add_argument('-f', '--preprocess_format', required=True)
   parser.add_argument('-P', '--preprocessed_files_path', default='.')
-  parser.add_argument('-v', '--versioned_ids', type=bool, default=True)
   parser.add_argument('-g', '--gene_priority_proteome', default='')
 
   args = parser.parse_args()
@@ -222,5 +247,7 @@ def parse_arguments():
 def run():
   args = parse_arguments()
 
-  Preprocessor(args.proteome, args.format, args.preprocessed_files_path,
-               args.versioned_ids, args.gene_priority_proteome).preprocess(args.kmer_size)
+  Preprocessor(
+    args.proteome, 
+    args.preprocessed_files_path,
+    args.gene_priority_proteome).preprocess(args.preprocess_format, args.kmer_size)

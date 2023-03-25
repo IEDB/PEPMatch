@@ -160,12 +160,10 @@ class Matcher(Preprocessor):
     '''
     with open(os.path.join(self.preprocessed_files_path, 
       f'{self.proteome_name}_{str(self.k)}mers.pickle'), 'rb') as f:
-
       kmer_dict = pickle.load(f)
 
     with open(os.path.join(self.preprocessed_files_path, 
       f'{self.proteome_name}_names.pickle'), 'rb') as f:
-
       names_dict = pickle.load(f)
 
     return kmer_dict, names_dict

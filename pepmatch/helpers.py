@@ -12,4 +12,4 @@ def split_sequence(sequence, k):
 
 def parse_fasta(file):
   '''Return a parsed Biopython SeqRecord object from a FASTA file.'''
-  return SeqIO.parse(file, 'fasta')
+  return list(SeqIO.parse(file, 'fasta'))

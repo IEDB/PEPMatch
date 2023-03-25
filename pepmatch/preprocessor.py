@@ -99,24 +99,24 @@ class Preprocessor:
         sequence_version
     """
     regex_pattern = r"(?x)"\
-      r"(?:(sp|tr)\|)?"\
-      r"(?P<protein_id>[^|]+)"\
-      r"(\|[^|\s]+)?"\
-      r"(?:\s(?P<protein_name>.+?))?\s"\
-      r"(?:OS=(?P<species>.+?))?\s"\
-      r"(?:OX=(?P<taxon_id>\d+))?\s"\
-      r"(?:GN=(?P<gene>.+?))?\s"\
-      r"(?:PE=(?P<pe_level>\d+))?\s"\
-      r"(?:SV=(?P<sequence_version>\d+))?\s"\
-      r"(?:GP=(?P<gene_priority>\d+))?\s"
+        r"(?:(sp|tr)\|)?"\
+        r"(?P<protein_id>[^|]+)?"\
+        r"(\|[^|\s]+)?"\
+        r"(?:\s(?P<protein_name>.+?))?\s"\
+        r"(?:OS=(?P<species>.+?))?\sOX"\
+        r"(?:=(?P<taxon_id>.+?))?\sGN"\
+        r"(?:=(?P<gene>.+?))?\sPE"\
+        r"(?:=(?P<pe_level>.+?))?\SV"\
+        r"(?:=(?P<sequence_version>.+?))?\sGP"\
+        r"(?:=(?P<gene_priority>.+?))?\s"
 
     seqs = []
     metadata = []
     protein_number = 1
     for record in self.proteome:
       seqs.append(str(record.seq))
-      
-      match = re.match(regex_pattern, record.description)
+
+      match = re.match(regex_pattern, str(record.description))
       metadata.append((
         protein_number,
         match.group('protein_id'),

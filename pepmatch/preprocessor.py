@@ -3,6 +3,7 @@ import sqlite3
 import re
 import os
 import argparse
+import redis
 
 from .helpers import parse_fasta, split_sequence
 
@@ -219,6 +220,35 @@ class Preprocessor:
       self.create_indexes(cursor, kmers_table, metadata_table)
 
       conn.commit()
+  
+  def redis_proteome(self, k):
+    """
+    Writes the k-mers and metadata to a Redis database.
+    """
+    r = redis.Redis(host='localhost', port=6379, db=0)
+
+
+    # store k-mers
+    for protein_count, seq in enumerate(self.seqs):
+      for j, kmer in enumerate(split_sequence(seq, k)):
+        idx = (protein_count + 1) * 100000 + j
+        key = f'kmer:{kmer}'
+        value = r.get(key)
+
+        if value:
+          value = value.decode() + f",{idx}"
+        else:
+          value = str(idx)
+
+        r.set(key, value)
+
+    # store metadata
+    for data in self.metadata:
+      protein_number = data[0]
+      metadata_values = ','.join([str(val) for val in data[1:]])
+      key = f'metadata:{protein_number}'
+      r.set(key, metadata_values)
+
 
   def preprocess(self, preprocess_format, k):
     """

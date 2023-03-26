@@ -118,18 +118,21 @@ class Preprocessor:
 
       metadata_entry = [protein_number]
 
+      # loop through compiled regexes to extract metadata
       for key in regexes:
         match = regexes[key].search(str(record.description))
+        
         if match:
           metadata_entry.append(match.group(1))
         else:
           if key == 'protein_id':
-            metadata_entry.append(record.id)
+            metadata_entry.append(record.id) # get record.id from FASTA header instead
+          elif key in ['pe_level', 'sequence_version', 'gene_priority']:
+            metadata_entry.append('0') # zeros for integer columns
           else:
-            metadata_entry.append(None)
+            metadata_entry.append('')  # empty strings for string columns
 
       metadata.append(tuple(metadata_entry))
-
       protein_number += 1
 
     return seqs, metadata

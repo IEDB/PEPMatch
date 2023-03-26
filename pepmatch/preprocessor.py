@@ -59,13 +59,13 @@ class Preprocessor:
     Appends GP=1 or GP=0 to the FASTA header of a proteome depending on
     if the protein is in the gene priority proteome.
     """
-    proteome_records = parse_fasta(proteome)
-    try:
+    proteome_records = parse_fasta(proteome) # get regular proteome
+    try: # try to get gene priority proteome
       gp_proteome_records = parse_fasta(gene_priority_proteome)
     except FileNotFoundError:
       gp_proteome_records = []
 
-    gp_ids = []
+    gp_ids = [] # get list of gene priority protein IDs
     for record in gp_proteome_records:
       gp_ids.append(record.id)
     
@@ -80,7 +80,7 @@ class Preprocessor:
       else:
         GP = 'GP=0 '
 
-      record.description += f' {GP}'
+      record.description += f' {GP}' # append notation to FASTA header
       records.append(record)
 
     return records
@@ -90,25 +90,20 @@ class Preprocessor:
     Extract all the data from a FASTA file and returns two lists:
     
     1. A list of sequences
-    2. A list of metadata tuples with the following fields:
-        protein_id
-        protein_name
-        species
-        taxon_id
-        gene
-        pe_level
-        sequence_version
+    2. A list of metadata in tuples. The metadata includes the protein ID,
+       protein name, species, taxon ID, gene, protein existence level,
+       sequence version, and gene priority label. 
     """
 
     regexes = {
-        'protein_id': re.compile(r"\|([^|]*)\|"),
-        'protein_name': re.compile(r"\s(.+?)OS"),
-        'species': re.compile(r"OS=(.+?)OX"),
-        'taxon_id': re.compile(r"OX=(.+?)\s"),
-        'gene': re.compile(r"GN=(.+?)\s"),
-        'pe_level': re.compile(r"PE=(.+?)\s"),
-        'sequence_version': re.compile(r"SV=(.+?)\s"),
-        'gene_priority': re.compile(r"GP=(.+?)\s"),
+        'protein_id': re.compile(r"\|([^|]*)\|"),      # between | and |
+        'protein_name': re.compile(r"\s(.+?)OS"),      # between first space and OS
+        'species': re.compile(r"OS=(.+?)OX"),          # between OS= and OX (species can have spaces)
+        'taxon_id': re.compile(r"OX=(.+?)\s"),         # between OX= and space
+        'gene': re.compile(r"GN=(.+?)\s"),             # between GN= and space
+        'pe_level': re.compile(r"PE=(.+?)\s"),         # between PE= and space
+        'sequence_version': re.compile(r"SV=(.+?)\s"), # between SV= and space
+        'gene_priority': re.compile(r"GP=(.+?)\s"),    # between GP= and space
     }
 
     seqs = []
@@ -155,6 +150,7 @@ class Preprocessor:
     for data in self.metadata:
       metadata_dict[data[0]] = data[1:]
     
+    # write kmer_dict and metadata_dict to pickle files
     with open(os.path.join(self.preprocessed_files_path, 
       f'{self.proteome_name}_{str(k)}mers.pickle'), 'wb') as f:
       pickle.dump(kmer_dict, f)
@@ -233,14 +229,7 @@ class Preprocessor:
       for j, kmer in enumerate(split_sequence(seq, k)):
         idx = (protein_count + 1) * 100000 + j
         key = f'kmer:{kmer}'
-        value = r.get(key)
-
-        if value:
-          value = value.decode() + f",{idx}"
-        else:
-          value = str(idx)
-
-        r.set(key, value)
+        r.set(key, str(idx))
 
     # store metadata
     for data in self.metadata:

@@ -98,17 +98,17 @@ class Preprocessor:
         pe_level
         sequence_version
     """
-    regex_pattern = r"(?x)"\
-        r"(?:(sp|tr)\|)?"\
-        r"(?P<protein_id>[^|]+)?"\
-        r"(\|[^|\s]+)?"\
-        r"(?:\s(?P<protein_name>.+?))?\s"\
-        r"(?:OS=(?P<species>.+?))?\sOX"\
-        r"(?:=(?P<taxon_id>.+?))?\sGN"\
-        r"(?:=(?P<gene>.+?))?\sPE"\
-        r"(?:=(?P<pe_level>.+?))?\SV"\
-        r"(?:=(?P<sequence_version>.+?))?\sGP"\
-        r"(?:=(?P<gene_priority>.+?))?\s"
+
+    regexes = {
+        'protein_id': re.compile(r"\|([^|]*)\|"),
+        'protein_name': re.compile(r"\s(.+?)OS"),
+        'species': re.compile(r"OS=(.+?)OX"),
+        'taxon_id': re.compile(r"OX=(.+?)\s"),
+        'gene': re.compile(r"GN=(.+?)\s"),
+        'pe_level': re.compile(r"PE=(.+?)\s"),
+        'sequence_version': re.compile(r"SV=(.+?)\s"),
+        'gene_priority': re.compile(r"GP=(.+?)\s"),
+    }
 
     seqs = []
     metadata = []
@@ -116,18 +116,20 @@ class Preprocessor:
     for record in self.proteome:
       seqs.append(str(record.seq))
 
-      match = re.match(regex_pattern, str(record.description))
-      metadata.append((
-        protein_number,
-        match.group('protein_id'),
-        match.group('protein_name'),
-        match.group('species'),
-        match.group('taxon_id'),
-        match.group('gene'),
-        match.group('pe_level'),
-        match.group('sequence_version'),
-        match.group('gene_priority')))
-      
+      metadata_entry = [protein_number]
+
+      for key in regexes:
+        match = regexes[key].search(str(record.description))
+        if match:
+          metadata_entry.append(match.group(1))
+        else:
+          if key == 'protein_id':
+            metadata_entry.append(record.id)
+          else:
+            metadata_entry.append(None)
+
+      metadata.append(tuple(metadata_entry))
+
       protein_number += 1
 
     return seqs, metadata

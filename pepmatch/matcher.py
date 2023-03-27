@@ -231,20 +231,22 @@ class Matcher(Preprocessor):
         query = f'SELECT * FROM "{metadata_table_name}" WHERE protein_number = "{protein_number}"'
         cursor.execute(query)
         protein_data = cursor.fetchone()
-        match_data = (peptide,                          # query peptide
-                      peptide,                          # matched peptide (same as query for exact)
-                      protein_data[1],                  # protein ID
-                      protein_data[2],                  # protein name
-                      protein_data[3],                  # species
-                      protein_data[4],                  # taxon ID
-                      protein_data[5],                  # gene symbol
-                      0,                                # 0 mismatches for exact match
-                      [],                               # mutated positions (none)
-                      (match % 1000000) + 1,            # index start
-                      (match % 1000000) + len(peptide), # index end
-                      protein_data[6],                  # protein existence level
-                      protein_data[7],                  # sequence version
-                      protein_data[8])                  # gene priority flag
+        match_data = (
+          peptide,                          # query peptide
+          peptide,                          # matched peptide (same as query for exact)
+          protein_data[1],                  # protein ID
+          protein_data[2],                  # protein name
+          protein_data[3],                  # species
+          protein_data[4],                  # taxon ID
+          protein_data[5],                  # gene symbol
+          0,                                # 0 mismatches for exact match
+          [],                               # mutated positions (none)
+          (match % 1000000) + 1,            # index start
+          (match % 1000000) + len(peptide), # index end
+          protein_data[6],                  # protein existence level
+          protein_data[7],                  # sequence version
+          protein_data[8])                  # gene priority flag
+        
         all_matches.append(match_data)
 
     return all_matches
@@ -260,60 +262,33 @@ class Matcher(Preprocessor):
     check the left and right k-mer neighbors for mismatches. If the number of
     mismatches is less than or equal to the max, then it's a match.
     """
-    all_matches_dict = {}
-
-    # iterate through each batch - k: [peptides]
-    for k, peptides in self.batched_peptides.items():
+    all_matches = []
+    for k, peptides in self.batched_peptides.items(): # iterate through each batch - k: [peptides]
       if not self.k_specified:
         self.k = k
 
-      # try reading in the preprocessed pickle files
-      # create reverse kmer dictionary for neighbor seaches - index: kmer
-      try:
+      try: # read in the preprocessed pickle files - create reverse kmer dictionary for neighbor seaches - index: kmer
         kmer_dict, metadata_dict = self._read_pickle_files()
         rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
-      except FileNotFoundError:
-        self.pickle_proteome(self.k) # preprocess the proteome using self.k
+      except FileNotFoundError: # do preprocessing if pickle files don't exist
+        self.pickle_proteome(self.k)
         kmer_dict, metadata_dict = self._read_pickle_files()
         rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
       for peptide in peptides:
-  
         all_kmers = split_sequence(peptide, self.k)
 
         # faster search if possible
         if len(peptide) % self.k == 0:
-          matches = self._find_even_split_matches(kmers, kmer_dict, rev_kmer_dict, len(peptide))
+          peptide_matches = self._find_even_split_matches(kmers, kmer_dict, rev_kmer_dict, len(peptide))
 
         # slower search if necessary
         else:
-          matches = self._find_uneven_split_matches(kmers, kmer_dict, rev_kmer_dict, len(peptide))
+          peptide_matches = self._find_uneven_split_matches(kmers, kmer_dict, rev_kmer_dict, len(peptide))
 
-        all_matches_dict[peptide] = list(matches)
-
-    all_matches = []
-    # compile all matches to output in tuples in the following format:
-    # (peptide, matched peptide, protein matched in, index, # of mismatches)
-    for peptide, matches in all_matches_dict.items():
-      if matches == []:
-        all_matches.append((peptide, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan))
-      else:
-        for match in matches:
-          all_matches.append((
-            peptide,                                                         # query peptide
-            match[0],                                                        # matched peptide
-            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][0],       # taxon ID
-            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][1],       # species name
-            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][2],       # gene
-            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][3],       # protein ID
-            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][4],       # protein name
-            match[1],                                                        # mismatches count
-            [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]], # mutated positions
-            (match[2] % 1000000) + 1,                                         # index start
-            (match[2] % 1000000) + len(peptide),                              # index end
-            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][5],       # protein existence level
-            names_dict[(match[2] - (match[2] % 1000000)) // 1000000][6],))     # gene priority binary
-
+        processed_matches = self._process_mismatch_matches(peptide, peptide_matches, metadata_dict)
+        all_matches.extend(processed_matches)
+    
     return all_matches
 
   def _read_pickle_files(self):
@@ -334,13 +309,16 @@ class Matcher(Preprocessor):
   def _find_even_split_matches(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
     """
     If the peptide length is evenly divisible by k, perform faster search. 
+    Check the associated k-mers for the left and right neighbors of any 
+    exact matching k-mers in the proteome.
+    
     EXAMPLE: "YLLDLHSYL", k=3 -> check only ["YLL", "DLH", "SYL"]. 
     If, say "DLH" is found somewhere in the proteome, check the neighboring
     k-mers to the left and right to see if "YLL" (left neighbor) and "SYL" 
-    (right neighbor) have mismatches with the proteome k-mers, return matches
-    if it's less than or equal to the max mismatches.
+    (right neighbor) have mismatches with the proteome k-mers, return any
+    matches that are less than or equal to self.max_mismatches.
     """
-    matches = set()
+    peptide_matches = set()
     for idx in range(0, len(kmers), self.k): # gets only the k-mers to check
       try: # try to find an exact match hit for each k-mer
         for kmer_hit in kmer_dict[kmers[idx]]:
@@ -349,7 +327,7 @@ class Matcher(Preprocessor):
           mismatches += _check_left_neighbors(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
           
           if not mismatches > self.max_mismatches:
-            mismatches += _check_right_neighbors(kmer_hit, kmers, rev_kmer_dict, mismatches)
+            mismatches += _check_right_neighbors(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
           else:
             continue
           
@@ -357,91 +335,67 @@ class Matcher(Preprocessor):
             matched_peptide = ''
             for i in range(0, peptide_length, self.k):
               matched_peptide += rev_kmer_dict[kmer_hit - idx + i]
-            matches.add((matched_peptide, mismatches, kmer_hit - i))
+            peptide_matches.add((matched_peptide, mismatches, kmer_hit - i))
 
             # in case match is 0 mismatches and self.best_match is True, return right away
             if self.best_match and not mismatches:
-              return matches
+              return list(peptide_matches)
+          
+          else:
+            continue
       
       except KeyError:
         continue
     
-    return matches
+    return list(peptide_matches)
 
   def _find_uneven_split_matches(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
-    # record matches in a set so as to not duplicate matches
-    matches = set()
-
-    for i in range(0, len(kmers)):
-
-      # find each hit for each k-mer
-      try:
-        for hit in kmer_dict[kmers[i]]:
+    """
+    If the peptide length is NOT evenly divisible by k, perform slow search. 
+    Check the associated residues for the left and right neighbors of any 
+    exact matching k-mers in the proteome.
+    
+    EXAMPLE: "YLLDLHSYL", k=3 -> check all k-mers: 
+    ["YLL", "LLD", "LDL", "DLH", "LHS", "HSY", "SYL"].
+    
+    If, say "DLH" is found somewhere in the proteome, check left "L" from "LDL",
+    left "L" from "LLD", and "Y" from "YLL" to for any mismatches. Then do the 
+    same for the residues of the right neighbors. Return any matches that are
+    less than or equal to self.max_mismatches.
+    """
+    peptide_matches = set()
+    for idx in range(0, len(kmers)): # every k-mer
+      try: # try to find an exact match hit for each k-mer
+        for kmer_hit in kmer_dict[kmers[idx]]:
 
           mismatches = 0
+          mismatches += _check_left_residues(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
 
-          # if the k-mer is found in the middle or end, check the neighbors
-          # k-mers to the left
-          for j in range(0, i,):
-            try:
-              # use reverse dictionary to retrive k-mers and just check the
-              # very first letter since it's a rolling split
-              if rev_kmer_dict[hit+j-i][0] != kmers[j][0]:
-                mismatches += 1
-
-              # if mismatches ever reach threshold, break out of loop
-              if mismatches >= self.max_mismatches + 1:
-                break
-
-            # if first k-mer finds nothing, set mismatches to 100 to disqualify this
-            # peptide from matching with this area
-            except KeyError:
-              mismatches = 100
-
-          # if the k-mer is found in the middle or end, check the neighbors
-          # k-mers to the right
-          for k in range(i+1, len(kmers),):
-            try:
-              # use reverse dictionary to retrive k-mers and just check the
-              # very last letter since it's a rolling split
-              if rev_kmer_dict[hit+k-i][-1] != kmers[k][-1]:
-                mismatches += 1
-
-              # if mismatches ever reach threshold, break out of loop
-              if mismatches >= self.max_mismatches + 1:
-                break
-
-            # if last k-mer finds nothing, set mismatches to 100 to disqualify this
-            # peptide from matching with this area
-            except KeyError:
-              mismatches = 100
-
-          if mismatches >= self.max_mismatches + 1:
+          if not mismatches > self.max_mismatches:
+            mismatches += _check_right_residues(hit, idx, kmer_hit, rev_kmer_dict, mismatches)
+          else:
             continue
 
-          # if the mismatches that were calculated is less than threshold
-          # for all neighbors, then it's a match
-          if mismatches < self.max_mismatches + 1:
+          if mismatches <= self.max_mismatches:
             matched_peptide = ''
             try:
-              for s in range(0, peptide_length, self.k):
-                matched_peptide += rev_kmer_dict[hit-i+s]
-
+              for i in range(0, peptide_length):
+                matched_peptide += rev_kmer_dict[kmer_hit - idx + i]
             except KeyError:
-              for r in range(1, peptide_length % self.k + 1):
-                matched_peptide += rev_kmer_dict[hit-i+s-(self.k - r)][-1]
+              for j in range(1, peptide_length % self.k + 1):
+                matched_peptide += rev_kmer_dict[hit - idx + i - (self.k - j)][-1]
 
             matched_peptide = matched_peptide[0:peptide_length]
-            matches.add((matched_peptide, mismatches, hit - i))
+            peptide_matches.add((matched_peptide, mismatches, kmer_hit - i))
 
+            # in case match is 0 mismatches and self.best_match is True, return right away
             if self.best_match and not mismatches:
-              return matches
+              return peptide_matches
 
-      # if nothing is found, you can check the next k-mer, since there can still be a match
       except KeyError:
         continue
 
-    return matches
+    return peptide_matches
 
   def _check_left_neighbors(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
     for i in range(0, idx, self.k):
@@ -459,37 +413,62 @@ class Matcher(Preprocessor):
       try: # get proteome k-mer from reverse dictionary and check associated query k-mer
         mismatches += hamming(rev_kmer_dict[kmer_hit + i - idx], kmers[i])
         if mismatches > self.max_mismatches:
-            return 100
+          return 100
       except KeyError:
         return 100
+    
     return mismatches
 
-  def _check_left_residue(self, kmers, kmer_hit, i, rev_kmer_dict):
-    mismatches = 0
-    for j in range(0, i):
-      try:
-        if rev_kmer_dict[hit + j - i][0] != kmers[j][0]:
+  def _check_left_residues(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
+    for i in range(0, idx):
+      try: # get proteome residue from reverse dictionary and check associated query residue
+        if rev_kmer_dict[hit + i - idx][0] != kmers[i][0]:
           mismatches += 1
-        if mismatches >= self.max_mismatches + 1:
-          break
+        if mismatches > self.max_mismatches:
+          return 100
       except KeyError:
-        mismatches = 100
+        return 100
+    
     return mismatches
 
-  def _check_right_residue(self, kmers, kmer_hit, i, rev_kmer_dict):
-    mismatches = 0
-    for k in range(i + 1, len(kmers)):
-      try:
-        if rev_kmer_dict[hit + k - i][-1] != kmers[k][-1]:
+  def _check_right_residues(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
+    for i in range(idx + 1, len(kmers)):
+      try: # get proteome residue from reverse dictionary and check associated query residue
+        if rev_kmer_dict[hit + i - idx][-1] != kmers[i][-1]:
           mismatches += 1
-        if mismatches >= self.max_mismatches + 1:
-          break
+        if mismatches > self.max_mismatches:
+          return 100
       except KeyError:
-        mismatches = 100
+        return 100
+    
     return mismatches
 
-  def _process_mismatch_matches(self):
-    pass
+  def _process_mismatch_matches(self, peptide, peptide_matches, metadata_dict):
+    """Extract all metadata for the mismatch matches and return as a list of tuples."""
+    all_matches = []
+    if not peptide_matches:
+      all_matches.append((pepttide,) + (np.nan,) * 12)
+    else:
+      for match in peptide_matches:
+        match_data = (
+          peptide,                                                         # query peptide
+          match[0],                                                        # matched peptide
+          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][1],     # protein ID
+          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][2],     # protein name
+          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][3],     # species
+          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][4],     # taxon ID
+          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][5],     # gene symbol
+          match[1],                                                        # mismatches count
+          [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]], # mutated positions
+          (match[2] % 1000000) + 1,                                        # index start
+          (match[2] % 1000000) + len(peptide),                             # index end
+          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][6],     # protein existence level
+          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][7],     # sequence version
+          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][8])     # gene priority flag
+        
+        all_matches.append(match_data)
+
+    return all_matches
 
   def best_match_search(self):
     """
@@ -497,7 +476,6 @@ class Matcher(Preprocessor):
     length in query), we can then call the mismatch_search function. We use
     the maximum # of mismatches calculated from the each length and split.
     """
-
     all_matches = []
     # once we reach k = 2, we will just increase the # of mismatches until we find some
     # match for each peptide in the query
@@ -572,19 +550,23 @@ class Matcher(Preprocessor):
           residue_matches = sum([x[0] == protein_record.seq[x[1] - 1] for x in discontinuous_epitope])
           if residue_matches >= (len(discontinuous_epitope) - self.max_mismatches):
             protein_metadata = self.get_protein_metadata(protein_record)
-            all_matches.append((', '.join([x[0] + str(x[1]) for x in discontinuous_epitope]), 
-                                ', '.join([protein_record.seq[x[1] - 1] + str(x[1]) for x in discontinuous_epitope]),
-                                protein_metadata[0],
-                                protein_metadata[1],
-                                protein_metadata[2],
-                                protein_metadata[3],
-                                protein_metadata[4],
-                                len(discontinuous_epitope) - residue_matches,
-                                [x[1] for x in discontinuous_epitope if x[0] != protein_record.seq[x[1] - 1]],
-                                discontinuous_epitope[0][1],
-                                discontinuous_epitope[-1][1],
-                                protein_metadata[5],
-                                np.nan))
+            match_data = (
+              ', '.join([x[0] + str(x[1]) for x in discontinuous_epitope]), 
+              ', '.join([protein_record.seq[x[1] - 1] + str(x[1]) for x in discontinuous_epitope]),
+              protein_metadata[0],
+              protein_metadata[1],
+              protein_metadata[2],
+              protein_metadata[3],
+              protein_metadata[4],
+              len(discontinuous_epitope) - residue_matches,
+              [x[1] for x in discontinuous_epitope if x[0] != protein_record.seq[x[1] - 1]],
+              discontinuous_epitope[0][1],
+              discontinuous_epitope[-1][1],
+              protein_metadata[5],
+              np.nan)
+
+            all_matches.append(match_data)
+        
         except IndexError:
           continue
     

@@ -42,42 +42,23 @@ class Matcher(Preprocessor):
                output_format='csv',
                output_name=''):
 
-    # passing a Python list is possible, call results generic name
-    # if none is specified
-    if type(query) == list:
-      self.query = query
-      if output_name:
-        self.output_name = output_name
-      else:
-        self.output_name = 'PEPMatch_results'
-    
-    # parse from FASTA if not Python list
-    else:
-      self.query = [str(sequence.seq) for sequence in parse_fasta(query)]
-      if output_name:
-        self.output_name = output_name
-      else:
-        # make output name using query name to proteome name
-        self.output_name = f"{query.split('/')[-1].split('.')[0]}_to_{proteome.split('/')[-1].split('.')[0]}"
+    if k < 0 or k == 1:
+      raise ValueError('Invalid k value given. k cannot be negative or 1.')
 
-    # check if there are any discontinuous epitopes in the query
-    self.discontinuous_epitopes = []
-    for peptide in self.query:
-      try:
-        discontinuous_epitope = [(x[0], int(x[1:])) for x in peptide.split(', ')]
-        self.discontinuous_epitopes.append(discontinuous_epitope)
-      except ValueError:
-        continue
+    if output_format not in VALID_OUTPUT_FORMATS:
+      raise ValueError('Invalid output format, please choose `dataframe`, `csv`, `xlsx`, `json`, or `html`.')
 
-    # remove discontinuous epitopes from query
-    self.query = list(set(self.query) - set([', '.join([x[0] + str(x[1]) for x in self.discontinuous_epitopes[i]]) for i in range(len(self.discontinuous_epitopes))]))
-
-    # make sure all query peptides are uppercase
-    self.query = [seq.upper() for seq in self.query]
-
-    self.lengths = sorted(set([len(peptide) for peptide in self.query]))
+    # initialize query and output name based on input type
+    self.query = self._initialize_query(query, proteome, output_name)
     self.proteome = proteome
     self.proteome_name = proteome.split('/')[-1].split('.')[0]
+
+    # discontinuous epitopes and linear epitopes handling - store separately
+    self.discontinuous_epitopes = self._find_discontinuous_epitopes()
+    self.query = self._clean_query()
+    assert self.query, 'Query is empty. Please check your input.'
+    
+    self.lengths = sorted(set(len(peptide) for peptide in self.query))
     self.max_mismatches = max_mismatches
     self.preprocessed_files_path = preprocessed_files_path
     self.best_match = best_match
@@ -87,73 +68,110 @@ class Matcher(Preprocessor):
     # SQLite for exact matching - pickle for mismatching
     self.preprocess_format = 'sql' if not max_mismatches else 'pickle'
     
-    # use the k that is specified if it is given in the parameters
-    if k > 1:
-      self.k = k
-      self.k_specified = True
-    else:
-      self.k_specified = False
-
-    # for exact matching, if no k is specified, use smallest length in query as k
-    if not max_mismatches and not k and self.query:
-      self.k = self.lengths[0]
+    # initialize k and k_specified
+    self.k, self.k_specified = self._initialize_k(k)
 
     # for mismatching, if no k is specified, batch the peptides by length
     # then later we will use the ideal k to search them
     if max_mismatches > 0:
-      self.batched_peptides = self.batch_query()
-      if not k:
-        self.k = 0
+      self.batched_peptides = self._batch_query()
 
     # best match where no mismatches is specified means we will preprocess
     # the proteome by the smallest length, try to find exact matches,
     # then preprocess by half the length and search for more and repeat
     # until every peptide in the query has a match
     if max_mismatches == -1:
-      self.ks = self.best_match_ks()
-      self.k = 0
+      self.ks = self._best_match_ks()
 
-    assert k >= 0, 'Invalid k value given.'
+    super().__init__(self.proteome, self.preprocessed_files_path)
 
-    if self.output_format not in VALID_OUTPUT_FORMATS:
-      raise ValueError('Invalid output format, please choose dataframe, csv, xlsx, json, or html.')
+  def _initialize_query(self, query, proteome, output_name):
+    """Initialize query and output name based on input type."""
+    if isinstance(query, list):
+      if output_name:
+        self.output_name = output_name
+      else:
+        self.output_name = 'PEPMatch_results'
+      
+      return [seq.upper() for seq in query]
+    
+    else: # parse from FASTA if not Python list
+      parsed_query = [str(record.seq) for record in parse_fasta(query)]
+      if output_name:
+        self.output_name = output_name
+      else: # output_name = query_name_to_proteome_name
+        self.output_name = f"{query.split('/')[-1].split('.')[0]}_to_{proteome.split('/')[-1].split('.')[0]}"
+      
+      return [seq.upper() for seq in parsed_query]
 
-    super().__init__(self.proteome, self.preprocess_format, self.preprocessed_files_path, True)
+  def _find_discontinuous_epitopes(self):
+    """Find discontinuous epitopes in query and store separately."""
+    discontinuous_epitopes = []
+    for peptide in self.query:
+      try:
+        discontinuous_epitope = [(x[0], int(x[1:])) for x in peptide.split(', ')]
+        discontinuous_epitopes.append(discontinuous_epitope)
+      except ValueError:
+        continue
 
-  def batch_query(self):
+    return discontinuous_epitopes
+
+  def _clean_query(self):
+    """Remove discontinous epitopes from query."""
+    query_without_discontinuous_epitopes = set(self.query) - set([', '.join([x[0] + str(x[1]) for x in self.discontinuous_epitopes[i]]) for i in range(len(self.discontinuous_epitopes))])
+    return list(query_without_discontinuous_epitopes)
+  
+  def _initialize_k(self, k):
+    """Initialize k and k_specified values based on k and max_mismatches input."""
+    if k > 1:
+      return k, True
+    else: # use the length of the shortest peptide when k is not specified and exact matching is requested
+      if not self.max_mismatches and not k:
+        return self.lengths[0], False
+      else:
+        return 0, False
+
+  def _batch_query(self):
     '''
     Batch peptides together by ideal k so it can be used when searching.
+    If k is specified, just return the query as a dictionary with k as the key.
     '''
-    batched_peptides = defaultdict(list)
-    for seq in self.query:
-      batched_peptides[len(seq) // (self.max_mismatches + 1)].append(seq)
-    
-    return dict(batched_peptides)
+    if self.k_specified:
+      return {self.k: self.query}
+    else:
+      batched_peptides = defaultdict(list)
+      for seq in self.query:
+        key = len(seq) // (self.max_mismatches + 1)
+        batched_peptides[key].append(seq)
+      
+      return dict(batched_peptides)
 
-  def best_match_ks(self):
+  def _best_match_ks(self):
     '''
     For the special case where mismatching is to be done, k is not 
     specified and best match is selected, we need to get all the k values
     to preprocess the proteome multiple times. Starting with the length 
     of the smallest peptide and then halving until we get to 2.
     '''
-    k = self.lengths[0]
-    ks = [k]
+    initial_k = self.lengths[0]
+    ks = [initial_k]
 
     # halve the length and add k values until we get to 2 
     # and make sure 2 is a k in the list
-    while k > 2:
-      k = k // 2
-      if k == 1:
+    while initial_k > 2:
+      initial_k //= 2
+
+      if initial_k == 1:
         ks.append(2)
       else:
-        ks.append(k)
+        ks.append(initial_k)
+
     # mismatching function uses batched peptides, for best match, batch into one
     self.batched_peptides = {0: self.query}
 
     return ks
 
-  def read_pickle_files(self):
+  def _read_pickle_files(self):
     '''
     Read in the already created pickle files for each dictionary in the
     preprocessing step.
@@ -448,11 +466,11 @@ class Matcher(Preprocessor):
       # try reading in the preprocessed pickle files, if they don't exist
       # we'll need to preprocess the proteome using self.k
       try:
-        kmer_dict, names_dict = self.read_pickle_files()
+        kmer_dict, names_dict = self._read_pickle_files()
         rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
       except FileNotFoundError:
         self.preprocess(self.k)
-        kmer_dict, names_dict = self.read_pickle_files()
+        kmer_dict, names_dict = self._read_pickle_files()
         rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
       for peptide in peptides:

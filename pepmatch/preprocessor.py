@@ -9,7 +9,7 @@ from .helpers import parse_fasta, split_sequence
 
 
 class Preprocessor:
-  '''
+  """
   Class that takes in a proteome FASTA file and preprocesses the file to be
   used in the matching portion of PEPMatch.
 
@@ -34,7 +34,7 @@ class Preprocessor:
                            of the proteome. If this is specified, the GP=1 will
                            be appended to the FASTA header of the proteins in
                            this proteome. Otherwise, GP=0.
-  '''
+  """
   def __init__(self,
                proteome,
                preprocessed_files_path='.',
@@ -142,9 +142,9 @@ class Preprocessor:
     for protein_count, seq in enumerate(self.seqs):
       for j, kmer in enumerate(split_sequence(seq, k)):
         if kmer in kmer_dict.keys():
-          kmer_dict[kmer].append((protein_count + 1) * 100000 + j) # add index to k-mer list
+          kmer_dict[kmer].append((protein_count + 1) * 1000000 + j) # add index to k-mer list
         else:
-          kmer_dict[kmer] = [(protein_count + 1) * 100000 + j] # create entry for new k-mer
+          kmer_dict[kmer] = [(protein_count + 1) * 1000000 + j] # create entry for new k-mer
     
     metadata_dict = {}
     for data in self.metadata:
@@ -186,7 +186,7 @@ class Preprocessor:
     kmer_rows = []
     for protein_count, seq in enumerate(self.seqs):
         for j, kmer in enumerate(split_sequence(seq, k)):
-            kmer_rows.append((kmer, (protein_count + 1) * 100000 + j))
+            kmer_rows.append((kmer, (protein_count + 1) * 1000000 + j))
     cursor.executemany(f'INSERT INTO {kmers_table} VALUES (?, ?)', kmer_rows)
 
   def insert_metadata(self, cursor, metadata_table):
@@ -223,11 +223,10 @@ class Preprocessor:
     """
     r = redis.Redis(host='localhost', port=6379, db=0)
 
-
     # store k-mers
     for protein_count, seq in enumerate(self.seqs):
       for j, kmer in enumerate(split_sequence(seq, k)):
-        idx = (protein_count + 1) * 100000 + j
+        idx = (protein_count + 1) * 1000000 + j
         key = f'kmer:{kmer}'
         r.set(key, str(idx))
 
@@ -237,7 +236,6 @@ class Preprocessor:
       metadata_values = ','.join([str(val) for val in data[1:]])
       key = f'metadata:{protein_number}'
       r.set(key, metadata_values)
-
 
   def preprocess(self, preprocess_format, k):
     """

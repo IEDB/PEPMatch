@@ -183,17 +183,18 @@ class Matcher(Preprocessor):
         protein_data = cursor.fetchone()
         match_data = (peptide,                          # query peptide
                       peptide,                          # matched peptide (same as query for exact)
-                      protein_data[1],                  # taxon ID
-                      protein_data[2],                  # species name
-                      protein_data[3],                  # gene
-                      protein_data[4],                  # protein ID
-                      protein_data[5],                  # protein name
-                      0,                                # 0 mismatches for exact matches
+                      protein_data[1],                  # protein ID
+                      protein_data[2],                  # protein name
+                      protein_data[3],                  # species
+                      protein_data[4],                  # taxon ID
+                      protein_data[5],                  # gene symbol
+                      0,                                # 0 mismatches for exact match
                       [],                               # mutated positions (none)
                       (match % 1000000) + 1,            # index start
                       (match % 1000000) + len(peptide), # index end
                       protein_data[6],                  # protein existence level
-                      protein_data[7])                  # gene priority binary
+                      protein_data[7],                  # sequence version
+                      protein_data[8])                  # gene priority flag
         all_matches.append(match_data)
 
     return all_matches
@@ -243,8 +244,6 @@ class Matcher(Preprocessor):
     return all_matches
 
   def even_split_mismatching(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
-    '''
-    '''
     # record matches in a set so as to not duplicate matches
     matches = set()
 
@@ -313,8 +312,6 @@ class Matcher(Preprocessor):
     return matches
 
   def uneven_split_mismatching(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
-    '''
-    '''
     # record matches in a set so as to not duplicate matches
     matches = set()
 
@@ -504,7 +501,12 @@ class Matcher(Preprocessor):
     return all_matches
 
   def get_protein_metadata(self, protein_record):
-    '''Extracts protein metadata from a protein record in FASTA format.'''
+    """
+    Extracts protein metadata from a protein record in FASTA format.
+    This is exclusively used for discontinuous search as the metadata
+    for exact match and mismatch searching is already stored in the
+    preprocessed files.
+    """
     protein_id = protein_record.id.split('|')[1] if '|' in protein_record.id else protein_record.id
     
     # use regex to get all other data from the UniProt FASTA header
@@ -565,10 +567,11 @@ class Matcher(Preprocessor):
   def dataframe_matches(self, all_matches):
     '''Return Pandas dataframe of the results.'''
     df = pd.DataFrame(all_matches,
-                      columns=['Query Sequence', 'Matched Sequence', 'Taxon ID',
-                               'Species', 'Gene', 'Protein ID', 'Protein Name',
-                               'Mismatches', 'Mutated Positions', 'Index start', 
-                               'Index end', 'Protein Existence Level', 'Gene Priority'])
+                      columns=['Query Sequence', 'Matched Sequence', 'Protein ID', 
+                               'Protein Name', 'Species', 'Taxon ID', 'Gene',
+                               'Mismatches', 'Mutated Positions','Index start',
+                               'Index end', 'Protein Existence Level', 'Sequence Version',
+                               'Gene Priority'])
 
     if self.best_match:
       # take matches with the least number of mismatches   
@@ -589,7 +592,12 @@ class Matcher(Preprocessor):
       df.sort_values(by='Protein ID', inplace=True)
       df.drop_duplicates(['Query Sequence'], inplace=True)
 
-    # drop "Gene Priority" column
+    # combine protein ID and sequence version
+    df['Sequence Version'] = df['Sequence Version'].apply(lambda x: f'.{int(x)}' if not pd.isna(x) else '')
+    df['Protein ID'] = df['Protein ID'] + df['Sequence Version']
+    
+    # drop "Sequence Version" and "Gene Priority" columns
+    df.drop(columns=['Sequence Version'], inplace=True)
     df.drop(columns=['Gene Priority'], inplace=True)
 
     return df

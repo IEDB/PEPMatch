@@ -2,7 +2,6 @@ import _pickle as pickle
 import sqlite3
 import os
 import argparse
-import redis
 
 from .helpers import parse_fasta, split_sequence, extract_metadata
 
@@ -197,6 +196,7 @@ class Preprocessor:
     """
     Writes the k-mers and metadata to a Redis database.
     """
+    import redis
     r = redis.Redis(host='localhost', port=6379, db=0)
 
     # store k-mers

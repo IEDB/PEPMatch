@@ -280,11 +280,11 @@ class Matcher(Preprocessor):
 
         # faster search if possible
         if len(peptide) % self.k == 0:
-          peptide_matches = self._find_even_split_matches(kmers, kmer_dict, rev_kmer_dict, len(peptide))
+          peptide_matches = self._find_even_split_matches(all_kmers, kmer_dict, rev_kmer_dict, len(peptide))
 
         # slower search if necessary
         else:
-          peptide_matches = self._find_uneven_split_matches(kmers, kmer_dict, rev_kmer_dict, len(peptide))
+          peptide_matches = self._find_uneven_split_matches(all_kmers, kmer_dict, rev_kmer_dict, len(peptide))
 
         processed_matches = self._process_mismatch_matches(peptide, peptide_matches, metadata_dict)
         all_matches.extend(processed_matches)
@@ -301,7 +301,7 @@ class Matcher(Preprocessor):
       kmer_dict = pickle.load(f)
 
     with open(os.path.join(self.preprocessed_files_path, 
-      f'{self.proteome_name}_names.pickle'), 'rb') as f:
+      f'{self.proteome_name}_metadata.pickle'), 'rb') as f:
       names_dict = pickle.load(f)
 
     return kmer_dict, names_dict
@@ -324,10 +324,10 @@ class Matcher(Preprocessor):
         for kmer_hit in kmer_dict[kmers[idx]]:
           
           mismatches = 0
-          mismatches += _check_left_neighbors(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
+          mismatches += self._check_left_neighbors(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
           
           if not mismatches > self.max_mismatches:
-            mismatches += _check_right_neighbors(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
+            mismatches += self._check_right_neighbors(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
           else:
             continue
           
@@ -335,7 +335,8 @@ class Matcher(Preprocessor):
             matched_peptide = ''
             for i in range(0, peptide_length, self.k):
               matched_peptide += rev_kmer_dict[kmer_hit - idx + i]
-            peptide_matches.add((matched_peptide, mismatches, kmer_hit - i))
+
+            peptide_matches.add((matched_peptide, mismatches, kmer_hit - idx))
 
             # in case match is 0 mismatches and self.best_match is True, return right away
             if self.best_match and not mismatches:
@@ -369,10 +370,10 @@ class Matcher(Preprocessor):
         for kmer_hit in kmer_dict[kmers[idx]]:
 
           mismatches = 0
-          mismatches += _check_left_residues(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
+          mismatches += self._check_left_residues(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
 
           if not mismatches > self.max_mismatches:
-            mismatches += _check_right_residues(hit, idx, kmer_hit, rev_kmer_dict, mismatches)
+            mismatches += self._check_right_residues(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
           else:
             continue
 
@@ -386,7 +387,7 @@ class Matcher(Preprocessor):
                 matched_peptide += rev_kmer_dict[hit - idx + i - (self.k - j)][-1]
 
             matched_peptide = matched_peptide[0:peptide_length]
-            peptide_matches.add((matched_peptide, mismatches, kmer_hit - i))
+            peptide_matches.add((matched_peptide, mismatches, kmer_hit - idx))
 
             # in case match is 0 mismatches and self.best_match is True, return right away
             if self.best_match and not mismatches:
@@ -422,7 +423,7 @@ class Matcher(Preprocessor):
   def _check_left_residues(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
     for i in range(0, idx):
       try: # get proteome residue from reverse dictionary and check associated query residue
-        if rev_kmer_dict[hit + i - idx][0] != kmers[i][0]:
+        if rev_kmer_dict[kmer_hit + i - idx][0] != kmers[i][0]:
           mismatches += 1
         if mismatches > self.max_mismatches:
           return 100
@@ -434,7 +435,7 @@ class Matcher(Preprocessor):
   def _check_right_residues(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
     for i in range(idx + 1, len(kmers)):
       try: # get proteome residue from reverse dictionary and check associated query residue
-        if rev_kmer_dict[hit + i - idx][-1] != kmers[i][-1]:
+        if rev_kmer_dict[kmer_hit + i - idx][-1] != kmers[i][-1]:
           mismatches += 1
         if mismatches > self.max_mismatches:
           return 100
@@ -453,18 +454,18 @@ class Matcher(Preprocessor):
         match_data = (
           peptide,                                                         # query peptide
           match[0],                                                        # matched peptide
-          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][1],     # protein ID
-          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][2],     # protein name
-          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][3],     # species
-          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][4],     # taxon ID
-          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][5],     # gene symbol
+          metadata_dict[(match[2] - (match[2] % 1000000)) // 1000000][0],  # protein ID
+          metadata_dict[(match[2] - (match[2] % 1000000)) // 1000000][1],  # protein name
+          metadata_dict[(match[2] - (match[2] % 1000000)) // 1000000][2],  # species
+          metadata_dict[(match[2] - (match[2] % 1000000)) // 1000000][3],  # taxon ID
+          metadata_dict[(match[2] - (match[2] % 1000000)) // 1000000][4],  # gene symbol
           match[1],                                                        # mismatches count
           [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]], # mutated positions
           (match[2] % 1000000) + 1,                                        # index start
           (match[2] % 1000000) + len(peptide),                             # index end
-          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][6],     # protein existence level
-          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][7],     # sequence version
-          names_dict[(match[2] - (match[2] % 1000000)) // 1000000][8])     # gene priority flag
+          metadata_dict[(match[2] - (match[2] % 1000000)) // 1000000][5],  # protein existence level
+          metadata_dict[(match[2] - (match[2] % 1000000)) // 1000000][6],  # sequence version
+          metadata_dict[(match[2] - (match[2] % 1000000)) // 1000000][7])  # gene priority flag
         
         all_matches.append(match_data)
 

@@ -1,5 +1,4 @@
 import os
-import re
 import argparse
 import _pickle as pickle
 import sqlite3

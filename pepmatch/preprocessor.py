@@ -1,6 +1,5 @@
 import pickle
 import sqlite3
-import re
 import os
 import argparse
 import redis
@@ -105,7 +104,7 @@ class Preprocessor:
       metadata = [protein_number]
       metadata.extend(extract_metadata(record))
 
-      all_metadata.append(tuple(metadata_entry))
+      all_metadata.append(tuple(metadata))
       protein_number += 1
 
     return all_seqs, all_metadata

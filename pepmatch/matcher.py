@@ -367,7 +367,7 @@ class Matcher:
           
           if mismatches <= self.max_mismatches:
             matched_peptide = ''
-            for i in range(0, peptide_length, self.k):
+            for i in range(0, peptide_length, self.k): # add each proteome k-mer to get the full peptide
               matched_peptide += rev_kmer_dict[kmer_hit - idx + i]
 
             peptide_matches.add((matched_peptide, mismatches, kmer_hit - idx))
@@ -412,9 +412,9 @@ class Matcher:
             continue
 
           if mismatches <= self.max_mismatches:
-            matched_peptide = ''
-            for i in range(0, peptide_length):
-              matched_peptide += rev_kmer_dict[kmer_hit - idx + i][0]
+            matched_peptide = rev_kmer_dict[kmer_hit - idx] # add the first k-mer
+            for i in range(self.k - 1, peptide_length):
+              matched_peptide += rev_kmer_dict[kmer_hit - idx + i][-1] # add the last residue of each remaining k-mer
 
             matched_peptide = matched_peptide[0:peptide_length]
             peptide_matches.add((matched_peptide, mismatches, kmer_hit - idx))

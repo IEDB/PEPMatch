@@ -21,6 +21,7 @@ As a competition to improve tool performance, we created a benchmarking framewor
 - [NumPy](https://numpy.org/)
 - [Biopython](https://biopython.org/)
 - [Levenshtein](https://pypi.org/project/python-Levenshtein/)
+- [redis](https://redis.com/)
 
 ### Installation
 
@@ -34,20 +35,19 @@ pip install pepmatch
 #### Preprocessor
 
 ```proteome``` - Path to proteome file to search against.\
-```split``` - k-mer size to break up proteome into.\
+```k``` - k-mer size to break up proteome into.\
 ```preprocessed_format``` - SQLite ("sqlite") or "pickle".\
-```preprocessed_files_path``` - Directory where you want preprocessed files to go. Default is current directory.\
-```gene_priority_proteome``` - Subset of ```proteome``` with prioritized protein IDs.\
-```versioned_ids``` - UniProt or NCBI ID versioning included.
+```preprocessed_files_path``` - (optional) Directory where you want preprocessed files to go. Default is current directory.\
+```gene_priority_proteome``` - (optional) Subset of ```proteome``` with prioritized protein IDs.\
 
 #### Matcher
 
 ```query``` - Query of peptides to search either in .fasta file or as a Python list.\
-```proteome``` - Name of preprocessed proteome to search against.\
+```proteome_file``` - Name of preprocessed proteome to search against.\
 ```max_mismatches``` - Maximum number of mismatches (substitutions) for query.\
-```split``` - k-mer size of the preprocessed proteome.\
-```preprocessed_files_path``` - Directory where preprocessed files are. Default is current directory.\
-```one_match``` - (optional) Returns only one match per query peptide. It will output the best match.\
+```k``` - (optional) k-mer size of the preprocessed proteome. If no k is selected, then a best k will be calculated and the proteome will be preprocessed\
+```preprocessed_files_path``` - (optional) Directory where preprocessed files are. Default is current directory.\
+```best_match``` - (optional) Returns only one match per query peptide. It will output the best match.\
 ```output_format``` - (optional) Outputs results into a file (CSV, XLSX, JSON, HTML) or just as a dataframe.\
 ```output_name``` - (optional) Specify name of file for output. Leaving blank will generate a name.
 
@@ -61,7 +61,7 @@ Note: PEPMatch can also search for discontinuous epitopes in the residue:index f
 
 ```bash
 pepmatch-preprocess -p human.fasta -k 5 -f sql
-pepmatch-match -q peptides.fasta -p 9606 -m 0 -k 5
+pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
 ```
 
 ### Exact Matching Example
@@ -70,7 +70,7 @@ pepmatch-match -q peptides.fasta -p 9606 -m 0 -k 5
 from pepmatch import Preprocessor, Matcher
 
 # proteome, k, preprocessed_format, target directory, gene_priority_proteome
-Preprocessor('proteomes/human.fasta', 'sql', '.', 'proteomes/human_gp.fasta').preprocess(k=5)
+Preprocessor('proteomes/human.fasta', '.' 'proteomes/human_gp.fasta').preprocess('sql', k=5)
 # PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
 
 # query, proteome, max_mismatches, k, preprocessed files directory
@@ -84,18 +84,18 @@ Matcher('queries/mhc_ligands_test.fasta', 'proteomes/human.fasta', 0, 5, '.').ma
 from pepmatch import Preprocessor, Matcher
 
 # proteome, k, preprocessed_format, target directory
-Preprocessor('proteomes/human.fasta', 'pickle', '.').preprocess(k=3)
+Preprocessor('proteomes/human.fasta').preprocess('pickle', k=3)
 # PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
 
 # query, proteome, max_mismatches, k, preprocessed files directory
-Matcher('queries/neoepitopes_test.fasta', 'proteomes/human.fasta', 3, 3, '.').match()
+Matcher('queries/neoepitopes_test.fasta', 'proteomes/human.fasta', 3, 3).match()
 ```
 
 ### Outputs
 
-As mentioned above, outputs can be specified with the ```output_format``` parameter in the ```Matcher``` class. The following formats are allowed: 'dataframe', 'csv', 'xlsx', 'json', and 'html'.
+As mentioned above, outputs can be specified with the ```output_format``` parameter in the ```Matcher``` class. The following formats are allowed: `dataframe`, `csv`, `xlsx`, `json`, and `html`.
 
-If specifying 'dataframe', the ```match()``` method will return a pandas dataframe which can be stored as a variable as so:
+If specifying `dataframe`, the ```match()``` method will return a pandas dataframe which can be stored as a variable:
 
 ```python
 df = Matcher('queries/neoepitopes_test.fasta', 'human.fasta', 3, 3, output_format='dataframe').match()

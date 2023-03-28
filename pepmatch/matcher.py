@@ -14,13 +14,15 @@ from .preprocessor import Preprocessor
 
 VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'xlsx', 'json', 'html']
 
-class Matcher(Preprocessor):
+class Matcher:
   """
-  Object class that inherits from Preprocessor. This is so queries can be
-  preprocessed if the stored objects don't already exist. The class takes in the
-  query (either FASTA file or Python list), proteome file, and maximum # of
-  mismatches. There are multiple methods that will do exact/mismatch/best match
-  searching against the proteome.
+  Object class that class takes in a query (either FASTA file or Python list)
+  of peptides, a proteome file, and a maximum # of mismatches. It can either
+  find exact matches, matches with mismatches, or the best match for a peptide,
+  depending on these parameters.
+
+  A k value can also be passed if the proteome is already preprocessed, which
+  most of the time it will be - so pass the k value to save time.
 
   If best match is selected and mismatching is to be done, one of two things
   will happen: 
@@ -81,8 +83,6 @@ class Matcher(Preprocessor):
     # until every peptide in the query has a match
     if max_mismatches == -1:
       self.ks = self._best_match_ks()
-
-    super().__init__(self.proteome, self.preprocessed_files_path)
 
   def _initialize_query(self, query, proteome_file, output_name):
     """Initialize query and output name based on input type."""
@@ -212,7 +212,7 @@ class Matcher(Preprocessor):
     substitutions. 
     """
     if not os.path.isfile(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db')):
-      self.preprocess(self.k)
+      Preprocessor(self.proteome).sql_preprocess(self.k)
 
     kmers_table_name = f'{self.proteome_name}_{str(self.k)}mers'
     metadata_table_name = f'{self.proteome_name}_metadata'

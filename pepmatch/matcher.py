@@ -379,12 +379,8 @@ class Matcher(Preprocessor):
 
           if mismatches <= self.max_mismatches:
             matched_peptide = ''
-            try:
-              for i in range(0, peptide_length):
-                matched_peptide += rev_kmer_dict[kmer_hit - idx + i]
-            except KeyError:
-              for j in range(1, peptide_length % self.k + 1):
-                matched_peptide += rev_kmer_dict[hit - idx + i - (self.k - j)][-1]
+            for i in range(0, peptide_length):
+              matched_peptide += rev_kmer_dict[kmer_hit - idx + i][0]
 
             matched_peptide = matched_peptide[0:peptide_length]
             peptide_matches.add((matched_peptide, mismatches, kmer_hit - idx))

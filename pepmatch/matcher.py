@@ -9,7 +9,7 @@ import numpy as np
 from collections import Counter, defaultdict
 from Levenshtein import hamming
 
-from .helpers import parse_fasta, split_sequence
+from .helpers import parse_fasta, split_sequence, extract_metadata
 from .preprocessor import Preprocessor
 
 
@@ -497,46 +497,10 @@ class Matcher(Preprocessor):
       if not self.query:
         return all_matches
       
+      # reset batched peptides
       self.batched_peptides = {0: self.query}
 
     return all_matches
-
-  def get_protein_metadata(self, protein_record):
-    """
-    Extracts protein metadata from a protein record in FASTA format.
-    This is exclusively used for discontinuous search as the metadata
-    for exact match and mismatch searching is already stored in the
-    preprocessed files.
-    """
-    protein_id = protein_record.id.split('|')[1] if '|' in protein_record.id else protein_record.id
-    
-    # use regex to get all other data from the UniProt FASTA header
-    try:
-      taxon_id = int(re.search('OX=(.*?) ', protein_record.description).group(1))
-    except AttributeError:
-      taxon_id = None
-
-    try:
-      species = re.search('OS=(.*) OX=', protein_record.description).group(1)
-    except AttributeError:
-      species = None
-
-    try:
-      gene = re.search('GN=(.*?) ', protein_record.description).group(1)
-    except AttributeError:
-      gene = None
-
-    try:
-      protein_name = re.search(' (.*) OS', protein_record.description).group(1)
-    except AttributeError:
-      protein_name = None
-
-    try:
-      pe_level = int(re.search('PE=(.*?) ', protein_record.description).group(1))
-    except AttributeError:
-      pe_level = 0
-
-    return (taxon_id, species, gene, protein_id, protein_name, pe_level)
 
   def discontinuous_search(self):
     """Find matches for discontinuous epitopes."""
@@ -546,22 +510,25 @@ class Matcher(Preprocessor):
         try:
           residue_matches = sum([x[0] == protein_record.seq[x[1] - 1] for x in discontinuous_epitope])
           if residue_matches >= (len(discontinuous_epitope) - self.max_mismatches):
-            protein_metadata = self.get_protein_metadata(protein_record)
+            metadata = extract_metadata(protein_record)
             match_data = (
-              ', '.join([x[0] + str(x[1]) for x in discontinuous_epitope]), 
-              ', '.join([protein_record.seq[x[1] - 1] + str(x[1]) for x in discontinuous_epitope]),
-              protein_metadata[0],
-              protein_metadata[1],
-              protein_metadata[2],
-              protein_metadata[3],
-              protein_metadata[4],
-              len(discontinuous_epitope) - residue_matches,
-              [x[1] for x in discontinuous_epitope if x[0] != protein_record.seq[x[1] - 1]],
-              discontinuous_epitope[0][1],
-              discontinuous_epitope[-1][1],
-              protein_metadata[5],
-              np.nan)
-
+              ', '.join(   # query epitope
+                [x[0] + str(x[1]) for x in discontinuous_epitope]), 
+              ', '.join(   # matched epitope
+                [protein_record.seq[x[1] - 1] + str(x[1]) for x in discontinuous_epitope]), 
+              metadata[0], # protein ID
+              metadata[1], # protein name                  
+              metadata[2], # species               
+              metadata[3], # taxon ID              
+              metadata[4], # gene symbol       
+              len(discontinuous_epitope) - residue_matches, # mismatches count         
+              [x[1] for x in discontinuous_epitope if x[0] != protein_record.seq[x[1] - 1]], # mutated positions
+              discontinuous_epitope[0][1],  # index start           
+              discontinuous_epitope[-1][1], # index end  
+              metadata[5], # protein existence level         
+              metadata[6], # sequence version       
+              metadata[7]) # gene priority flag
+            
             all_matches.append(match_data)
         
         except IndexError:

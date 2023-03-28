@@ -37,7 +37,9 @@ def extract_metadata(record):
     else:
       if key == 'protein_id':
         metadata.append(str(record.id)) # get record.id from FASTA header instead
-      elif key in ['pe_level', 'sequence_version', 'gene_priority']:
+      elif key == 'sequence_version':
+        metadata.append('1')
+      elif key in ['pe_level', 'gene_priority']:
         metadata.append('0') # zeros for integer columns
       else:
         metadata.append('')  # empty strings for string columns

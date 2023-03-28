@@ -170,6 +170,41 @@ class Matcher(Preprocessor):
 
     return ks
 
+  def match(self):
+    """
+    Overarching function that calls the appropriate search matching function
+    based on the parameters.
+    """
+    if self.query:
+      
+      if self.max_mismatches == -1:
+        query_df = self._dataframe_matches(self.best_match_search())
+
+      elif self.max_mismatches > 0:
+        query_df = self._dataframe_matches(self.mismatch_search())
+      
+      else:
+        query_df = self._dataframe_matches(self.exact_match_search())
+    
+    else:
+      query_df = pd.DataFrame()
+
+    # search for discontinuous epitopes if they exist
+    if self.discontinuous_epitopes:
+      discontinuous_df = self._dataframe_matches(self.discontinuous_search())
+    else:
+      discontinuous_df = pd.DataFrame()
+
+    # combine the dataframes if both query and discontinuous epitopes exist
+    df = pd.concat([query_df, discontinuous_df], ignore_index=True)
+
+    # return a dataframe instead of outputting file if specified
+    if self.output_format == 'dataframe':
+      return df
+    
+    else:
+      self._output_matches(df)
+
   def exact_match_search(self):
     """
     Using preprocessed data within a SQLite database and the query peptides,
@@ -394,6 +429,7 @@ class Matcher(Preprocessor):
     return peptide_matches
 
   def _check_left_neighbors(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
+    """Get mismatches of left k-mer neighbors in proteome."""
     for i in range(0, idx, self.k):
       try: # get proteome k-mer from reverse dictionary and check associated query k-mer
         mismatches += hamming(rev_kmer_dict[kmer_hit + i - idx], kmers[i])
@@ -405,6 +441,7 @@ class Matcher(Preprocessor):
     return mismatches
 
   def _check_right_neighbors(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
+    """Get mismatches of right k-mer neighbors in proteome."""
     for i in range(self.k + idx, len(kmers), self.k):
       try: # get proteome k-mer from reverse dictionary and check associated query k-mer
         mismatches += hamming(rev_kmer_dict[kmer_hit + i - idx], kmers[i])
@@ -416,6 +453,7 @@ class Matcher(Preprocessor):
     return mismatches
 
   def _check_left_residues(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
+    """Get mismatches of left residues of left k-mer neighbors in proteome."""
     for i in range(0, idx):
       try: # get proteome residue from reverse dictionary and check associated query residue
         if rev_kmer_dict[kmer_hit + i - idx][0] != kmers[i][0]:
@@ -428,6 +466,7 @@ class Matcher(Preprocessor):
     return mismatches
 
   def _check_right_residues(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
+    """Get mismatches of right residues of right k-mer neighbors in proteome."""
     for i in range(idx + 1, len(kmers)):
       try: # get proteome residue from reverse dictionary and check associated query residue
         if rev_kmer_dict[kmer_hit + i - idx][-1] != kmers[i][-1]:
@@ -535,8 +574,8 @@ class Matcher(Preprocessor):
     
     return all_matches
 
-  def dataframe_matches(self, all_matches):
-    '''Return Pandas dataframe of the results.'''
+  def _dataframe_matches(self, all_matches):
+    """Return Pandas dataframe of the results."""
     df = pd.DataFrame(all_matches,
                       columns=['Query Sequence', 'Matched Sequence', 'Protein ID', 
                                'Protein Name', 'Species', 'Taxon ID', 'Gene',
@@ -564,7 +603,7 @@ class Matcher(Preprocessor):
       df.drop_duplicates(['Query Sequence'], inplace=True)
 
     # combine protein ID and sequence version
-    df['Sequence Version'] = df['Sequence Version'].apply(lambda x: f'.{int(x)}' if not pd.isna(x) else '')
+    df['Sequence Version'] = df['Sequence Version'].apply(lambda x: f'.{int(x)}' if not pd.isna(x) else '')   
     df['Protein ID'] = df['Protein ID'] + df['Sequence Version']
     
     # drop "Sequence Version" and "Gene Priority" columns
@@ -573,8 +612,8 @@ class Matcher(Preprocessor):
 
     return df
 
-  def output_matches(self, df):
-    '''Write Pandas dataframe to format that is specified'''
+  def _output_matches(self, df):
+    """Write Pandas dataframe to format that is specified"""
     if self.output_format == 'csv':
       return df.to_csv(f'{self.preprocessed_files_path}/{self.output_name}.csv', index=False)
     elif self.output_format == 'xlsx':
@@ -584,40 +623,6 @@ class Matcher(Preprocessor):
     elif self.output_format == 'html':
       return df.to_html(f'{self.preprocessed_files_path}/{self.output_name}.html', index=False)
 
-  def match(self):
-    '''
-    Overarching function that calls the appropriate search matching function
-    based on the parameters.
-    '''
-    if self.query:
-      
-      if self.max_mismatches == -1:
-        query_df = self.dataframe_matches(self.best_match_search())
-
-      elif self.max_mismatches > 0:
-        query_df = self.dataframe_matches(self.mismatch_search())
-      
-      else:
-        query_df = self.dataframe_matches(self.exact_match_search())
-    
-    else:
-      query_df = pd.DataFrame()
-
-    # search for discontinuous epitopes if they exist
-    if self.discontinuous_epitopes:
-      discontinuous_df = self.dataframe_matches(self.discontinuous_search())
-    else:
-      discontinuous_df = pd.DataFrame()
-
-    # combine the dataframes if both query and discontinuous epitopes exist
-    df = pd.concat([query_df, discontinuous_df], ignore_index=True)
-
-    # return a dataframe instead of outputting file if specified
-    if self.output_format == 'dataframe':
-      return df
-    
-    else:
-      self.output_matches(df)
 
 
 # run via command line

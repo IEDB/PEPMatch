@@ -1,4 +1,4 @@
-import pickle
+import _pickle as pickle
 import sqlite3
 import os
 import argparse
@@ -229,6 +229,8 @@ class Preprocessor:
       self.sql_proteome(k)
     elif preprocess_format == 'redis':
       self.redis_proteome(k)
+
+
 
 # run via command line
 def parse_arguments():

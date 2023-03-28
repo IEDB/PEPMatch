@@ -610,6 +610,9 @@ class Matcher:
     df.drop(columns=['Sequence Version'], inplace=True)
     df.drop(columns=['Gene Priority'], inplace=True)
 
+    # replace whitespace with NaNs
+    df.replace(r'^\s*$', np.nan, regex=True, inplace=True)
+
     return df
 
   def _output_matches(self, df):

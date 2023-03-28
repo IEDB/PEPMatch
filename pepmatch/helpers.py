@@ -20,8 +20,8 @@ def extract_metadata(record):
   """Extract metadata from a FASTA header."""
   regexes = {
       'protein_id': re.compile(r"\|([^|]*)\|"),      # between | and |
-      'protein_name': re.compile(r"\s(.+?)OS"),      # between first space and OS
-      'species': re.compile(r"OS=(.+?)OX"),          # between OS= and OX (species can have spaces)
+      'protein_name': re.compile(r"\s(.+?)\sOS"),    # between first space and space before OS
+      'species': re.compile(r"OS=(.+?)\sOX"),        # between OS= and space before OX (species can have spaces)
       'taxon_id': re.compile(r"OX=(.+?)\s"),         # between OX= and space
       'gene': re.compile(r"GN=(.+?)\s"),             # between GN= and space
       'pe_level': re.compile(r"PE=(.+?)\s"),         # between PE= and space

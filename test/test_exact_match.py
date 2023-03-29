@@ -10,13 +10,20 @@ from pepmatch import Preprocessor, Matcher
 
 class TestExactMatch(unittest.TestCase):
   def test_exact_match(self):
+
+    # paths
+    test_script_dir = os.path.dirname(os.path.realpath(__file__))
+    proteome_fasta = os.path.join(test_script_dir, '../benchmarking/proteomes/human.fasta')
+    query_fasta = os.path.join(test_script_dir, '../benchmarking/queries/mhc_ligands_test.fasta')
+    expected_csv = os.path.join(test_script_dir, '../benchmarking/expected/mhc_ligands_expected.csv')
+
     # preprocess human proteome
-    Preprocessor('../benchmarking/proteomes/human.fasta').sql_proteome(9)
+    Preprocessor(proteome_fasta).sql_proteome(9)
 
     # match MHC ligands (9-mers) to human proteome
     df = Matcher(
-      query='../benchmarking/queries/mhc_ligands_test.fasta',
-      proteome_file='../benchmarking/proteomes/human.fasta',
+      query=query_fasta,
+      proteome_file=proteome_fasta,
       max_mismatches=0,
       k=9,
       output_format='dataframe').match()
@@ -25,7 +32,7 @@ class TestExactMatch(unittest.TestCase):
     os.remove('human.db')
 
     # load the expected data
-    expected_df = pd.read_csv('../benchmarking/expected/mhc_ligands_expected.csv')
+    expected_df = pd.read_csv(expected_csv)
 
     # select only the necessary columns to test for
     df = df[['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']]

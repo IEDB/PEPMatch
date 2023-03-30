@@ -93,6 +93,15 @@ Preprocessor('proteomes/human.fasta').preprocess('pickle', k=3)
 Matcher('queries/neoepitopes_test.fasta', 'proteomes/human.fasta', 3, 3).match()
 ```
 
+### Best Match Example
+
+```python
+from pepmatch import Preprocessor, Matcher
+Matcher('queries/milk_peptides.fasta', 'proteomes/human.fasta', best_match=True).match()
+```
+
+The best match parameter without k or mismatch inputs will produce the best match for each peptide in the query, meaning the match with the least number of mismatches, the best protein existence level, and if the match exists in the gene priority proteome. No preprocessing beforehand is required, as the Matcher class will do this for you to find the best match.
+
 ### Outputs
 
 As mentioned above, outputs can be specified with the ```output_format``` parameter in the ```Matcher``` class. The following formats are allowed: `dataframe`, `csv`, `xlsx`, `json`, and `html`.
@@ -104,5 +113,4 @@ df = Matcher('queries/neoepitopes_test.fasta', 'human.fasta', 3, 3, output_forma
 ```
 
 ### TODO
-- Add test workflows for GitHub Actions
 - Remove dependency on Levenshtein (this is not maintained very well)

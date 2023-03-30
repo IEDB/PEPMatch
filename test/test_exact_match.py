@@ -30,7 +30,7 @@ class TestExactMatch(unittest.TestCase):
       output_format='dataframe').match()
 
     # remove preprocessed file
-    os.remove(os.path.join('human.db'))
+    os.remove('human.db')
 
     # load the expected data
     expected_df = pd.read_csv(expected_csv)

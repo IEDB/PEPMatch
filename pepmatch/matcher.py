@@ -617,7 +617,7 @@ class Matcher:
       df = df[idx]
 
       # sort values by protein ID and drop duplicates, guaranteeing same results 
-      df.sort_values(by='Protein ID', inplace=True)
+      df.sort_values(by=['Query Sequence', 'Protein ID', 'Index start'], inplace=True)
       df.drop_duplicates(['Query Sequence'], inplace=True)
 
     # combine protein ID and sequence version

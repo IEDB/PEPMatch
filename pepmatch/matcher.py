@@ -305,7 +305,7 @@ class Matcher:
         kmer_dict, metadata_dict = self._read_pickle_files()
         rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
       except FileNotFoundError: # do preprocessing if pickle files don't exist
-        self.pickle_proteome(self.k)
+        Preprocessor(self.proteome).sql_preprocess(self.k)
         kmer_dict, metadata_dict = self._read_pickle_files()
         rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 

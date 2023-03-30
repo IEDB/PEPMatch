@@ -18,14 +18,15 @@ class TestMismatch(unittest.TestCase):
     expected_csv = os.path.join(test_script_dir, '../benchmarking/expected/neoepitopes_expected.csv')
 
     # preprocess human proteome
-    Preprocessor(proteome_fasta).pickle_proteome(3)
+    k = 3
+    Preprocessor(proteome_fasta).pickle_proteome(k)
 
     # match neoepitopes to human proteome
     df = Matcher(
       query=query_fasta,
       proteome_file=proteome_fasta,
       max_mismatches=3,
-      k=3,
+      k=k,
       output_format='dataframe').match()
 
     # remove preprocessed files
@@ -39,9 +40,9 @@ class TestMismatch(unittest.TestCase):
     df = df[['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']]
     expected_df = expected_df[['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']]
 
-    # sort dataframes by Query Sequence and Protein ID
-    df = df.sort_values(by=['Query Sequence', 'Protein ID']).reset_index(drop=True)
-    expected_df = expected_df.sort_values(by=['Query Sequence', 'Protein ID']).reset_index(drop=True)
+    # sort dataframes by Query Sequence, Protein ID, and Index start
+    df = df.sort_values(by=['Query Sequence', 'Protein ID', 'Index start']).reset_index(drop=True)
+    expected_df = expected_df.sort_values(by=['Query Sequence', 'Protein ID', 'Index start']).reset_index(drop=True)
 
     # assert dataframes are equal
     pdt.assert_frame_equal(df, expected_df, check_dtype=False, check_exact=True)

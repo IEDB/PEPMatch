@@ -258,7 +258,7 @@ class Matcher:
     """Extract all metadata for the exact matches and return as a list of tuples."""
     all_matches = []
     if not peptide_matches:
-      all_matches.append((peptide,) + (np.nan,) * 12)
+      all_matches.append((peptide,) + (np.nan,) * 13)
     else:
       for match in peptide_matches:
         protein_number = (match - (match % 1000000)) // 1000000
@@ -310,6 +310,7 @@ class Matcher:
         rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
       for peptide in peptides:
+
         all_kmers = split_sequence(peptide, self.k)
 
         # faster search if possible
@@ -356,12 +357,12 @@ class Matcher:
     for idx in range(0, len(kmers), self.k): # gets only the k-mers to check
       try: # try to find an exact match hit for each k-mer
         for kmer_hit in kmer_dict[kmers[idx]]:
-          
+
           mismatches = 0
-          mismatches += self._check_left_neighbors(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
-          
+          mismatches = self._check_left_neighbors(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
+
           if not mismatches > self.max_mismatches:
-            mismatches += self._check_right_neighbors(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
+            mismatches = self._check_right_neighbors(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
           else:
             continue
           
@@ -404,13 +405,14 @@ class Matcher:
         for kmer_hit in kmer_dict[kmers[idx]]:
 
           mismatches = 0
-          mismatches += self._check_left_residues(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
+          mismatches = self._check_left_residues(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
 
           if not mismatches > self.max_mismatches:
-            mismatches += self._check_right_residues(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
+            mismatches = self._check_right_residues(kmers, idx, kmer_hit, rev_kmer_dict, mismatches)
+            
           else:
             continue
-
+          
           if mismatches <= self.max_mismatches:
             matched_peptide = rev_kmer_dict[kmer_hit - idx] # add the first k-mer
             for i in range(self.k - 1, peptide_length):
@@ -482,7 +484,7 @@ class Matcher:
     """Extract all metadata for the mismatch matches and return as a list of tuples."""
     all_matches = []
     if not peptide_matches:
-      all_matches.append((pepttide,) + (np.nan,) * 12)
+      all_matches.append((peptide,) + (np.nan,) * 13)
     else:
       for match in peptide_matches:
         match_data = (

@@ -212,7 +212,7 @@ class Matcher:
     substitutions. 
     """
     if not os.path.isfile(os.path.join(self.preprocessed_files_path, self.proteome_name + '.db')):
-      Preprocessor(self.proteome).sql_preprocess(self.k)
+      Preprocessor(self.proteome).sql_proteome(self.k)
 
     kmers_table_name = f'{self.proteome_name}_{str(self.k)}mers'
     metadata_table_name = f'{self.proteome_name}_metadata'
@@ -305,7 +305,7 @@ class Matcher:
         kmer_dict, metadata_dict = self._read_pickle_files()
         rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
       except FileNotFoundError: # do preprocessing if pickle files don't exist
-        Preprocessor(self.proteome).sql_preprocess(self.k)
+        Preprocessor(self.proteome).pickle_proteome(self.k)
         kmer_dict, metadata_dict = self._read_pickle_files()
         rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
@@ -514,28 +514,44 @@ class Matcher:
     the maximum # of mismatches calculated from the each length and split.
     """
     all_matches = []
-    # once we reach k = 2, we will just increase the # of mismatches until we find some
-    # match for each peptide in the query
     for k in self.ks:
       self.k = k
       self.k_specified = True
 
-      # calculate maximum possible # of mismatches that can guaranteed to be found
-      # using the lowest length and k-split
-      self.max_mismatches = (self.lengths[0] // self.k) - 1
+      # optimal # of mismatches for k and smallest peptide
+      self.max_mismatches = (self.lengths[0] // self.k) - 1 
 
-      matches = self.mismatch_search()
+      if self.max_mismatches == 0:
+        matches = self.exact_match_search()
+      else:
+        matches = self.mismatch_search()
 
       # separate out peptides that did not match into a new query
-      self.query = []
+      self.new_query = []
       for match in matches:
-        if match[1]:
+        if not pd.isna(match[1]):
           all_matches.append(match)
         else:
-          self.query.append(match[0])
+          self.new_query.append(match[0])
 
-      if not self.query:
+      if not self.new_query: # all peptides have a match
         return all_matches
+      else: # reset query with peptides that did not match
+        self.query = self.new_query
+
+      # last k - keep searching until all peptides have a match
+      if self.k == 2:
+        self.max_mismatches += 1
+        while self.new_query:
+          self.query = self.new_query
+          matches = self.mismatch_search()
+          self.new_query = []
+          for match in matches:
+            if not pd.isna(match[1]):
+              all_matches.append(match)
+            else:
+              self.new_query.append(match[0])
+          self.max_mismatches += 1
       
       # reset batched peptides
       self.batched_peptides = {0: self.query}
@@ -637,8 +653,8 @@ def parse_arguments():
 
   parser.add_argument('-q', '--query', required=True)
   parser.add_argument('-p', '--proteome_file', required=True)
-  parser.add_argument('-m', '--max_mismatches', type=int, required=True)
-  parser.add_argument('-k', '--kmer_size', type=int, required=True)
+  parser.add_argument('-m', '--max_mismatches', type=int)
+  parser.add_argument('-k', '--kmer_size', type=int)
   parser.add_argument('-P', '--preprocessed_files_path', default='.')
   parser.add_argument('-b', '--best_match', default=False, action='store_true')
   parser.add_argument('-f', '--output_format', default='csv')

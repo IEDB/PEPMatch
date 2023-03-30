@@ -2,35 +2,35 @@
 
 import unittest
 import os
+import glob
 
 import pandas as pd
 import pandas.testing as pdt
 
 from pepmatch import Preprocessor, Matcher
-
-class TestExactMatch(unittest.TestCase):
-  def test_exact_match(self):
+  
+class TestMismatch(unittest.TestCase):
+  def test_mismatch(self):
 
     # paths
     test_script_dir = os.path.dirname(os.path.realpath(__file__))
     proteome_fasta = os.path.join(test_script_dir, '../benchmarking/proteomes/human.fasta')
-    query_fasta = os.path.join(test_script_dir, '../benchmarking/queries/mhc_ligands_test.fasta')
-    expected_csv = os.path.join(test_script_dir, '../benchmarking/expected/mhc_ligands_expected.csv')
+    query_fasta = os.path.join(test_script_dir, '../benchmarking/queries/milk_peptides_test.fasta')
+    expected_csv = os.path.join(test_script_dir, '../benchmarking/expected/milk_peptides_expected.csv')
 
-    # preprocess human proteome
-    k=9
-    Preprocessor(proteome_fasta).sql_proteome(k)
-
-    # match MHC ligands (9-mers) to human proteome
+    # match neoepitopes to human proteome
     df = Matcher(
       query=query_fasta,
       proteome_file=proteome_fasta,
-      max_mismatches=0,
-      k=k,
+      best_match=True,
       output_format='dataframe').match()
 
-    # remove preprocessed file
-    os.remove(os.path.join('human.db'))
+    # remove preprocessed files
+    os.remove('human.db')
+    os.remove('human_7mers.pickle')
+    os.remove('human_3mers.pickle')
+    os.remove('human_2mers.pickle')
+    os.remove('human_metadata.pickle')
 
     # load the expected data
     expected_df = pd.read_csv(expected_csv)

@@ -600,7 +600,19 @@ class Matcher:
                                'Mismatches', 'Mutated Positions','Index start',
                                'Index end', 'Protein Existence Level', 'Sequence Version',
                                'Gene Priority'])
+
     if self.best_match:
+      def filter_fragments(group):
+        """
+        Takes out matches with 'Fragment' in the protein name if there are other
+        matches without 'Fragment'.
+        """
+        no_fragments = group[~group['Protein Name'].str.contains('Fragment')]
+        if len(no_fragments) > 0:
+          return no_fragments
+        else:
+          return group
+
       # take matches with the least number of mismatches   
       idx = df.groupby(['Query Sequence'])['Mismatches'].transform(min) == df['Mismatches']
       df = df[idx]
@@ -614,10 +626,9 @@ class Matcher:
 
       idx = df.groupby(['Query Sequence'])['Protein Existence Level'].transform(min) == df['Protein Existence Level']
       df = df[idx]
-      
-      # drop rows with "Fragment" in the protein name if there are other rows that don't have "Fragment"
-      if not df[~df['Protein Name'].str.contains('Fragment')].empty:
-        df = df[~df['Protein Name'].str.contains('Fragment')]
+
+      # filter fragments
+      df = df.groupby('Query Sequence', group_keys=False).apply(filter_fragments).reset_index(drop=True)
 
       # sort values by protein ID and drop duplicates, guaranteeing same results 
       df.sort_values(by=['Query Sequence', 'Protein ID', 'Index start'], inplace=True)

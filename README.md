@@ -79,7 +79,6 @@ Preprocessor('proteomes/human.fasta', '.' 'proteomes/human_gp.fasta').preprocess
 Matcher('queries/mhc_ligands_test.fasta', 'proteomes/human.fasta', 0, 5, '.').match()
 ```
 
-
 ### Mismatching Example 
 
 ```python
@@ -113,4 +112,5 @@ df = Matcher('queries/neoepitopes_test.fasta', 'human.fasta', 3, 3, output_forma
 ```
 
 ### TODO
+- Test other key-value stores (Redis, Memcached, LMDB, etc.)
 - Remove dependency on Levenshtein (this is not maintained very well)

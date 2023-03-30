@@ -4,6 +4,8 @@
 
 --------------------------------------------------------------------
 
+![Unit Tests](https://github.com/IEDB/PEPMatch/actions/workflows/unittests.yml/badge.svg)
+
 #### Author: Daniel Marrama
 
 Peptide search against a reference proteome, or sets of proteins, with residue subtitutions.

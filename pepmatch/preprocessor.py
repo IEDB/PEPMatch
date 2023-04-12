@@ -124,7 +124,7 @@ class Preprocessor:
       # check if kmers table already exists and exit if it does
       # for some reason writing to the same table multiple times messes up results
       if cursor.execute(f'SELECT name FROM sqlite_master WHERE type="table" AND name="{kmers_table}";').fetchone():
-          return
+        return
 
       self._create_tables(cursor, kmers_table, metadata_table)
       self._insert_kmers(cursor, kmers_table, k)

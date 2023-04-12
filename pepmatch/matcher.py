@@ -228,8 +228,8 @@ class Matcher:
 
       # split peptide into kmers - only use kmers necessary that overlap entire peptide
       all_kmers = split_sequence(peptide, self.k)
-      target_kmers = all_kmers if self.k == len(peptide) else [all_kmers[i] for i in range(0, len(all_kmers), self.k)] + [all_kmers[-1]]
-      
+      target_kmers = self._get_target_kmers(all_kmers)
+
       # SQL fetch
       sql_placeholders = ', '.join('?' * len(target_kmers))
       sql_query = f'SELECT kmer, idx FROM "{kmers_table_name}" WHERE kmer IN ({sql_placeholders})'
@@ -253,6 +253,16 @@ class Matcher:
     conn.close()
 
     return all_matches
+
+  def _get_target_kmers(self, all_kmers):
+    """Return the target kmers that overlap the entire peptide."""
+    if len(all_kmers) == self.k:
+        return all_kmers
+
+    target_kmers = all_kmers[::self.k]
+    if all_kmers[-1] != target_kmers[-1]:
+        target_kmers.append(all_kmers[-1])
+    return target_kmers
 
   def _process_exact_matches(self, peptide, peptide_matches, cursor, metadata_table_name):
     """Extract all metadata for the exact matches and return as a list of tuples."""

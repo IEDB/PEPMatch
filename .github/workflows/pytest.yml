@@ -45,7 +45,7 @@ jobs:
         pip install -e .
         pip install pytest
     - name: Run Test
-      run: test/test_mismatch.py
+      run: pytest test/test_mismatch.py
 
   testbestmatch:
     name: Best Match Test

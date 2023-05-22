@@ -652,9 +652,6 @@ class Matcher:
     df.drop(columns=['Sequence Version'], inplace=True)
     df.drop(columns=['Gene Priority'], inplace=True)
 
-    # replace whitespace with NaNs
-    df.replace(r'^\s*$', 'N/A', regex=True, inplace=True)
-
     # force integers on some columns
     int_cols = ['Taxon ID', 'Mismatches', 'Index start', 'Index end', 'Protein Existence Level']
     df[int_cols] = df[int_cols].astype('Int64')

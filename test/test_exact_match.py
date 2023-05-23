@@ -37,6 +37,10 @@ def test_exact_match():
   df = df[['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']]
   expected_df = expected_df[['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']]
 
+  # convert Index start to int64 for comparison
+  df["Index start"] = df["Index start"].astype('int64')
+  expected_df["Index start"] = expected_df["Index start"].astype('int64')
+
   # sort dataframes by Query Sequence, Protein ID, and Index start
   df = df.sort_values(by=['Query Sequence', 'Protein ID', 'Index start']).reset_index(drop=True)
   expected_df = expected_df.sort_values(by=['Query Sequence', 'Protein ID', 'Index start']).reset_index(drop=True)

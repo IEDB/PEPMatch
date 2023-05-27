@@ -617,6 +617,7 @@ class Matcher:
         Takes out matches with 'Fragment' in the protein name if there are other
         matches without 'Fragment'.
         """
+        group['Protein Name'] = group['Protein Name'].astype(str)
         no_fragments = group[~group['Protein Name'].str.contains('Fragment')]
         if len(no_fragments) > 0:
           return no_fragments

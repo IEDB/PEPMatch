@@ -57,6 +57,7 @@ class Matcher:
     # discontinuous epitopes and linear epitopes handling - store separately
     self.discontinuous_epitopes = self._find_discontinuous_epitopes()
     self.query = self._clean_query()
+    
     assert self.query or self.discontinuous_epitopes, 'Query is empty. Please check your input.'
     
     self.lengths = sorted(set(len(peptide) for peptide in self.query))
@@ -70,7 +71,8 @@ class Matcher:
     self.preprocess_format = 'sql' if not max_mismatches else 'pickle'
     
     # initialize k and k_specified
-    self.k, self.k_specified = self._initialize_k(k)
+    if self.query:
+      self.k, self.k_specified = self._initialize_k(k)
 
     # for mismatching, if no k is specified, batch the peptides by length
     # then later we will use the ideal k to search them

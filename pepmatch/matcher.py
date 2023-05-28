@@ -57,7 +57,7 @@ class Matcher:
     # discontinuous epitopes and linear epitopes handling - store separately
     self.discontinuous_epitopes = self._find_discontinuous_epitopes()
     self.query = self._clean_query()
-    assert self.query, 'Query is empty. Please check your input.'
+    assert self.query or self.discontinuous_epitopes, 'Query is empty. Please check your input.'
     
     self.lengths = sorted(set(len(peptide) for peptide in self.query))
     self.max_mismatches = max_mismatches

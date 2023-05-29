@@ -301,7 +301,7 @@ class Matcher:
         protein_data = cursor.fetchone()
         match_data = (
           peptide,                          # query peptide
-          peptide,                          # matched peptide (same as query for exact)
+          peptide,                          # matched peptide (same as query)
           protein_data[1],                  # protein ID
           protein_data[2],                  # protein name
           protein_data[3],                  # species
@@ -534,24 +534,29 @@ class Matcher:
       all_matches.append((peptide,) + (np.nan,) * 13)
     else:
       for match in matches:
-        protein_number = match[2] - (match[2] % 1000000) // 1000000
+        metadata_key = (match[2] - (match[2] % 1000000)) // 1000000
+        metadata = metadata_dict[metadata_key]
+
+        mutated_positions = [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]]
+        index_start = int((match[2] % 1000000) + 1)
+        index_end = int((match[2] % 1000000) + len(peptide))
+
         match_data = (
-          peptide,                                  # query peptide
-          match[0],                                 # matched peptide
-          metadata_dict[protein_number][0],         # protein ID
-          metadata_dict[protein_number][1],         # protein name
-          metadata_dict[protein_number][2],         # species
-          int(metadata_dict[protein_number][3]),    # taxon ID
-          metadata_dict[protein_number][4],         # gene symbol
-          int(match[1]),                            # mismatches count
-          # mutated positions
-          [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]], 
-          int((match[2] % 1000000) + 1),            # index start
-          int((match[2] % 1000000) + len(peptide)), # index end
-          int(metadata_dict[protein_number][5]),    # protein existence level
-          metadata_dict[protein_number][6],         # sequence version
-          metadata_dict[protein_number][7])         # gene priority flag
-        
+            peptide,                      # query peptide
+            match[0],                     # matched peptide
+            metadata[0],                  # protein ID
+            metadata[1],                  # protein name
+            metadata[2],                  # species
+            int(metadata[3]),             # taxon ID
+            metadata[4],                  # gene symbol
+            int(match[1]),                # mismatches count
+            mutated_positions,            # mutated positions
+            index_start,                  # index start
+            index_end,                    # index end
+            int(metadata[5]),             # protein existence level
+            metadata[6],                  # sequence version
+            metadata[7]                   # gene priority flag
+        )
         all_matches.append(match_data)
 
     return all_matches

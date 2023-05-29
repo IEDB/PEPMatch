@@ -1,6 +1,5 @@
 from .matcher import Matcher
 
-import os, glob
 
 class Benchmarker(Matcher):
   '''

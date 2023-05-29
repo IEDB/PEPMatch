@@ -217,7 +217,7 @@ class Preprocessor:
     """
     Preprocesses the proteome and stores it in the specified format.
     """
-    if not preprocess_format in ('sql', 'pickle', 'redis'):
+    if preprocess_format not in ('sql', 'pickle', 'redis'):
       raise AssertionError('Unexpected value of preprocessing format:', preprocess_format)
 
     assert k >= 2, 'k-sized split is invalid. Cannot be less than 2.'

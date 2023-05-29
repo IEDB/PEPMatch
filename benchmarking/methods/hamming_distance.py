@@ -40,7 +40,7 @@ class HammingDistance(object):
             for protein in proteome:
                 for i in range(len(protein.seq) - k + 1):
                     distance = self.hamming_distance(str(peptide.seq), str(protein.seq[i:i+k]))
-                    if distance != None:
+                    if distance is not None:
                         peptide_sequences.append(str(peptide.seq))
                         matched_peptides.append(str(protein.seq[i:i+k]))
                         protein_hits.append(str(protein.description).split('|')[1])

@@ -4,7 +4,6 @@ from Bio import SeqIO
 from Bio.Blast.Applications import NcbiblastpCommandline
 import os, glob
 import pandas as pd
-import json
 
 directory = os.path.dirname(os.path.abspath(__file__))
 

@@ -2,10 +2,8 @@
 
 import os
 
-import pandas as pd
-import pandas.testing as pdt
 
-from pepmatch import Preprocessor, Matcher
+from pepmatch import Matcher
 
 
 def test_exact_match():

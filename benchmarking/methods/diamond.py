@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from Bio import SeqIO
-import os, glob
+import os
 
 directory = os.path.dirname(os.path.abspath(__file__))
 

@@ -235,7 +235,7 @@ def main():
     tool = Benchmarker(query_file, proteome_file, lengths, mismatches, method_parameters)
     tool.preprocess_query()
     tool.preprocess_proteome()
-    results = tool.search()
+    tool.search()
 
 if __name__ == "__main__":
     main()

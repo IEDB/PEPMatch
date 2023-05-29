@@ -67,7 +67,7 @@ jobs:
       run: pytest test/test_best_match.py
 
   testdiscontinuoussearch:
-    name: Discontinuous Epitope Search
+    name: Discontinuous Epitope Search Test
     runs-on: ubuntu-latest
 
     steps:

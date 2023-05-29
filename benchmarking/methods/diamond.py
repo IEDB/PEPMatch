@@ -3,10 +3,13 @@
 from Bio import SeqIO
 import os
 
+
 directory = os.path.dirname(os.path.abspath(__file__))
+
 
 def parse_fasta(file):
   return SeqIO.parse(file, 'fasta')
+
 
 class DIAMOND(object):
   def __init__(self, query, proteome, max_mismatches, method_parameters):
@@ -23,15 +26,21 @@ class DIAMOND(object):
 
     self.bin_file = os.path.join(bin_directory, 'diamond')
 
+
   def __str__(self):
     return 'DIAMOND'
   
+
   def preprocesss(self):
-    os.system(self.bin_file + ' makedb --in ' + self.proteome + ' -d ' + self.proteome_name)
+    os.system(f"{self.bin_file} makedb --in {self.proteome} -d {self.proteome_name}")
   
+
   def diamond_search(self, query, proteome):
-    os.system(self.bin_file + ' blastp -d ' + self.proteome_name + ' -q ' + self.query + ' -o matches.m8' + 
-              ' -e 10000 -k 100 --ultra-sensitive --masking 0 -f 6 full_qseq sseq sseqid mismatch sstart')
+    os.system(
+      f"{self.bin_file} blastp -d {self.proteome_name} -q {self.query} -o matches.m8 "
+      f"-e 10000 -k 100 --ultra-sensitive --masking 0 -f 6 "
+       "full_qseq sseq sseqid mismatch sstart"
+    )
 
     all_matches = []
     with open('matches.m8', 'r') as file:
@@ -60,14 +69,18 @@ class Benchmarker(DIAMOND):
     
     super().__init__(query, proteome, max_mismatches, method_parameters)
 
+
   def __str__(self):
     return 'DIAMOND'
+
 
   def preprocess_proteome(self):
     return self.preprocesss()
 
+
   def preprocess_query(self):
     raise TypeError(self.__str__() + ' does not preprocess queries.\n')
+
 
   def search(self):
     matches = self.diamond_search(self.query, self.proteome)
@@ -75,18 +88,15 @@ class Benchmarker(DIAMOND):
     all_matches = []
     for match in matches:
       match = list(match)
-      # try taking the UniProt ID - else do nothing 
-      try:
+      try: # get the UniProt ID or do nothing 
         match[2] = match[2].split('|')[1]
       except IndexError:
         pass
       all_matches.append(','.join([str(i) for i in match]))
 
-    # for extension in ['source', 'dbtype', 'index', 'idx', 'lookup', 'pot', 'pto']:
-    #     os.remove(glob.glob(os.path.dirname(self.proteome) + '/*.' + extension)[0])
-
     os.remove('matches.m8')
-    os.remove(os.path.dirname(self.proteome) + '/%s.dmnd' % self.proteome_name.split('/')[-1])
-    # os.remove(os.path.dirname(self.proteome) + '/%s.dmnd' % self.proteome_name.split('/')[-1])
+    os.remove(
+      os.path.dirname(self.proteome) + '/%s.dmnd' % self.proteome_name.split('/')[-1]
+    )
 
     return all_matches

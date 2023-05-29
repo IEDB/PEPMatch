@@ -16,7 +16,9 @@ class Benchmarker(Matcher):
     self.lengths = lengths
     self.algorithm_parameters = algorithm_parameters
     
-    super().__init__(query, proteome, max_mismatches, output_format=algorithm_parameters['output_format'], versioned_ids=False)
+    super().__init__(
+      query, proteome, max_mismatches, 
+      output_format=algorithm_parameters['output_format'], versioned_ids=False)
 
   def __str__(self):
     return 'PEPMatch'

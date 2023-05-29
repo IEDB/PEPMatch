@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-import os, glob, shutil
+import os 
+import glob
+import shutil
 
 directory = os.path.dirname(os.path.abspath(__file__))
 
@@ -22,13 +24,15 @@ class MMseqs2(object):
     return 'MMseqs2'
   
   def preprocesss(self):
-    os.system(self.bin_file + ' createdb ' + self.proteome + ' ' + self.proteome_name)
-    os.system(self.bin_file + ' createindex ' + self.proteome_name + ' tmp')
+    os.system(f"{self.bin_file} createdb {self.proteome} {self.proteome_name}")
+    os.system(f"{self.bin_file} createindex {self.proteome_name} tmp")
   
   def mmseqs_search(self, query, proteome):
-
-    os.system(self.bin_file + ' easy-search ' + self.query + ' ' + self.proteome_name + ' results.m8' + 
-              ' tmp' + ' -s 7.0' + ' -e 10000' + ' --format-output "qseq,taln,theader,mismatch,tstart"')
+    os.system(
+      f"{self.bin_file} easy-search {self.query} {self.proteome_name} "
+      f"results.m8 tmp -s 7.0 -e 10000 "
+      "--format-output \"qseq,taln,theader,mismatch,tstart\""
+    )
 
     all_matches = []
     with open('results.m8', 'r') as file:

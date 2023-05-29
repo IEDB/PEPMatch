@@ -14,7 +14,8 @@ with open('pepmatch/version.py', 'r') as f:
 setup(
     name='pepmatch',
     version=version,
-    description='Peptide and epitope search against a reference proteome with specified mismatches.',
+    description='Search tool for peptides and epitopes within a proteome, '
+                'while considering potential residue substitutions.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/IEDB/PEPMatch',

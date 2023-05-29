@@ -11,9 +11,12 @@ from pepmatch import Preprocessor, Matcher
 def test_exact_match():
   # paths
   test_script_dir = os.path.dirname(os.path.realpath(__file__))
-  proteome_fasta = os.path.join(test_script_dir, '../benchmarking/proteomes/human.fasta')
-  query_fasta = os.path.join(test_script_dir, '../benchmarking/queries/mhc_ligands_test.fasta')
-  expected_csv = os.path.join(test_script_dir, '../benchmarking/expected/mhc_ligands_expected.csv')
+  proteome_fasta = os.path.join(
+    test_script_dir, '../benchmarking/proteomes/human.fasta')
+  query_fasta = os.path.join(
+    test_script_dir, '../benchmarking/queries/mhc_ligands_test.fasta')
+  expected_csv = os.path.join(
+    test_script_dir, '../benchmarking/expected/mhc_ligands_expected.csv')
 
   # preprocess human proteome
   k=9
@@ -35,15 +38,18 @@ def test_exact_match():
 
   # select only the necessary columns to test for
   df = df[['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']]
-  expected_df = expected_df[['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']]
+  expected_df = expected_df[
+    ['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']]
 
   # convert Index start to int64 for comparison
   df['Index start'] = df['Index start'].astype('int64')
   expected_df['Index start'] = expected_df['Index start'].astype('int64')
 
   # sort dataframes by Query Sequence, Protein ID, and Index start
-  df = df.sort_values(by=['Query Sequence', 'Protein ID', 'Index start']).reset_index(drop=True)
-  expected_df = expected_df.sort_values(by=['Query Sequence', 'Protein ID', 'Index start']).reset_index(drop=True)
+  df = df.sort_values(
+    by=['Query Sequence', 'Protein ID', 'Index start']).reset_index(drop=True)
+  expected_df = expected_df.sort_values(
+    by=['Query Sequence', 'Protein ID', 'Index start']).reset_index(drop=True)
 
   # assert dataframes are equal
   pdt.assert_frame_equal(df, expected_df, check_dtype=False, check_exact=True)

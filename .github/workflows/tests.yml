@@ -1,4 +1,4 @@
-name: PyTest
+name: Tests
 
 on:
   push:
@@ -9,6 +9,13 @@ on:
       - master
 
 jobs:
+  linter:
+    name: Ruff Linter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: chartboost/ruff-action@v1
+
   testexactmatch:
     name: Exact Match Test
     runs-on: ubuntu-latest

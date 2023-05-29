@@ -123,7 +123,9 @@ class Preprocessor:
 
       # check if kmers table already exists and exit if it does
       # for some reason writing to the same table multiple times messes up results
-      if cursor.execute(f'SELECT name FROM sqlite_master WHERE type="table" AND name="{kmers_table}";').fetchone():
+      if cursor.execute(
+        f'SELECT name FROM sqlite_master WHERE type="table" AND name="{kmers_table}";'
+      ).fetchone():
         return
 
       self._create_tables(cursor, kmers_table, metadata_table)
@@ -160,11 +162,19 @@ class Preprocessor:
     cursor.executemany(f'INSERT INTO {kmers_table} VALUES (?, ?)', kmer_rows)
 
   def _insert_metadata(self, cursor, metadata_table):
-    cursor.executemany(f'INSERT INTO {metadata_table} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', self.all_metadata)
+    cursor.executemany(
+      f'INSERT INTO {metadata_table} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+      self.all_metadata
+    )
 
   def _create_indexes(self, cursor, kmers_table, metadata_table):
-    cursor.execute(f'CREATE INDEX IF NOT EXISTS {kmers_table}_kmer_idx ON {kmers_table} (kmer)')
-    cursor.execute(f'CREATE INDEX IF NOT EXISTS {metadata_table}_protein_number_idx ON {metadata_table} (protein_number)')
+    cursor.execute(
+      f'CREATE INDEX IF NOT EXISTS {kmers_table}_kmer_idx ON {kmers_table} (kmer)'
+    )
+    cursor.execute(
+      f'CREATE INDEX IF NOT EXISTS {metadata_table}_protein_number_idx '
+      f'ON {metadata_table} (protein_number)'
+    )
 
   def pickle_proteome(self, k):
     """
@@ -174,10 +184,10 @@ class Preprocessor:
     kmer_dict = {}
     for protein_count, seq in enumerate(self.all_seqs):
       for j, kmer in enumerate(split_sequence(seq, k)):
-        if kmer in kmer_dict.keys():
-          kmer_dict[kmer].append((protein_count + 1) * 1000000 + j) # add index to k-mer list
-        else:
-          kmer_dict[kmer] = [(protein_count + 1) * 1000000 + j] # create entry for new k-mer
+        if kmer in kmer_dict.keys(): # add index to k-mer list
+          kmer_dict[kmer].append((protein_count + 1) * 1000000 + j) 
+        else: # create entry for new k-mer
+          kmer_dict[kmer] = [(protein_count + 1) * 1000000 + j] 
     
     metadata_dict = {}
     for data in self.all_metadata:
@@ -218,7 +228,9 @@ class Preprocessor:
     Preprocesses the proteome and stores it in the specified format.
     """
     if preprocess_format not in ('sql', 'pickle', 'redis'):
-      raise AssertionError('Unexpected value of preprocessing format:', preprocess_format)
+      raise AssertionError(
+        'Unexpected value of preprocessing format:', preprocess_format
+      )
 
     assert k >= 2, 'k-sized split is invalid. Cannot be less than 2.'
 

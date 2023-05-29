@@ -537,7 +537,9 @@ class Matcher:
         metadata_key = (match[2] - (match[2] % 1000000)) // 1000000
         metadata = metadata_dict[metadata_key]
 
-        mutated_positions = [i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]]
+        mutated_positions = [
+          i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]
+        ]
         index_start = int((match[2] % 1000000) + 1)
         index_end = int((match[2] % 1000000) + len(peptide))
 

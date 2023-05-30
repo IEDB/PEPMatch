@@ -4,7 +4,7 @@
 
 --------------------------------------------------------------------
 
-![Unit Tests](https://github.com/IEDB/PEPMatch/actions/workflows/unittests.yml/badge.svg)
+![Unit Tests](https://github.com/IEDB/PEPMatch/actions/workflows/tests.yml/badge.svg)
 
 #### Author: Daniel Marrama
 
@@ -27,7 +27,7 @@ As a competition to improve tool performance, we created a benchmarking framewor
 
 ### Installation
 
-```
+```bash
 pip install pepmatch
 ```
 
@@ -72,11 +72,14 @@ pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
 from pepmatch import Preprocessor, Matcher
 
 # proteome, k, preprocessed_format, target directory, gene_priority_proteome
-Preprocessor('proteomes/human.fasta', '.' 'proteomes/human_gp.fasta').preprocess('sql', k=5)
-# PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
+Preprocessor(
+  'proteomes/human.fasta', '.', 'proteomes/human_gp.fasta'
+).sql_proteome(k = 5) # preprocessing only needs to be done once!
 
 # query, proteome, max_mismatches, k, preprocessed files directory
-Matcher('queries/mhc_ligands_test.fasta', 'proteomes/human.fasta', 0, 5, '.').match()
+Matcher(
+  'queries/mhc_ligands_test.fasta', 'proteomes/human.fasta', 0, 5, '.'
+).match()
 ```
 
 ### Mismatching Example 
@@ -85,18 +88,21 @@ Matcher('queries/mhc_ligands_test.fasta', 'proteomes/human.fasta', 0, 5, '.').ma
 from pepmatch import Preprocessor, Matcher
 
 # proteome, k, preprocessed_format, target directory
-Preprocessor('proteomes/human.fasta').preprocess('pickle', k=3)
-# PREPROCESSING ONLY NEEDS TO BE DONE ONCE!
+Preprocessor('proteomes/human.fasta').pickle_proteome(k = 3)
 
 # query, proteome, max_mismatches, k, preprocessed files directory
-Matcher('queries/neoepitopes_test.fasta', 'proteomes/human.fasta', 3, 3).match()
+Matcher(
+  'queries/neoepitopes_test.fasta', 'proteomes/human.fasta', 3, 3
+).match()
 ```
 
 ### Best Match Example
 
 ```python
 from pepmatch import Preprocessor, Matcher
-Matcher('queries/milk_peptides.fasta', 'proteomes/human.fasta', best_match=True).match()
+Matcher(
+  'queries/milk_peptides.fasta', 'proteomes/human.fasta', best_match=True
+).match()
 ```
 
 The best match parameter without k or mismatch inputs will produce the best match for each peptide in the query, meaning the match with the least number of mismatches, the best protein existence level, and if the match exists in the gene priority proteome. No preprocessing beforehand is required, as the Matcher class will do this for you to find the best match.

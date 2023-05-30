@@ -52,10 +52,15 @@ class Preprocessor:
     # extract all the data from the proteome
     self.all_seqs, self.all_metadata = self._get_data_from_proteome()
 
-  def _append_gp_to_header(self, proteome, gene_priority_proteome):
-    """
-    Appends GP=1 or GP=0 to the FASTA header of a proteome depending on
+  def _append_gp_to_header(
+    self, proteome: str, gene_priority_proteome: str
+  ) -> list:
+    """Appends GP=1 or GP=0 to the FASTA header of a proteome depending on
     if the protein is in the gene priority proteome.
+
+    Args:
+      proteome: path to proteome FASTA file.
+      gene_priority_proteome: path to gene priority proteome FASTA file.
     """
     proteome_records = parse_fasta(proteome) # get regular proteome
     try: # try to get gene priority proteome
@@ -83,9 +88,8 @@ class Preprocessor:
 
     return records
 
-  def _get_data_from_proteome(self):
-    """
-    Extract all the data from a FASTA file and returns two lists:
+  def _get_data_from_proteome(self) -> tuple:
+    """Extract all the data from a FASTA file and returns two lists:
 
     Use extract_metadata_from_fasta_header in helpers.py.
 
@@ -108,9 +112,11 @@ class Preprocessor:
 
     return all_seqs, all_metadata
 
-  def sql_proteome(self, k):
-    """
-    Writes the kmers_table and metadata_table to a SQLite database.
+  def sql_proteome(self, k: int) -> None:
+    """Writes the kmers_table and metadata_table to a SQLite database.
+    
+    Args:
+      k: k-mer length to split the proteome into.
     """
     # create table names
     kmers_table = f'{self.proteome_name}_{str(k)}mers'
@@ -135,7 +141,16 @@ class Preprocessor:
 
       conn.commit()
 
-  def _create_tables(self, cursor, kmers_table, metadata_table):
+  def _create_tables(
+    self, cursor: sqlite3.Cursor, kmers_table: str, metadata_table: str
+  ) -> None:
+    """Creates the kmers_table and metadata_table in the SQLite database.
+
+    Args:
+      cursor: cursor object to execute SQL commands.
+      kmers_table: name of the k-mers table.
+      metadata_table: name of the metadata table.
+    """
     cursor.execute(
       f'CREATE TABLE IF NOT EXISTS {kmers_table} ('\
         'kmer TEXT NOT NULL,'\
@@ -154,20 +169,42 @@ class Preprocessor:
         'gene_priority    INTEGER NOT NULL)'\
     )
 
-  def _insert_kmers(self, cursor, kmers_table, k):
+  def _insert_kmers(self, cursor: sqlite3.Cursor, kmers_table: str, k: int) -> None:
+    """Inserts the k-mers into the kmers_table.
+
+    Args:
+      cursor: cursor object to execute SQL commands.
+      kmers_table: name of the k-mers table.
+      k: k-mer length to split the proteome into.
+    """
     kmer_rows = []
     for protein_count, seq in enumerate(self.all_seqs):
         for j, kmer in enumerate(split_sequence(seq, k)):
             kmer_rows.append((kmer, (protein_count + 1) * 1000000 + j))
     cursor.executemany(f'INSERT INTO {kmers_table} VALUES (?, ?)', kmer_rows)
 
-  def _insert_metadata(self, cursor, metadata_table):
+  def _insert_metadata(self, cursor: sqlite3.Cursor, metadata_table: str) -> None:
+    """Inserts the metadata into the metadata_table.
+
+    Args:
+      cursor: cursor object to execute SQL commands.
+      metadata_table: name of the metadata table.
+    """
     cursor.executemany(
       f'INSERT INTO {metadata_table} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
       self.all_metadata
     )
 
-  def _create_indexes(self, cursor, kmers_table, metadata_table):
+  def _create_indexes(
+    self, cursor: sqlite3.Cursor, kmers_table: str, metadata_table: str
+  ) -> None:
+    """Creates indexes for the kmers_table and metadata_table.
+
+    Args:
+      cursor: cursor object to execute SQL commands.
+      kmers_table: name of the k-mers table.
+      metadata_table: name of the metadata table.
+    """
     cursor.execute(
       f'CREATE INDEX IF NOT EXISTS {kmers_table}_kmer_idx ON {kmers_table} (kmer)'
     )
@@ -176,9 +213,11 @@ class Preprocessor:
       f'ON {metadata_table} (protein_number)'
     )
 
-  def pickle_proteome(self, k):
-    """
-    Pickles the proteome into a dictionary of k-mers and a dictionary of metadata.
+  def pickle_proteome(self, k: int) -> None:
+    """Pickles the proteome into a dictionary of k-mers and a dictionary of metadata.
+
+    Args:
+      k: k-mer length to split the proteome into.
     """
     # create kmer_dict and metadata_dict out of self.all_seqs and self.all_metadata
     kmer_dict = {}
@@ -202,9 +241,11 @@ class Preprocessor:
       f'{self.proteome_name}_metadata.pickle'), 'wb') as f:
       pickle.dump(metadata_dict, f)
 
-  def redis_proteome(self, k):
-    """
-    Writes the k-mers and metadata to a Redis database.
+  def redis_proteome(self, k: int) -> None:
+    """Writes the k-mers and metadata to a Redis database.
+
+    Args:
+      k: k-mer length to split the proteome into.
     """
     import redis
     r = redis.Redis(host='localhost', port=6379, db=0)
@@ -223,9 +264,12 @@ class Preprocessor:
       key = f'metadata:{protein_number}'
       r.set(key, metadata_values)
 
-  def preprocess(self, preprocess_format, k):
-    """
-    Preprocesses the proteome and stores it in the specified format.
+  def preprocess(self, preprocess_format: str, k: int) -> None:
+    """Preprocesses the proteome and stores it in the specified format.
+
+    Args:
+      preprocess_format: format to store the proteome in (sql, pickle, redis).
+      k: k-mer length to split the proteome into.
     """
     if preprocess_format not in ('sql', 'pickle', 'redis'):
       raise AssertionError(
@@ -241,7 +285,6 @@ class Preprocessor:
       self.sql_proteome(k)
     elif preprocess_format == 'redis':
       self.redis_proteome(k)
-
 
 
 # run via command line

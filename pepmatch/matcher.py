@@ -5,6 +5,7 @@ import sqlite3
 import pandas as pd
 import numpy as np
 
+from typing import Union
 from collections import Counter, defaultdict
 from Levenshtein import hamming
 
@@ -89,8 +90,17 @@ class Matcher:
     if max_mismatches == -1:
       self.ks = self._best_match_ks()
 
-  def _initialize_query(self, query, proteome_file, output_name):
-    """Initialize query and output name based on input type."""
+
+  def _initialize_query(
+    self, query: Union[str, list], proteome_file: str, output_name: str
+  ) -> list:
+    """Initialize query and output name based on input type.
+    
+    Args:
+      query: either a FASTA file or a Python list of peptides.
+      proteome_file: the proteome FASTA file.
+      output_name: the name of the output file.
+    """
     if isinstance(query, list):
       if output_name:
         self.output_name = output_name
@@ -110,7 +120,8 @@ class Matcher:
 
       return [seq.upper() for seq in parsed_query]
 
-  def _find_discontinuous_epitopes(self):
+
+  def _find_discontinuous_epitopes(self) -> list:
     """Find discontinuous epitopes in query and store separately."""
     discontinuous_epitopes = []
     for peptide in self.query:
@@ -122,7 +133,7 @@ class Matcher:
 
     return discontinuous_epitopes
 
-  def _clean_query(self):
+  def _clean_query(self) -> list:
     """Remove discontinous epitopes from query."""
     epitopes = self.discontinuous_epitopes
     discontinuous_epitope_strings = [
@@ -131,8 +142,12 @@ class Matcher:
     query_filtered = set(self.query) - set(discontinuous_epitope_strings)
     return list(query_filtered)
   
-  def _initialize_k(self, k):
-    """Initialize k and k_specified values based on k and max_mismatches input."""
+  def _initialize_k(self, k: int) -> tuple:
+    """Initialize k and k_specified values based on k and max_mismatches input.
+    
+    Args:
+      k: the k-mer length to use for matching, 0 if not specified.
+    """
     if k > 1:
       return k, True
     else: # use the length of the shortest peptide for exact match 
@@ -141,9 +156,8 @@ class Matcher:
       else:
         return 0, False
 
-  def _batch_query(self):
-    """
-    Batch peptides together by ideal k so it can be used when searching.
+  def _batch_query(self) -> dict:
+    """Batch peptides together by ideal k so it can be used when searching.
     If k is specified, just return the query as a dictionary with k as the key.
     """
     if self.k_specified:
@@ -156,9 +170,8 @@ class Matcher:
       
       return dict(batched_peptides)
 
-  def _best_match_ks(self):
-    """
-    For the special case where mismatching is to be done, k is not 
+  def _best_match_ks(self) -> list:
+    """For the special case where mismatching is to be done, k is not 
     specified and best match is selected, we need to get all the k values
     to preprocess the proteome multiple times. Starting with the length 
     of the smallest peptide and then halving until we get to 2.
@@ -181,9 +194,8 @@ class Matcher:
 
     return ks
 
-  def match(self):
-    """
-    Overarching function that calls the appropriate search matching function
+  def match(self) -> list:
+    """Overarching function that calls the appropriate search matching function
     based on the parameters.
     """
     if self.query:
@@ -216,9 +228,8 @@ class Matcher:
     else:
       self._output_matches(df)
 
-  def exact_match_search(self):
-    """
-    Using preprocessed data within a SQLite database and the query peptides,
+  def exact_match_search(self) -> list:
+    """Using preprocessed data within a SQLite database and the query peptides,
     find the peptide matches within the proteome without any residue 
     substitutions. 
     """
@@ -275,8 +286,12 @@ class Matcher:
 
     return all_matches
 
-  def _get_target_kmers(self, all_kmers):
-    """Return the target kmers that overlap the entire peptide."""
+  def _get_target_kmers(self, all_kmers: list) -> list:
+    """Return the target kmers that overlap the entire peptide.
+    
+    Args:
+      all_kmers: all possible kmers of the query peptide for a given k.
+    """
     if len(all_kmers) == self.k:
         return all_kmers
 
@@ -285,8 +300,17 @@ class Matcher:
         target_kmers.append(all_kmers[-1])
     return target_kmers
 
-  def _process_exact_matches(self, peptide, matches, cursor, metadata_table_name):
-    """Extract all metadata for the exact matches and return as a list of tuples."""
+  def _process_exact_matches(
+    self, peptide: str, matches: list, cursor: sqlite3.Cursor, metadata_table_name: str
+  ) -> list:
+    """Extract all metadata for the exact matches and return as a list of tuples.
+    
+    Args:
+      peptide: the query peptide.
+      matches: the list of exact matches for the peptide.
+      cursor: the cursor object to execute SQL queries.
+      metadata_table_name: the name of the metadata table in the database.
+    """
     all_matches = []
     if not matches:
       all_matches.append((peptide,) + (np.nan,) * 13)
@@ -319,9 +343,8 @@ class Matcher:
 
     return all_matches
 
-  def mismatch_search(self):
-    """
-    Using preprocessed data within a serialized pickle files, the query
+  def mismatch_search(self) -> list:
+    """Using preprocessed data within a serialized pickle files, the query
     peptides, and a maximum number of residue substitutions, find all peptide
     matches up to and including the maximum number of residue substitutions.
 
@@ -366,9 +389,8 @@ class Matcher:
     
     return all_matches
 
-  def _read_pickle_files(self):
-    """
-    Read in the already created pickle files for each dictionary in the
+  def _read_pickle_files(self) -> tuple:
+    """Read in the already created pickle files for each dictionary in the
     preprocessing step.
     """
     with open(os.path.join(self.preprocessed_files_path, 
@@ -381,9 +403,10 @@ class Matcher:
 
     return kmer_dict, names_dict
 
-  def _find_even_split_matches(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
-    """
-    If the peptide length is evenly divisible by k, perform faster search. 
+  def _find_even_split_matches(
+    self, kmers: list, kmer_dict: dict, rev_kmer_dict: dict, peptide_length: int
+  ) -> list:
+    """If the peptide length is evenly divisible by k, perform faster search. 
     Check the associated k-mers for the left and right neighbors of any 
     exact matching k-mers in the proteome.
     
@@ -392,6 +415,12 @@ class Matcher:
     k-mers to the left and right to see if "YLL" (left neighbor) and "SYL" 
     (right neighbor) have mismatches with the proteome k-mers, return any
     matches that are less than or equal to self.max_mismatches.
+
+    Args:
+      kmers: the k-mers of the query peptide.
+      kmer_dict: the k-mer -> index dictionary.
+      rev_kmer_dict: the index -> k-mer dictionary.
+      peptide_length: the length of the query peptide.
     """
     matches = set()
     for idx in range(0, len(kmers), self.k): # gets only the k-mers to check
@@ -428,9 +457,10 @@ class Matcher:
     
     return list(matches)
 
-  def _find_uneven_split_matches(self, kmers, kmer_dict, rev_kmer_dict, peptide_length):
-    """
-    If the peptide length is NOT evenly divisible by k, perform slow search. 
+  def _find_uneven_split_matches(
+    self, kmers: list, kmer_dict: dict, rev_kmer_dict: dict, peptide_length: int
+  ) -> list:
+    """If the peptide length is NOT evenly divisible by k, perform slow search. 
     Check the associated residues for the left and right neighbors of any 
     exact matching k-mers in the proteome.
     
@@ -441,6 +471,12 @@ class Matcher:
     left "L" from "LLD", and "Y" from "YLL" to for any mismatches. Then do the 
     same for the residues of the right neighbors. Return any matches that are
     less than or equal to self.max_mismatches.
+
+    Args:
+      kmers: the k-mers of the query peptide.
+      kmer_dict: the k-mer -> index dictionary.
+      rev_kmer_dict: the index -> k-mer dictionary.
+      peptide_length: the length of the query peptide.
     """
     matches = set()
     for idx in range(0, len(kmers)): # every k-mer
@@ -477,8 +513,18 @@ class Matcher:
 
     return matches
 
-  def _check_left_neighbors(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
-    """Get mismatches of left k-mer neighbors in proteome."""
+  def _check_left_neighbors(
+    self, kmers: list, idx: int, kmer_hit: int, rev_kmer_dict: dict, mismatches: int
+  ) -> int:
+    """Get mismatches of left k-mer neighbors in proteome.
+    
+    Args:
+      kmers: the k-mers of the query peptide.
+      idx: the index of the k-mer in the query peptide.
+      kmer_hit: the index of the k-mer hit in the proteome.
+      rev_kmer_dict: the index -> k-mer dictionary.
+      mismatches: the number of mismatches so far.
+    """
     for i in range(0, idx, self.k):
       try: # get proteome k-mer from reverse dictionary and check associated query k-mer
         mismatches += hamming(rev_kmer_dict[kmer_hit + i - idx], kmers[i])
@@ -489,8 +535,18 @@ class Matcher:
     
     return mismatches
 
-  def _check_right_neighbors(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
-    """Get mismatches of right k-mer neighbors in proteome."""
+  def _check_right_neighbors(
+    self, kmers: list, idx: int, kmer_hit: int, rev_kmer_dict: dict, mismatches: int
+  ) -> int:
+    """Get mismatches of right k-mer neighbors in proteome.
+    
+    Args:
+      kmers: the k-mers of the query peptide.
+      idx: the index of the k-mer in the query peptide.
+      kmer_hit: the index of the k-mer hit in the proteome.
+      rev_kmer_dict: the index -> k-mer dictionary.
+      mismatches: the number of mismatches so far.
+    """
     for i in range(self.k + idx, len(kmers), self.k):
       try: # get proteome k-mer from reverse dictionary and check associated query k-mer
         mismatches += hamming(rev_kmer_dict[kmer_hit + i - idx], kmers[i])
@@ -501,8 +557,18 @@ class Matcher:
     
     return mismatches
 
-  def _check_left_residues(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
-    """Get mismatches of left residues of left k-mer neighbors in proteome."""
+  def _check_left_residues(
+    self, kmers: list, idx: int, kmer_hit: int, rev_kmer_dict: dict, mismatches: int
+  ) -> int:
+    """Get mismatches of left residues of left k-mer neighbors in proteome.
+    
+    Args:
+      kmers: the k-mers of the query peptide.
+      idx: the index of the k-mer in the query peptide.
+      kmer_hit: the index of the k-mer hit in the proteome.
+      rev_kmer_dict: the index -> k-mer dictionary.
+      mismatches: the number of mismatches so far.
+    """
     for i in range(0, idx):
       try: # get proteome residue from reverse dict and check associated query residue
         if rev_kmer_dict[kmer_hit + i - idx][0] != kmers[i][0]:
@@ -514,8 +580,18 @@ class Matcher:
     
     return mismatches
 
-  def _check_right_residues(self, kmers, idx, kmer_hit, rev_kmer_dict, mismatches):
-    """Get mismatches of right residues of right k-mer neighbors in proteome."""
+  def _check_right_residues(
+    self, kmers: list, idx: int, kmer_hit: int, rev_kmer_dict: dict, mismatches: int
+  ) -> int:
+    """Get mismatches of right residues of right k-mer neighbors in proteome.
+    
+    Args:
+      kmers: the k-mers of the query peptide.
+      idx: the index of the k-mer in the query peptide.
+      kmer_hit: the index of the k-mer hit in the proteome.
+      rev_kmer_dict: the index -> k-mer dictionary.
+      mismatches: the number of mismatches so far.
+    """
     for i in range(idx + 1, len(kmers)):
       try: # get proteome residue from reverse dict and check associated query residue
         if rev_kmer_dict[kmer_hit + i - idx][-1] != kmers[i][-1]:
@@ -527,8 +603,16 @@ class Matcher:
     
     return mismatches
 
-  def _process_mismatch_matches(self, peptide, matches, metadata_dict):
-    """Extract all metadata for the mismatch matches and return as a list of tuples."""
+  def _process_mismatch_matches(
+    self, peptide: str, matches: list, metadata_dict: dict
+  ) -> list:
+    """Extract all metadata for the mismatch matches and return as a list of tuples.
+    
+    Args:
+      peptide: the query peptide.
+      matches: the list of mismatch matches for the peptide.
+      metadata_dict: the protein number -> metadata dictionary.
+    """
     all_matches = []
     if not matches:
       all_matches.append((peptide,) + (np.nan,) * 13)
@@ -563,9 +647,8 @@ class Matcher:
 
     return all_matches
 
-  def best_match_search(self):
-    """
-    After calculating the splits we would need (starting with lowest peptide
+  def best_match_search(self) -> list:
+    """After calculating the splits we would need (starting with lowest peptide
     length in query), we can then call the mismatch_search function. We use
     the maximum # of mismatches calculated from the each length and split.
     """
@@ -614,7 +697,7 @@ class Matcher:
 
     return all_matches
 
-  def discontinuous_search(self):
+  def discontinuous_search(self) -> list:
     """Find matches for discontinuous epitopes."""
     all_matches = []
     for dis_epitope in self.discontinuous_epitopes:
@@ -651,8 +734,12 @@ class Matcher:
     
     return all_matches
 
-  def _dataframe_matches(self, all_matches):
-    """Return Pandas dataframe of the results."""
+  def _dataframe_matches(self, all_matches: list) -> pd.DataFrame:
+    """Return Pandas dataframe of the results.
+    
+    Args:
+      all_matches: the list of all matches for all peptides.
+    """
     df = pd.DataFrame(all_matches,
                       columns=['Query Sequence', 'Matched Sequence', 'Protein ID',
                                'Protein Name', 'Species', 'Taxon ID', 'Gene',
@@ -661,10 +748,12 @@ class Matcher:
                                'Sequence Version', 'Gene Priority'])
 
     if self.best_match:
-      def filter_fragments(group):
-        """
-        Takes out matches with 'Fragment' in the protein name if there are other
+      def filter_fragments(group: pd.DataFrame) -> pd.DataFrame:
+        """Takes out matches with 'Fragment' in the protein name if there are other
         matches without 'Fragment'.
+
+        Args:
+          group: the group of matches for a given query peptide.
         """
         group['Protein Name'] = group['Protein Name'].astype(str)
         no_fragments = group[~group['Protein Name'].str.contains('Fragment')]
@@ -722,8 +811,12 @@ class Matcher:
 
     return df
 
-  def _output_matches(self, df):
-    """Write Pandas dataframe to format that is specified"""
+  def _output_matches(self, df: pd.DataFrame) -> None:
+    """Write Pandas dataframe to format that is specified
+    
+    Args:
+      df: the dataframe of the matches.
+    """
     path = f'{self.preprocessed_files_path}/{self.output_name}'
     if self.output_format == 'csv':
       return df.to_csv(f'{path}.csv', index=False)

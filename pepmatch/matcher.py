@@ -627,21 +627,24 @@ class Matcher:
         index_start = int((match[2] % 1000000) + 1)
         index_end = int((match[2] % 1000000) + len(peptide))
 
+        taxon_id = int(metadata[3]) if metadata[3] else np.nan
+        pe_level = int(metadata[5]) if metadata[5] else np.nan
+
         match_data = (
-            peptide,                      # query peptide
-            match[0],                     # matched peptide
-            metadata[0],                  # protein ID
-            metadata[1],                  # protein name
-            metadata[2],                  # species
-            int(metadata[3]),             # taxon ID
-            metadata[4],                  # gene symbol
-            int(match[1]),                # mismatches count
-            mutated_positions,            # mutated positions
-            index_start,                  # index start
-            index_end,                    # index end
-            int(metadata[5]),             # protein existence level
-            metadata[6],                  # sequence version
-            metadata[7]                   # gene priority flag
+          peptide,                      # query peptide
+          match[0],                     # matched peptide
+          metadata[0],                  # protein ID
+          metadata[1],                  # protein name
+          metadata[2],                  # species
+          taxon_id,                     # taxon ID
+          metadata[4],                  # gene symbol
+          int(match[1]),                # mismatches count
+          mutated_positions,            # mutated positions
+          index_start,                  # index start
+          index_end,                    # index end
+          pe_level,                     # protein existence level
+          metadata[6],                  # sequence version
+          metadata[7]                   # gene priority flag
         )
         all_matches.append(match_data)
 

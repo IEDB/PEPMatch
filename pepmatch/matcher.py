@@ -42,7 +42,8 @@ class Matcher:
                preprocessed_files_path='.',
                best_match=False,
                output_format='csv',
-               output_name=''):
+               output_name='',
+               sequence_version=True):
 
     if k < 0 or k == 1:
       raise ValueError('Invalid k value given. k cannot be negative or 1.')
@@ -69,6 +70,7 @@ class Matcher:
     self.preprocessed_files_path = preprocessed_files_path
     self.best_match = best_match
     self.output_format = output_format
+    self.sequence_version = sequence_version
 
     # select format based on # of mismatches to pass to Preprocessor
     # SQLite for exact matching - pickle for mismatching
@@ -796,11 +798,12 @@ class Matcher:
       df.sort_values(by=['Query Sequence', 'Protein ID', 'Index start'], inplace=True)
       df.drop_duplicates(['Query Sequence'], inplace=True)
 
-    # combine protein ID and sequence version
-    df['Sequence Version'] = df[
-       'Sequence Version'
-    ].apply(lambda x: f'.{int(x)}' if not pd.isna(x) else '')   
-    df['Protein ID'] = df['Protein ID'] + df['Sequence Version']
+    if self.sequence_version:
+      # combine protein ID and sequence version
+      df['Sequence Version'] = df['Sequence Version'].apply(
+        lambda x: f'.{int(x)}' if not pd.isna(x) else ''
+      )   
+      df['Protein ID'] = df['Protein ID'] + df['Sequence Version']
     
     # drop "Sequence Version" and "Gene Priority" columns
     df.drop(columns=['Sequence Version'], inplace=True)

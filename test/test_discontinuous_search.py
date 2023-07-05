@@ -21,4 +21,4 @@ def test_exact_match():
     max_mismatches=0,
     output_format='dataframe').match()
 
-  assert df['Protein ID'].iloc[0] == 'P00533.1'
+  assert df['Protein ID'].iloc[0] == 'P00533.2'

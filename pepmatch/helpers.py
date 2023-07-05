@@ -35,11 +35,11 @@ def extract_metadata(record: SeqRecord) -> list:
       'protein_id': re.compile(r"\|([^|]*)\|"),     # between | and |
       'protein_name': re.compile(r"\s(.+?)\sOS"),   # between space and space before OS
       'species': re.compile(r"OS=(.+?)\sOX"),       # between OS= and space before OX
-      'taxon_id': re.compile(r"OX=(.+?)\s"),        # between OX= and space
-      'gene': re.compile(r"GN=(.+?)\s"),            # between GN= and space
-      'pe_level': re.compile(r"PE=(.+?)\s"),        # between PE= and space
-      'sequence_version': re.compile(r"SV=(.+?)\s"),# between SV= and space
-      'gene_priority': re.compile(r"GP=(.+?)\s"),   # between GP= and space
+      'taxon_id': re.compile(r"OX=(.+?)(\s|$)"),         # between OX= and space
+      'gene': re.compile(r"GN=(.+?)(\s|$)"),             # between GN= and space
+      'pe_level': re.compile(r"PE=(.+?)(\s|$)"),         # between PE= and space
+      'sequence_version': re.compile(r"SV=(.+?)(\s|$)"), # between SV= and space
+      'gene_priority': re.compile(r"GP=(.+?)(\s|$)"),    # between GP= and space
   }
   metadata = []
   for key in regexes: # loop through compiled regexes to extract metadata

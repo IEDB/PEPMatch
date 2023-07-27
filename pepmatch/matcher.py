@@ -703,15 +703,20 @@ class Matcher:
     return all_matches
 
   def discontinuous_search(self) -> list:
-    """Find matches for discontinuous epitopes."""
+    """Find matches for discontinuous epitopes. Loops through every protein
+    in the proteome and checks if the residues at the given positions match
+    the query epitope residues up to the maximum number of mismatches.
+    """
     all_matches = []
     for dis_epitope in self.discontinuous_epitopes:
+      match = False
       for protein_record in parse_fasta(self.proteome):
         try:
           residue_matches = sum(
             [x[0] == protein_record.seq[x[1] - 1] for x in dis_epitope]
           )
           if residue_matches >= (len(dis_epitope) - self.max_mismatches):
+            match = True
             metadata = extract_metadata(protein_record)
             match_data = (
               ', '.join(                                    # query epitope
@@ -724,7 +729,7 @@ class Matcher:
               metadata[3],                                  # taxon ID
               metadata[4],                                  # gene symbol
               len(dis_epitope) - residue_matches,           # mismatches count
-                                                            # mutated positions
+              # mutated positions
               [x[1] for x in dis_epitope if x[0] != protein_record.seq[x[1] - 1]],
               dis_epitope[0][1],                            # index start
               dis_epitope[-1][1],                           # index end
@@ -736,7 +741,10 @@ class Matcher:
         
         except IndexError:
           continue
-    
+      
+      if not match:
+        all_matches.append((dis_epitope, np.nan,) * 12)
+
     return all_matches
 
   def _dataframe_matches(self, all_matches: list) -> pd.DataFrame:

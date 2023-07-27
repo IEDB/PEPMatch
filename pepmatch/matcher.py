@@ -735,15 +735,18 @@ class Matcher:
               dis_epitope[-1][1],                           # index end
               metadata[5],                                  # protein existence level
               metadata[6],                                  # sequence version
-              metadata[7])                                  # gene priority flag
+              metadata[7]                                   # gene priority flag
+            )
             
             all_matches.append(match_data)
         
         except IndexError:
           continue
-      
+       )
       if not match:
-        all_matches.append((dis_epitope, np.nan,) * 12)
+        all_matches.append(
+          (', '.join([x[0] + str(x[1]) for x in dis_epitope]),) + (np.nan,) * 13
+        )
 
     return all_matches
 
@@ -865,5 +868,6 @@ def run():
   args = parse_arguments()
 
   Matcher(args.query, args.proteome_file, args.max_mismatches, 
-          args.kmer_size, args.preprocessed_files_path, 
-          args.best_match, args.output_format, args.output_name).match()
+    args.kmer_size, args.preprocessed_files_path, 
+    args.best_match, args.output_format, args.output_name
+  ).match()

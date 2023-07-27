@@ -735,14 +735,13 @@ class Matcher:
               dis_epitope[-1][1],                           # index end
               metadata[5],                                  # protein existence level
               metadata[6],                                  # sequence version
-              metadata[7]                                   # gene priority flag
-            )
+              metadata[7])                                  # gene priority flag
             
             all_matches.append(match_data)
         
         except IndexError:
           continue
-       )
+
       if not match:
         all_matches.append(
           (', '.join([x[0] + str(x[1]) for x in dis_epitope]),) + (np.nan,) * 13

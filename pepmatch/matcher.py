@@ -434,12 +434,12 @@ class Matcher:
             kmers, idx, kmer_hit, rev_kmer_dict, mismatches
           )
 
-          if not mismatches > self.max_mismatches:
-            mismatches = self._check_right_neighbors(
-              kmers, idx, kmer_hit, rev_kmer_dict, mismatches
-            )
-          else:
+          if mismatches > self.max_mismatches:
             continue
+          
+          mismatches = self._check_right_neighbors(
+            kmers, idx, kmer_hit, rev_kmer_dict, mismatches
+          )
           
           if mismatches <= self.max_mismatches:
             matched_peptide = '' # add k-mers to get the matched peptide 
@@ -490,13 +490,12 @@ class Matcher:
             kmers, idx, kmer_hit, rev_kmer_dict, mismatches
           )
 
-          if not mismatches > self.max_mismatches:
-            mismatches = self._check_right_residues(
-              kmers, idx, kmer_hit, rev_kmer_dict, mismatches
-            )
-            
-          else:
+          if mismatches > self.max_mismatches:
             continue
+
+          mismatches = self._check_right_residues(
+            kmers, idx, kmer_hit, rev_kmer_dict, mismatches
+          )
           
           if mismatches <= self.max_mismatches:
             matched_peptide = rev_kmer_dict[kmer_hit - idx] # add the first k-mer

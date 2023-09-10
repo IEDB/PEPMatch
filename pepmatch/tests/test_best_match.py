@@ -37,10 +37,10 @@ def test_best_match(proteome_path, query_path, expected_path):
   ).match()
   df = df.sort_values(by=['Query Sequence']).reset_index(drop=True)
 
-  os.remove('proteome_2mers.pickle')
-  os.remove('proteome_3mers.pickle')
-  os.remove('proteome_6mers.pickle')
-  os.remove('proteome_metadata.pickle')
+  os.remove('proteome_2mers.pkl')
+  os.remove('proteome_3mers.pkl')
+  os.remove('proteome_6mers.pkl')
+  os.remove('proteome_metadata.pkl')
   os.remove('proteome.db')
 
   expected_df = pd.read_csv(expected_path)

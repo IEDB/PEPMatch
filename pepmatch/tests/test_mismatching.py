@@ -39,8 +39,8 @@ def test_mismatching(proteome_path, query_path, expected_path):
   ).match()
   df = df.sort_values(by=['Query Sequence']).reset_index(drop=True)
 
-  os.remove('proteome_3mers.pickle')
-  os.remove('proteome_metadata.pickle')
+  os.remove('proteome_3mers.pkl')
+  os.remove('proteome_metadata.pkl')
 
   expected_df = pd.read_csv(expected_path)
   expected_df= expected_df.sort_values(by=['Query Sequence']).reset_index(drop=True)

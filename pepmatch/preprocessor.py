@@ -7,8 +7,7 @@ from .helpers import parse_fasta, split_sequence, extract_metadata
 
 
 class Preprocessor:
-  """
-  Class that takes in a proteome FASTA file and preprocesses the file to be
+  """Class that takes in a proteome FASTA file and preprocesses the file to be
   used in the matching portion of PEPMatch.
 
   Two tables are stored after the preprocessing:
@@ -31,8 +30,7 @@ class Preprocessor:
                            the canonical sequence for every gene of the species
                            of the proteome. If this is specified, the GP=1 will
                            be appended to the FASTA header of the proteins in
-                           this proteome. Otherwise, GP=0.
-  """
+                           this proteome. Otherwise, GP=0."""
   def __init__(self,
                proteome,
                preprocessed_files_path='.',
@@ -52,6 +50,7 @@ class Preprocessor:
     # extract all the data from the proteome
     self.all_seqs, self.all_metadata = self._get_data_from_proteome()
 
+
   def _append_gp_to_header(
     self, proteome: str, gene_priority_proteome: str
   ) -> list:
@@ -60,8 +59,8 @@ class Preprocessor:
 
     Args:
       proteome: path to proteome FASTA file.
-      gene_priority_proteome: path to gene priority proteome FASTA file.
-    """
+      gene_priority_proteome: path to gene priority proteome FASTA file."""
+    
     proteome_records = parse_fasta(proteome) # get regular proteome
     try: # try to get gene priority proteome
       gp_proteome_records = parse_fasta(gene_priority_proteome)
@@ -88,6 +87,7 @@ class Preprocessor:
 
     return records
 
+
   def _get_data_from_proteome(self) -> tuple:
     """Extract all the data from a FASTA file and returns two lists:
 
@@ -96,8 +96,8 @@ class Preprocessor:
     1. A list of sequences
     2. A list of metadata in tuples. The metadata includes the protein ID,
        protein name, species, taxon ID, gene, protein existence level,
-       sequence version, and gene priority label. 
-    """
+       sequence version, and gene priority label."""
+    
     all_seqs = []
     all_metadata = []
     protein_number = 1
@@ -112,12 +112,13 @@ class Preprocessor:
 
     return all_seqs, all_metadata
 
+
   def sql_proteome(self, k: int) -> None:
     """Writes the kmers_table and metadata_table to a SQLite database.
     
     Args:
-      k: k-mer length to split the proteome into.
-    """
+      k: k-mer length to split the proteome into."""
+  
     # create table names
     kmers_table = f'{self.proteome_name}_{str(k)}mers'
     metadata_table = f'{self.proteome_name}_metadata'
@@ -141,6 +142,7 @@ class Preprocessor:
 
       conn.commit()
 
+
   def _create_tables(
     self, cursor: sqlite3.Cursor, kmers_table: str, metadata_table: str
   ) -> None:
@@ -149,8 +151,8 @@ class Preprocessor:
     Args:
       cursor: cursor object to execute SQL commands.
       kmers_table: name of the k-mers table.
-      metadata_table: name of the metadata table.
-    """
+      metadata_table: name of the metadata table."""
+
     cursor.execute(
       f'CREATE TABLE IF NOT EXISTS {kmers_table} ('\
         'kmer TEXT NOT NULL,'\
@@ -169,31 +171,34 @@ class Preprocessor:
         'gene_priority    INTEGER NOT NULL)'\
     )
 
+
   def _insert_kmers(self, cursor: sqlite3.Cursor, kmers_table: str, k: int) -> None:
     """Inserts the k-mers into the kmers_table.
 
     Args:
       cursor: cursor object to execute SQL commands.
       kmers_table: name of the k-mers table.
-      k: k-mer length to split the proteome into.
-    """
+      k: k-mer length to split the proteome into."""
+    
     kmer_rows = []
     for protein_count, seq in enumerate(self.all_seqs):
         for j, kmer in enumerate(split_sequence(seq, k)):
             kmer_rows.append((kmer, (protein_count + 1) * 1000000 + j))
     cursor.executemany(f'INSERT INTO {kmers_table} VALUES (?, ?)', kmer_rows)
 
+
   def _insert_metadata(self, cursor: sqlite3.Cursor, metadata_table: str) -> None:
     """Inserts the metadata into the metadata_table.
 
     Args:
       cursor: cursor object to execute SQL commands.
-      metadata_table: name of the metadata table.
-    """
+      metadata_table: name of the metadata table."""
+    
     cursor.executemany(
       f'INSERT INTO {metadata_table} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
       self.all_metadata
     )
+
 
   def _create_indexes(
     self, cursor: sqlite3.Cursor, kmers_table: str, metadata_table: str
@@ -203,8 +208,8 @@ class Preprocessor:
     Args:
       cursor: cursor object to execute SQL commands.
       kmers_table: name of the k-mers table.
-      metadata_table: name of the metadata table.
-    """
+      metadata_table: name of the metadata table."""
+    
     cursor.execute(
       f'CREATE INDEX IF NOT EXISTS {kmers_table}_kmer_idx ON {kmers_table} (kmer)'
     )
@@ -213,12 +218,13 @@ class Preprocessor:
       f'ON {metadata_table} (protein_number)'
     )
 
+
   def pickle_proteome(self, k: int) -> None:
     """Pickles the proteome into a dictionary of k-mers and a dictionary of metadata.
 
     Args:
-      k: k-mer length to split the proteome into.
-    """
+      k: k-mer length to split the proteome into."""
+    
     # create kmer_dict and metadata_dict out of self.all_seqs and self.all_metadata
     kmer_dict = {}
     for protein_count, seq in enumerate(self.all_seqs):
@@ -241,37 +247,15 @@ class Preprocessor:
       f'{self.proteome_name}_metadata.pkl'), 'wb') as f:
       pickle.dump(metadata_dict, f)
 
-  def redis_proteome(self, k: int) -> None:
-    """Writes the k-mers and metadata to a Redis database.
-
-    Args:
-      k: k-mer length to split the proteome into.
-    """
-    import redis
-    r = redis.Redis(host='localhost', port=6379, db=0)
-
-    # store k-mers
-    for protein_count, seq in enumerate(self.all_seqs):
-      for j, kmer in enumerate(split_sequence(seq, k)):
-        idx = (protein_count + 1) * 1000000 + j
-        key = f'kmer:{kmer}'
-        r.set(key, str(idx))
-
-    # store metadata
-    for data in self.all_metadata:
-      protein_number = data[0]
-      metadata_values = ','.join([str(val) for val in data[1:]])
-      key = f'metadata:{protein_number}'
-      r.set(key, metadata_values)
 
   def preprocess(self, preprocess_format: str, k: int) -> None:
     """Preprocesses the proteome and stores it in the specified format.
 
     Args:
-      preprocess_format: format to store the proteome in (sql, pickle, redis).
-      k: k-mer length to split the proteome into.
-    """
-    if preprocess_format not in ('sql', 'pickle', 'redis'):
+      preprocess_format: format to store the proteome in (sql or pickle).
+      k: k-mer length to split the proteome into."""
+    
+    if preprocess_format not in ('sql', 'pickle'):
       raise AssertionError(
         'Unexpected value of preprocessing format:', preprocess_format
       )
@@ -283,8 +267,6 @@ class Preprocessor:
       self.pickle_proteome(k)
     elif preprocess_format == 'sql':
       self.sql_proteome(k)
-    elif preprocess_format == 'redis':
-      self.redis_proteome(k)
 
 
 # run via command line
@@ -307,4 +289,5 @@ def run():
   Preprocessor(
     args.proteome, 
     args.preprocessed_files_path,
-    args.gene_priority_proteome).preprocess(args.preprocess_format, args.kmer_size)
+    args.gene_priority_proteome
+  ).preprocess(args.preprocess_format, args.kmer_size)

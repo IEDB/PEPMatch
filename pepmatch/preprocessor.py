@@ -47,7 +47,7 @@ class Preprocessor:
     self.proteome = self._append_gp_to_header(proteome, gene_priority_proteome)
 
     # extracting the proteome name from the file path
-    self.proteome_name = proteome.split('/')[-1].split('.')[0]
+    self.proteome_name = str(proteome).split('/')[-1].split('.')[0]
 
     # extract all the data from the proteome
     self.all_seqs, self.all_metadata = self._get_data_from_proteome()

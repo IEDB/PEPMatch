@@ -1,0 +1,4 @@
+Query Sequence,Matched Sequence,Protein ID,Protein Name,Species,Taxon ID,Gene,Mismatches,Mutated Positions,Index start,Index end,Protein Existence Level
+"L354, V420, G461, Q468, E486, K499, D501, M503, G509","L354, V420, G461, Q468, E486, K499, D501, M503, G509",Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,0,[],354,509,1
+"T819, L822, A835, F840, S871, Y884, P886","T819, L822, A835, F840, S871, Y884, P886",Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,0,[],819,886,1
+"S2760, V2763, E2773, D2805, T2819, S2831, E2844, R2852, L2863","S2760, V2763, E2773, D2805, T2819, S2831, E2844, R2852, L2863",Q66431.1,RNA-directed RNA polymerase L,Dugbe virus (isolate ArD44313),766194,L,0,[],2760,2863,1

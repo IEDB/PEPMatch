@@ -57,7 +57,7 @@ class Matcher:
     # initialize query and output name based on input type
     self.query = self._initialize_query(query, proteome_file, output_name)
     self.proteome = proteome_file
-    self.proteome_name = proteome_file.split('/')[-1].split('.')[0]
+    self.proteome_name = str(proteome_file).split('/')[-1].split('.')[0]
 
     # discontinuous epitopes and linear epitopes handling - store separately
     self.discontinuous_epitopes = self._find_discontinuous_epitopes()
@@ -116,8 +116,8 @@ class Matcher:
       if output_name:
         self.output_name = output_name
       else: # output_name = query_name_to_proteome_name
-        query_name = query.split('/')[-1].split('.')[0]
-        proteome_name = proteome_file.split('/')[-1].split('.')[0]
+        query_name = str(query).split('/')[-1].split('.')[0]
+        proteome_name = str(proteome_file).split('/')[-1].split('.')[0]
         self.output_name = f'{query_name}_to_{proteome_name}'
 
       return [seq.upper() for seq in parsed_query]

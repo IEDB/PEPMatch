@@ -33,7 +33,7 @@ jobs:
         pip install -e .
         pip install pytest
     - name: Run Test
-      run: pytest test/test_exact_match.py
+      run: pytest pepmatch/tests/test_exact_match.py
 
   testmismatch:
     name: Mismatch Test
@@ -52,7 +52,7 @@ jobs:
         pip install -e .
         pip install pytest
     - name: Run Test
-      run: pytest test/test_mismatch.py
+      run: pytest pepmatch/tests/test_mismatch.py
 
   testbestmatch:
     name: Best Match Test
@@ -71,7 +71,7 @@ jobs:
         pip install -e .
         pip install pytest
     - name: Run Test
-      run: pytest test/test_best_match.py
+      run: pytest pepmatch/tests/test_best_match.py
 
   testdiscontinuoussearch:
     name: Discontinuous Epitope Search Test
@@ -90,4 +90,4 @@ jobs:
         pip install -e .
         pip install pytest
     - name: Run Test
-      run: pytest test/test_discontinuous_search.py
+      run: pytest pepmatch/tests/test_discontinuous_search.py

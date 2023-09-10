@@ -397,7 +397,7 @@ class Matcher:
           peptide, matches, metadata_dict
         )
         all_matches.extend(processed_matches)
-    
+
     return all_matches
 
 
@@ -453,7 +453,7 @@ class Matcher:
         )
         
         if mismatches <= self.max_mismatches:
-          matched_peptide = '' # add k-mers to get the matched peptide 
+          matched_peptide = '' # add k-mers to get the matched peptide
           for i in range(0, peptide_length, self.k): 
             matched_peptide += rev_kmer_dict[kmer_hit - idx + i]
 
@@ -507,12 +507,15 @@ class Matcher:
         )
         
         if mismatches <= self.max_mismatches:
-          matched_peptide = rev_kmer_dict[kmer_hit - idx] # add the first k-mer
-          for i in range(self.k - 1, peptide_length):
-            # add the last residue of each remaining k-mer
-            matched_peptide += rev_kmer_dict[kmer_hit - idx + i][-1]
+          matched_peptide = ''
+          for i in range(0, peptide_length, self.k):
+            if i + self.k >= peptide_length: # handle last k-mer when uneven split
+              remaining_residues = peptide_length - i
+              last_kmer = rev_kmer_dict[kmer_hit - idx + i - (self.k - remaining_residues)]
+              matched_peptide += last_kmer[-remaining_residues:]
+            else:
+              matched_peptide += rev_kmer_dict[kmer_hit - idx + i]
 
-          matched_peptide = matched_peptide[0:peptide_length]
           matches.add((matched_peptide, mismatches, kmer_hit - idx))
 
           if self.best_match and not mismatches: # can't have a better match

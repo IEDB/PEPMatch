@@ -1,6 +1,6 @@
 Query Sequence,Matched Sequence,Protein ID,Protein Name,Species,Taxon ID,Gene,Mismatches,Mutated Positions,Index start,Index end,Protein Existence Level
 CKRVPDLEL,CDRVPDLAL,Q8V336.1,Nucleoprotein,Dugbe virus (isolate ArD44313),766194,N,2,"[2, 8]",37,45,3
-FSSDCYLFKEV,FSSCILFKEVI,Q66431.1,RNA-directed RNA polymerase L,Dugbe virus (isolate ArD44313),766194,L,1,"[4, 5, 6, 7, 8, 9, 10, 11]",1376,1386,1
+FSSDCYLFKEV,FSSDCILFKEV,Q66431.1,RNA-directed RNA polymerase L,Dugbe virus (isolate ArD44313),766194,L,1,"[4, 5, 6, 7, 8, 9, 10, 11]",1376,1386,1
 GSPNVVVAETSIIAL,TSPNVVVAETSIIAR,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,2,"[1, 15]",1340,1354,1
 KFKESSEAESKCNERFERLMVELS,KFKNSSEAEEKCNERFERLMKELS,Q66431.1,RNA-directed RNA polymerase L,Dugbe virus (isolate ArD44313),766194,L,3,"[4, 10, 21]",1250,1273,1
 RAGRPKNSLLQCSIE,RACRPKNSKLQCSID,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,3,"[3, 9, 15]",438,452,1

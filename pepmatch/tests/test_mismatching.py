@@ -43,6 +43,12 @@ def test_mismatching(proteome_path, query_path, expected_path):
   os.remove('proteome_metadata.pkl')
 
   expected_df = pd.read_csv(expected_path)
-  expected_df= expected_df.sort_values(by=['Query Sequence']).reset_index(drop=True)
-  pdt.assert_series_equal(df['Protein ID'], expected_df['Protein ID'])
+  expected_df = expected_df.sort_values(
+    by=['Query Sequence', 'Matched Sequence']
+  ).reset_index(drop=True)
+  
+  pdt.assert_frame_equal(
+    df[['Query Sequence', 'Matched Sequence', 'Protein ID']],
+    expected_df[['Query Sequence', 'Matched Sequence', 'Protein ID']]
+  )
 

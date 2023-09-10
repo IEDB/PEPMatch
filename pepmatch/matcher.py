@@ -396,11 +396,11 @@ class Matcher:
     preprocessing step.
     """
     with open(os.path.join(self.preprocessed_files_path, 
-      f'{self.proteome_name}_{str(self.k)}mers.pickle'), 'rb') as f:
+      f'{self.proteome_name}_{str(self.k)}mers.pkl'), 'rb') as f:
       kmer_dict = pickle.load(f)
 
     with open(os.path.join(self.preprocessed_files_path, 
-      f'{self.proteome_name}_metadata.pickle'), 'rb') as f:
+      f'{self.proteome_name}_metadata.pkl'), 'rb') as f:
       names_dict = pickle.load(f)
 
     return kmer_dict, names_dict

@@ -234,11 +234,11 @@ class Preprocessor:
     
     # write kmer_dict and metadata_dict to pickle files
     with open(os.path.join(self.preprocessed_files_path, 
-      f'{self.proteome_name}_{str(k)}mers.pickle'), 'wb') as f:
+      f'{self.proteome_name}_{str(k)}mers.pkl'), 'wb') as f:
       pickle.dump(kmer_dict, f)
 
     with open(os.path.join(self.preprocessed_files_path, 
-      f'{self.proteome_name}_metadata.pickle'), 'wb') as f:
+      f'{self.proteome_name}_metadata.pkl'), 'wb') as f:
       pickle.dump(metadata_dict, f)
 
   def redis_proteome(self, k: int) -> None:

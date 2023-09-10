@@ -52,7 +52,7 @@ jobs:
         pip install -e .
         pip install pytest
     - name: Run Test
-      run: pytest pepmatch/tests/test_mismatch.py
+      run: pytest pepmatch/tests/test_mismatching.py
 
   testbestmatch:
     name: Best Match Test

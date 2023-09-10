@@ -488,7 +488,7 @@ class Matcher:
       kmer_dict: the k-mer -> index dictionary.
       rev_kmer_dict: the index -> k-mer dictionary.
       peptide_length: the length of the query peptide."""
-    
+
     matches = set()
     for idx in range(0, len(kmers)): # every k-mer
       kmer_hits = kmer_dict.get(kmers[idx], [])

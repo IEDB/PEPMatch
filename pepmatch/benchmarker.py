@@ -1,3 +1,4 @@
+from .preprocessor import Preprocessor
 from .matcher import Matcher
 
 
@@ -18,7 +19,7 @@ class Benchmarker(Matcher):
     
     super().__init__(
       query, proteome, max_mismatches, 
-      output_format=algorithm_parameters['output_format'], versioned_ids=False)
+      output_format=algorithm_parameters['output_format'])
 
   def __str__(self):
     return 'PEPMatch'
@@ -29,12 +30,13 @@ class Benchmarker(Matcher):
 
   def preprocess_proteome(self) -> None:
     """Preprocess proteome once or multiple times for each split calculated."""
+    preprocessor = Preprocessor(self.proteome)
     if self.max_mismatches == -1:
-      for k in self.best_match_ks():
-        self.preprocess(k)
+      for k in self._best_match_ks():
+        preprocessor.pickle_proteome(k)
     else:
-      for k in self.batch_query().keys():
-        self.preprocess(k)
+      for k in self._batch_query().keys():
+        preprocessor.pickle_proteome(k)
 
   def search(self) -> list:
     """Call overarching match function. Then convert results into the standard format

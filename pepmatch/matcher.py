@@ -510,9 +510,9 @@ class Matcher:
           matched_peptide = ''
           for i in range(0, peptide_length, self.k):
             if i + self.k >= peptide_length: # handle last k-mer when uneven split
-              remaining_residues = peptide_length - i
-              last_kmer = rev_kmer_dict[kmer_hit - idx + i - (self.k - remaining_residues)]
-              matched_peptide += last_kmer[-remaining_residues:]
+              remaining_res = peptide_length - i
+              last_kmer = rev_kmer_dict[kmer_hit - idx + i - (self.k - remaining_res)]
+              matched_peptide += last_kmer[-remaining_res:] # attach remaining residues
             else:
               matched_peptide += rev_kmer_dict[kmer_hit - idx + i]
 

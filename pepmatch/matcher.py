@@ -370,20 +370,17 @@ class Matcher:
       if not self.k_specified:                        # k: [peptides]
         self.k = k
 
-      try: # read in the preprocessed pickle files and create index: kmer dict
-        kmer_dict, metadata_dict = self._read_pickle_files()
-        rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
+      try:
+        kmer_dict, rev_kmer_dict, metadata_dict = self._read_pickle_files()
       except FileNotFoundError: # do preprocessing if pickle files don't exist
         Preprocessor(self.proteome).pickle_proteome(self.k)
-        kmer_dict, metadata_dict = self._read_pickle_files()
-        rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
+        kmer_dict, rev_kmer_dict, metadata_dict = self._read_pickle_files()
 
       for peptide in peptides:
 
         all_kmers = split_sequence(peptide, self.k)
 
-        # faster search if possible
-        if len(peptide) % self.k == 0:
+        if len(peptide) % self.k == 0: # faster search if possible
           matches = self._find_even_split_matches(
             all_kmers, kmer_dict, rev_kmer_dict, len(peptide)
           )
@@ -411,9 +408,11 @@ class Matcher:
 
     with open(os.path.join(self.preprocessed_files_path, 
       f'{self.proteome_name}_metadata.pkl'), 'rb') as f:
-      names_dict = pickle.load(f)
+      metadata_dict = pickle.load(f)
 
-    return kmer_dict, names_dict
+    rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
+
+    return kmer_dict, rev_kmer_dict, metadata_dict
 
 
   def _find_even_split_matches(

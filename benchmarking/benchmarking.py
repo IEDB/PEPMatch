@@ -204,11 +204,8 @@ def main():
   )
 
   # remove files after benchmarking
-  try:
-    os.remove('*.db')
-  except FileNotFoundError:
-    for file in glob.glob('*.pickle'):
-      os.remove(file)
+  for file in glob.glob('*.db') + glob.glob('*.pkl'):
+    os.remove(file)
 
 if __name__ == '__main__':
     main()

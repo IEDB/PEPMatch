@@ -1,4 +1,7 @@
 .~*
+*.db
+*.pickle
+*.pkl
 *.pyc
 *.so
 .DS_Store

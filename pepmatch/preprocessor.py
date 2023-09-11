@@ -216,6 +216,9 @@ class Preprocessor:
       f'CREATE INDEX IF NOT EXISTS {kmers_table}_kmer_idx ON {kmers_table} (kmer)'
     )
     cursor.execute(
+      f'CREATE INDEX IF NOT EXISTS {kmers_table}_idx_idx ON {kmers_table} (idx)'
+    )
+    cursor.execute(
       f'CREATE INDEX IF NOT EXISTS {metadata_table}_protein_number_idx '
       f'ON {metadata_table} (protein_number)'
     )

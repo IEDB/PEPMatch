@@ -366,18 +366,23 @@ class Matcher:
     check the left and right k-mer neighbors for mismatches. If the number of
     mismatches is less than or equal to the max, then it's a match."""
 
+    kmers_table_name = f'{self.proteome_name}_{str(self.k)}mers'
+    # metadata_table_name = f'{self.proteome_name}_metadata'
+    conn = sqlite3.connect(
+      os.path.join(self.preprocessed_files_path, f'{self.proteome_name}.db')
+    )
     all_matches = []
     for k, peptides in self.batched_peptides.items(): # iterate through each batch
       if not self.k_specified:                        # k: [peptides]
         self.k = k
 
-      try: # read in the preprocessed pickle files and create index: kmer dict
-        kmer_dict, metadata_dict = self._read_pickle_files()
-        rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
-      except FileNotFoundError: # do preprocessing if pickle files don't exist
-        Preprocessor(self.proteome).pickle_proteome(self.k)
-        kmer_dict, metadata_dict = self._read_pickle_files()
-        rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
+      # try: # read in the preprocessed pickle files and create index: kmer dict
+      #   kmer_dict, metadata_dict = self._read_pickle_files()
+      #   rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
+      # except FileNotFoundError: # do preprocessing if pickle files don't exist
+      #   Preprocessor(self.proteome).pickle_proteome(self.k)
+      #   kmer_dict, metadata_dict = self._read_pickle_files()
+      #   rev_kmer_dict = {i: k for k, v in kmer_dict.items() for i in v}
 
       for peptide in peptides:
 
@@ -386,19 +391,19 @@ class Matcher:
         # faster search if possible
         if len(peptide) % self.k == 0:
           matches = self._find_even_split_matches(
-            all_kmers, kmer_dict, rev_kmer_dict, len(peptide)
+            all_kmers, conn, kmers_table_name, len(peptide)
           )
 
         else: # slower search if necessary
           matches = self._find_uneven_split_matches(
-            all_kmers, kmer_dict, rev_kmer_dict, len(peptide)
+            all_kmers, conn, kmers_table_name, len(peptide)
           )
-
-        processed_matches = self._process_mismatch_matches(
-          peptide, matches, metadata_dict
-        )
-        all_matches.extend(processed_matches)
-
+        # processed_matches = self._process_mismatch_matches(
+        #   peptide, matches
+        # )
+        all_matches.extend(matches)
+    print(all_matches)
+    exit(1)
     return all_matches
 
 
@@ -418,7 +423,8 @@ class Matcher:
 
 
   def _find_even_split_matches(
-    self, kmers: list, kmer_dict: dict, rev_kmer_dict: dict, peptide_length: int
+    self, kmers: list, conn: sqlite3.Connection, kmers_table_name: str, 
+    peptide_length: int
   ) -> list:
     """If the peptide length is evenly divisible by k, perform faster search. 
     Check the associated k-mers for the left and right neighbors of any 
@@ -435,42 +441,49 @@ class Matcher:
       kmer_dict: the k-mer -> index dictionary.
       rev_kmer_dict: the index -> k-mer dictionary.
       peptide_length: the length of the query peptide."""
-    
+
+    cursor = conn.cursor()
     matches = set()
     for idx in range(0, len(kmers), self.k): # gets only the k-mers to check
-      kmer_hits = kmer_dict.get(kmers[idx], [])
+     
+      sql_query = "SELECT idx FROM {} WHERE kmer = ?".format(kmers_table_name)
+      cursor.execute(sql_query, (kmers[idx],))
+      kmer_hit_tuples = cursor.fetchall()
+      kmer_hits = [hit[0] for hit in kmer_hit_tuples]
+
       for kmer_hit in kmer_hits:
 
         mismatches = 0
         mismatches = self._check_left_neighbors(
-          kmers, idx, kmer_hit, rev_kmer_dict, mismatches
+          kmers, idx, kmer_hit, conn, kmers_table_name, mismatches
         )
 
         if mismatches > self.max_mismatches:
           continue
         
         mismatches = self._check_right_neighbors(
-          kmers, idx, kmer_hit, rev_kmer_dict, mismatches
+          kmers, idx, kmer_hit, conn, kmers_table_name, mismatches
         )
         
         if mismatches <= self.max_mismatches:
           matched_peptide = '' # add k-mers to get the matched peptide
-          for i in range(0, peptide_length, self.k): 
-            matched_peptide += rev_kmer_dict[kmer_hit - idx + i]
+          for i in range(0, peptide_length, self.k):
+            # Fetch the kmer from SQLite based on the index
+            sql_query = "SELECT kmer FROM {} WHERE idx = ?".format(kmers_table_name)
+            cursor.execute(sql_query, (kmer_hit - idx + i,))
+            matched_peptide += cursor.fetchone()[0]
 
           matches.add((matched_peptide, mismatches, kmer_hit - idx))
 
           if self.best_match and not mismatches: # can't have a better match
             return list(matches)
-        
-        else:
-            continue
-    
+
     return list(matches)
 
 
   def _find_uneven_split_matches(
-    self, kmers: list, kmer_dict: dict, rev_kmer_dict: dict, peptide_length: int
+    self, kmers: list, conn: sqlite3.Connection, kmers_table_name: str, 
+    peptide_length: int
   ) -> list:
     """If the peptide length is NOT evenly divisible by k, perform slow search. 
     Check the associated residues for the left and right neighbors of any 
@@ -489,44 +502,55 @@ class Matcher:
       kmer_dict: the k-mer -> index dictionary.
       rev_kmer_dict: the index -> k-mer dictionary.
       peptide_length: the length of the query peptide."""
-
+    cursor = conn.cursor()
     matches = set()
     for idx in range(0, len(kmers)): # every k-mer
-      kmer_hits = kmer_dict.get(kmers[idx], [])
+      
+      sql_query = "SELECT idx FROM {} WHERE kmer = ?".format(kmers_table_name)
+      cursor.execute(sql_query, (kmers[idx],))
+      kmer_hit_tuples = cursor.fetchall()
+      kmer_hits = [hit[0] for hit in kmer_hit_tuples]
+
       for kmer_hit in kmer_hits:
 
         mismatches = 0
         mismatches = self._check_left_residues(
-          kmers, idx, kmer_hit, rev_kmer_dict, mismatches
+          kmers, idx, kmer_hit, conn, kmers_table_name, mismatches
         )
 
         if mismatches > self.max_mismatches:
           continue
 
         mismatches = self._check_right_residues(
-          kmers, idx, kmer_hit, rev_kmer_dict, mismatches
+          kmers, idx, kmer_hit, conn, kmers_table_name, mismatches
         )
         
         if mismatches <= self.max_mismatches:
           matched_peptide = ''
           for i in range(0, peptide_length, self.k):
-            if i + self.k >= peptide_length: # handle last k-mer when uneven split
+            cursor.execute(
+              f"SELECT kmer FROM {kmers_table_name} WHERE idx = ?", (kmer_hit-idx+i,)
+              )
+            kmer_at_index = cursor.fetchone()[0]
+
+            if i + self.k >= peptide_length:  # handle last k-mer when uneven split
               remaining_res = peptide_length - i
-              last_kmer = rev_kmer_dict[kmer_hit - idx + i - (self.k - remaining_res)]
-              matched_peptide += last_kmer[-remaining_res:] # attach remaining residues
+              last_kmer = kmer_at_index[-remaining_res:]  # get remaining residues
+              matched_peptide += last_kmer
             else:
-              matched_peptide += rev_kmer_dict[kmer_hit - idx + i]
+              matched_peptide += kmer_at_index
 
           matches.add((matched_peptide, mismatches, kmer_hit - idx))
 
-          if self.best_match and not mismatches: # can't have a better match
+          if self.best_match and not mismatches:  # can't have a better match
             return matches
 
     return matches
 
 
   def _check_left_neighbors(
-    self, kmers: list, idx: int, kmer_hit: int, rev_kmer_dict: dict, mismatches: int
+    self, kmers: list, idx: int, kmer_hit: int, conn: sqlite3.Connection,
+    kmers_table_name: str, mismatches: int
   ) -> int:
     """Get mismatches of left k-mer neighbors in proteome.
     
@@ -537,20 +561,28 @@ class Matcher:
       rev_kmer_dict: the index -> k-mer dictionary.
       mismatches: the number of mismatches so far."""
     
+    cursor = conn.cursor()
     for i in range(0, idx, self.k):
-      kmer_to_check = rev_kmer_dict.get(kmer_hit + i - idx)
-      if kmer_to_check is not None:
+      query_index = kmer_hit + i - idx
+      cursor.execute(
+        f"SELECT kmer FROM {kmers_table_name} WHERE idx = ?", (query_index,)
+      )
+      kmer_to_check_tuple = cursor.fetchone()
+      
+      if kmer_to_check_tuple is not None:
+        kmer_to_check = kmer_to_check_tuple[0]
         mismatches += hamming(kmer_to_check, kmers[i])
         if mismatches > self.max_mismatches:
           return 100
       else:
         return 100
-    
+
     return mismatches
 
 
   def _check_right_neighbors(
-    self, kmers: list, idx: int, kmer_hit: int, rev_kmer_dict: dict, mismatches: int
+    self, kmers: list, idx: int, kmer_hit: int, conn: sqlite3.Connection,
+    kmers_table_name: str, mismatches: int
   ) -> int:
     """Get mismatches of right k-mer neighbors in proteome.
     
@@ -561,9 +593,16 @@ class Matcher:
       rev_kmer_dict: the index -> k-mer dictionary.
       mismatches: the number of mismatches so far."""
     
+    cursor = conn.cursor()
     for i in range(self.k + idx, len(kmers), self.k):
-      kmer_to_check = rev_kmer_dict.get(kmer_hit + i - idx)
-      if kmer_to_check is not None:
+      query_index = kmer_hit + i - idx
+      cursor.execute(
+        f"SELECT kmer FROM {kmers_table_name} WHERE idx = ?", (query_index,)
+      )
+      kmer_to_check_tuple = cursor.fetchone()
+      
+      if kmer_to_check_tuple is not None:
+        kmer_to_check = kmer_to_check_tuple[0]
         mismatches += hamming(kmer_to_check, kmers[i])
         if mismatches > self.max_mismatches:
           return 100
@@ -574,7 +613,8 @@ class Matcher:
 
 
   def _check_left_residues(
-    self, kmers: list, idx: int, kmer_hit: int, rev_kmer_dict: dict, mismatches: int
+    self, kmers: list, idx: int, kmer_hit: int, conn: sqlite3.Connection, 
+    kmers_table_name:str, mismatches: int
   ) -> int:
     """Get mismatches of left residues of left k-mer neighbors in proteome.
     
@@ -584,9 +624,14 @@ class Matcher:
       kmer_hit: the index of the k-mer hit in the proteome.
       rev_kmer_dict: the index -> k-mer dictionary.
       mismatches: the number of mismatches so far."""
-    
+    cursor = conn.cursor()
     for i in range(0, idx):
-      kmer_to_check = rev_kmer_dict.get(kmer_hit + i - idx)
+      cursor.execute(
+        f"SELECT kmer FROM {kmers_table_name} WHERE idx = ?", (kmer_hit + i - idx,)
+      )
+      kmer_tuple = cursor.fetchone()
+      kmer_to_check = kmer_tuple[0] if kmer_tuple else None
+
       if kmer_to_check is not None:
         if kmer_to_check[0] != kmers[i][0]:
           mismatches += 1
@@ -594,12 +639,13 @@ class Matcher:
           return 100
       else:
         return 100
-    
+
     return mismatches
 
 
   def _check_right_residues(
-    self, kmers: list, idx: int, kmer_hit: int, rev_kmer_dict: dict, mismatches: int
+    self, kmers: list, idx: int, kmer_hit: int, conn: sqlite3.Connection, 
+    kmers_table_name:str, mismatches: int
   ) -> int:
     """Get mismatches of right residues of right k-mer neighbors in proteome.
     
@@ -609,9 +655,14 @@ class Matcher:
       kmer_hit: the index of the k-mer hit in the proteome.
       rev_kmer_dict: the index -> k-mer dictionary.
       mismatches: the number of mismatches so far."""
-    
+    cursor = conn.cursor()
     for i in range(idx + 1, len(kmers)):
-      kmer_to_check = rev_kmer_dict.get(kmer_hit + i - idx)
+      cursor.execute(
+        f"SELECT kmer FROM {kmers_table_name} WHERE \"index\" = ?", (kmer_hit+i-idx,)
+      )
+      kmer_tuple = cursor.fetchone()
+      kmer_to_check = kmer_tuple[0] if kmer_tuple else None
+
       if kmer_to_check is not None:
         if kmer_to_check[-1] != kmers[i][-1]:
           mismatches += 1

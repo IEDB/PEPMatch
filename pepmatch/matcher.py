@@ -7,10 +7,10 @@ import numpy as np
 
 from typing import Union
 from collections import Counter, defaultdict
-from Levenshtein import hamming
 
 from .helpers import parse_fasta, split_sequence, extract_metadata
 from .preprocessor import Preprocessor
+from .hamming import hamming
 
 
 VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'xlsx', 'json', 'html']
@@ -34,16 +34,18 @@ class Matcher:
   Optional: output and output_format arguments to write results to file.
   Supported formats are "csv", "xlsx", "json", and "html"."""
 
-  def __init__(self,
-               query,
-               proteome_file,
-               max_mismatches=-1,
-               k=0,
-               preprocessed_files_path='.',
-               best_match=False,
-               output_format='csv',
-               output_name='',
-               sequence_version=True):
+  def __init__(
+    self,
+    query,
+    proteome_file,
+    max_mismatches=-1,
+    k=0,
+    preprocessed_files_path='.',
+    best_match=False,
+    output_format='csv',
+    output_name='',
+    sequence_version=True
+  ):
 
     if k < 0 or k == 1:
       raise ValueError('Invalid k value given. k cannot be negative or 1.')
@@ -387,8 +389,7 @@ class Matcher:
             all_kmers, kmer_dict, rev_kmer_dict, len(peptide)
           )
 
-        # slower search if necessary
-        else:
+        else: # slower search if necessary
           matches = self._find_uneven_split_matches(
             all_kmers, kmer_dict, rev_kmer_dict, len(peptide)
           )
@@ -877,6 +878,7 @@ def parse_arguments():
   parser.add_argument('-b', '--best_match', default=False, action='store_true')
   parser.add_argument('-f', '--output_format', default='csv')
   parser.add_argument('-o', '--output_name', default='')
+  parser.add_argument('-v', '--sequence_version', default=True, action='store_true')
 
   args = parser.parse_args()
 
@@ -886,7 +888,8 @@ def parse_arguments():
 def run():
   args = parse_arguments()
 
-  Matcher(args.query, args.proteome_file, args.max_mismatches, 
-    args.kmer_size, args.preprocessed_files_path, 
-    args.best_match, args.output_format, args.output_name
+  Matcher(
+    args.query, args.proteome_file, args.max_mismatches, args.kmer_size,
+    args.preprocessed_files_path, args.best_match, args.output_format, 
+    args.output_name, args.sequence_version
   ).match()

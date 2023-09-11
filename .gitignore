@@ -1,5 +1,6 @@
 .~*
 *.pyc
+*.so
 .DS_Store
 __pycache__/
 _Inline/

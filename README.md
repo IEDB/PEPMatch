@@ -6,6 +6,7 @@
 
 ![Unit Tests](https://github.com/IEDB/PEPMatch/actions/workflows/tests.yml/badge.svg)
 
+
 #### Author: Daniel Marrama
 
 Peptide search against a reference proteome, or sets of proteins, with residue subtitutions.
@@ -16,14 +17,14 @@ Preprocessed data is stored in a SQLite or pickle format and only has to be perf
 
 As a competition to improve tool performance, we created a benchmarking framework with instructions [here](./benchmarking).
 
+
 ### Requirements
 
 - Python 3.7+
 - [Pandas](https://pandas.pydata.org/)
 - [NumPy](https://numpy.org/)
 - [Biopython](https://biopython.org/)
-- [Levenshtein](https://pypi.org/project/python-Levenshtein/)
-- [redis](https://redis.com/)
+
 
 ### Installation
 
@@ -34,6 +35,7 @@ pip install pepmatch
 
 ### Inputs
 
+
 #### Preprocessor
 
 ```proteome``` - Path to proteome file to search against.\
@@ -41,6 +43,7 @@ pip install pepmatch
 ```preprocessed_format``` - SQLite ("sqlite") or "pickle".\
 ```preprocessed_files_path``` - (optional) Directory where you want preprocessed files to go. Default is current directory.\
 ```gene_priority_proteome``` - (optional) Subset of ```proteome``` with prioritized protein IDs.\
+
 
 #### Matcher
 
@@ -59,12 +62,14 @@ Note: PEPMatch can also search for discontinuous epitopes in the residue:index f
 
 "R377, Q408, Q432, H433, F436, V441, S442, S464, K467, K489, I491, S492, N497"
 
+
 ### Command Line Example
 
 ```bash
 pepmatch-preprocess -p human.fasta -k 5 -f sql
 pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
 ```
+
 
 ### Exact Matching Example
 
@@ -82,6 +87,7 @@ Matcher(
 ).match()
 ```
 
+
 ### Mismatching Example 
 
 ```python
@@ -96,6 +102,7 @@ Matcher(
 ).match()
 ```
 
+
 ### Best Match Example
 
 ```python
@@ -107,6 +114,7 @@ Matcher(
 
 The best match parameter without k or mismatch inputs will produce the best match for each peptide in the query, meaning the match with the least number of mismatches, the best protein existence level, and if the match exists in the gene priority proteome. No preprocessing beforehand is required, as the Matcher class will do this for you to find the best match.
 
+
 ### Outputs
 
 As mentioned above, outputs can be specified with the ```output_format``` parameter in the ```Matcher``` class. The following formats are allowed: `dataframe`, `csv`, `xlsx`, `json`, and `html`.
@@ -116,7 +124,3 @@ If specifying `dataframe`, the ```match()``` method will return a pandas datafra
 ```python
 df = Matcher('queries/neoepitopes_test.fasta', 'human.fasta', 3, 3, output_format='dataframe').match()
 ```
-
-### TODO
-- Test other key-value stores (Redis, Memcached, LMDB, etc.)
-- Remove dependency on Levenshtein (this is not maintained very well)

@@ -199,8 +199,8 @@ def main():
   master_df = benchmark_methods(benchmark_options)
   master_df['Searching Time (s)'] = pd.to_numeric(master_df['Searching Time (s)'])
 
-  master_df.round(3).to_excel(
-    '%s_benchmarking.xlsx' % benchmark_options[0], index=False
+  master_df.round(3).to_csv(
+    '%s_benchmarking.tsv' % benchmark_options[0], sep='\t', index=False
   )
 
   # remove files after benchmarking

@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, Extension
 import re
 
 
@@ -12,6 +12,10 @@ with open('pepmatch/version.py', 'r') as f:
     f.read(),
     re.MULTILINE).group(1)
 
+hamming_module = Extension(
+  'pepmatch.hamming',
+  sources=['pepmatch/hamming.c']
+)
 
 setup(
   name='pepmatch',
@@ -24,6 +28,7 @@ setup(
   author='Daniel Marrama',
   author_email='dmarrama@lji.org',
   packages=['pepmatch'],
+  ext_modules=[hamming_module],
   install_requires=[
     'numpy>=1.18',
     'pandas>=1.1',

@@ -31,10 +31,12 @@ class Preprocessor:
                            of the proteome. If this is specified, the GP=1 will
                            be appended to the FASTA header of the proteins in
                            this proteome. Otherwise, GP=0."""
-  def __init__(self,
-               proteome,
-               preprocessed_files_path='.',
-               gene_priority_proteome=''):
+  def __init__(
+    self,
+    proteome,
+    preprocessed_files_path='.',
+    gene_priority_proteome=''
+  ):
 
     if not os.path.isdir(preprocessed_files_path):
       raise ValueError('Directory specified does not exist: ', preprocessed_files_path)

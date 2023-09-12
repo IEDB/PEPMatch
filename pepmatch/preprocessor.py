@@ -34,6 +34,7 @@ class Preprocessor:
   def __init__(
     self,
     proteome,
+    proteome_name='',
     preprocessed_files_path='.',
     gene_priority_proteome=''
   ):
@@ -46,8 +47,11 @@ class Preprocessor:
     # appending GP=# to the header of the proteome
     self.proteome = self._append_gp_to_header(proteome, gene_priority_proteome)
 
-    # extracting the proteome name from the file path
-    self.proteome_name = str(proteome).split('/')[-1].split('.')[0]
+    # extracting the proteome name from the file path if not specified
+    if not proteome_name:
+      self.proteome_name = str(proteome).split('/')[-1].split('.')[0]
+    else:
+      self.proteome_name = proteome_name
 
     # extract all the data from the proteome
     self.all_seqs, self.all_metadata = self._get_data_from_proteome()
@@ -156,12 +160,12 @@ class Preprocessor:
       metadata_table: name of the metadata table."""
 
     cursor.execute(
-      f'CREATE TABLE IF NOT EXISTS {kmers_table} ('\
+      f'CREATE TABLE IF NOT EXISTS "{kmers_table}" ('\
         'kmer TEXT NOT NULL,'\
         'idx  INTEGER NOT NULL)'
       )
     cursor.execute(
-      f'CREATE TABLE IF NOT EXISTS {metadata_table} ('\
+      f'CREATE TABLE IF NOT EXISTS "{metadata_table}" ('\
         'protein_number   INTEGER NOT NULL,'\
         'protein_id       TEXT NOT NULL,'\
         'protein_name     TEXT NOT NULL,'\
@@ -186,7 +190,7 @@ class Preprocessor:
     for protein_count, seq in enumerate(self.all_seqs):
         for j, kmer in enumerate(split_sequence(seq, k)):
             kmer_rows.append((kmer, (protein_count + 1) * 1000000 + j))
-    cursor.executemany(f'INSERT INTO {kmers_table} VALUES (?, ?)', kmer_rows)
+    cursor.executemany(f'INSERT INTO "{kmers_table}" VALUES (?, ?)', kmer_rows)
 
 
   def _insert_metadata(self, cursor: sqlite3.Cursor, metadata_table: str) -> None:
@@ -197,7 +201,7 @@ class Preprocessor:
       metadata_table: name of the metadata table."""
     
     cursor.executemany(
-      f'INSERT INTO {metadata_table} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+      f'INSERT INTO "{metadata_table}" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
       self.all_metadata
     )
 
@@ -213,11 +217,11 @@ class Preprocessor:
       metadata_table: name of the metadata table."""
     
     cursor.execute(
-      f'CREATE INDEX IF NOT EXISTS {kmers_table}_kmer_idx ON {kmers_table} (kmer)'
+      f'CREATE INDEX IF NOT EXISTS "{kmers_table}_kmer_idx" ON "{kmers_table}" (kmer)'
     )
     cursor.execute(
-      f'CREATE INDEX IF NOT EXISTS {metadata_table}_protein_number_idx '
-      f'ON {metadata_table} (protein_number)'
+      f'CREATE INDEX IF NOT EXISTS "{metadata_table}_protein_number_idx" '
+      f'ON "{metadata_table}" (protein_number)'
     )
 
 

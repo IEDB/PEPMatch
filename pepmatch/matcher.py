@@ -1,5 +1,4 @@
 import os
-import argparse
 import _pickle as pickle
 import sqlite3
 import pandas as pd
@@ -860,32 +859,3 @@ class Matcher:
       return df.to_json(f'{path}.json', index=False)
     elif self.output_format == 'html':
       return df.to_html(f'{path}.html', index=False)
-
-
-# run via command line
-def parse_arguments():
-  parser = argparse.ArgumentParser()
-
-  parser.add_argument('-q', '--query', required=True)
-  parser.add_argument('-p', '--proteome_file', required=True)
-  parser.add_argument('-m', '--max_mismatches', type=int, default=-1)
-  parser.add_argument('-k', '--kmer_size', type=int, default=0)
-  parser.add_argument('-P', '--preprocessed_files_path', default='.')
-  parser.add_argument('-b', '--best_match', action='store_true', default=False)
-  parser.add_argument('-f', '--output_format', default='csv')
-  parser.add_argument('-o', '--output_name', default='')
-  parser.add_argument('-v', '--sequence_version', action='store_true', default=True)
-
-  args = parser.parse_args()
-
-  return args
-
-
-def run():
-  args = parse_arguments()
-
-  Matcher(
-    args.query, args.proteome_file, args.max_mismatches, args.kmer_size,
-    args.preprocessed_files_path, args.best_match, args.output_format, 
-    args.output_name, args.sequence_version
-  ).match()

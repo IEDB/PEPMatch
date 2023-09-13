@@ -39,8 +39,8 @@ setup(
   zip_safe=False,
   entry_points={
     'console_scripts': [
-      'pepmatch-preprocess = pepmatch.preprocessor:run',
-      'pepmatch-match = pepmatch.matcher:run'
+      'pepmatch-preprocess = pepmatch.shell:run_preprocessor',
+      'pepmatch-match = pepmatch.shell:run_matcher'
     ]
   }
 )

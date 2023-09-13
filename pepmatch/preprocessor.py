@@ -1,7 +1,6 @@
 import _pickle as pickle
 import sqlite3
 import os
-import argparse
 
 from .helpers import parse_fasta, split_sequence, extract_metadata
 
@@ -273,28 +272,3 @@ class Preprocessor:
       self.pickle_proteome(k)
     elif preprocess_format == 'sql':
       self.sql_proteome(k)
-
-
-# run via command line
-def parse_arguments():
-  parser = argparse.ArgumentParser()
-
-  parser.add_argument('-p', '--proteome', required=True)
-  parser.add_argument('-k', '--kmer_size', type=int, required=True)
-  parser.add_argument('-f', '--preprocess_format', required=True)
-  parser.add_argument('-P', '--preprocessed_files_path', default='.')
-  parser.add_argument('-g', '--gene_priority_proteome', default='')
-
-  args = parser.parse_args()
-
-  return args
-
-
-def run():
-  args = parse_arguments()
-
-  Preprocessor(
-    args.proteome, 
-    args.preprocessed_files_path,
-    args.gene_priority_proteome
-  ).preprocess(args.preprocess_format, args.kmer_size)

@@ -443,9 +443,6 @@ class Matcher:
         mismatches = self._check_left_neighbors(
           kmers, idx, kmer_hit, rev_kmer_dict, mismatches
         )
-
-        if mismatches > self.max_mismatches:
-          continue
         
         mismatches = self._check_right_neighbors(
           kmers, idx, kmer_hit, rev_kmer_dict, mismatches
@@ -498,9 +495,6 @@ class Matcher:
           kmers, idx, kmer_hit, rev_kmer_dict, mismatches
         )
 
-        if mismatches > self.max_mismatches:
-          continue
-
         mismatches = self._check_right_residues(
           kmers, idx, kmer_hit, rev_kmer_dict, mismatches
         )
@@ -536,11 +530,12 @@ class Matcher:
       mismatches: the number of mismatches so far."""
     
     for i in range(0, idx, self.k):
+      if mismatches > self.max_mismatches:
+        return 100
+
       kmer_to_check = rev_kmer_dict.get(kmer_hit + i - idx)
       if kmer_to_check is not None:
-        mismatches += hamming(kmer_to_check, kmers[i], self.max_mismatches)
-        if mismatches > self.max_mismatches:
-          return 100 # return a large number to indicate no match
+        mismatches += hamming(kmer_to_check, kmers[i], self.max_mismatches)      
       else:
         return 100
     
@@ -560,11 +555,12 @@ class Matcher:
       mismatches: the number of mismatches so far."""
     
     for i in range(self.k + idx, len(kmers), self.k):
+      if mismatches > self.max_mismatches:
+        return 100
+      
       kmer_to_check = rev_kmer_dict.get(kmer_hit + i - idx)
       if kmer_to_check is not None:
         mismatches += hamming(kmer_to_check, kmers[i], self.max_mismatches)
-        if mismatches > self.max_mismatches:
-          return 100 # return a large number to indicate no match
       else:
         return 100
     
@@ -584,12 +580,13 @@ class Matcher:
       mismatches: the number of mismatches so far."""
     
     for i in range(0, idx):
+      if mismatches > self.max_mismatches:
+        return 100
+
       kmer_to_check = rev_kmer_dict.get(kmer_hit + i - idx)
       if kmer_to_check is not None:
         if kmer_to_check[0] != kmers[i][0]:
           mismatches += 1
-        if mismatches > self.max_mismatches:
-          return 100
       else:
         return 100
     
@@ -609,12 +606,13 @@ class Matcher:
       mismatches: the number of mismatches so far."""
     
     for i in range(idx + 1, len(kmers)):
+      if mismatches > self.max_mismatches: # check before since we checked left first
+        return 100
+
       kmer_to_check = rev_kmer_dict.get(kmer_hit + i - idx)
       if kmer_to_check is not None:
         if kmer_to_check[-1] != kmers[i][-1]:
           mismatches += 1
-        if mismatches > self.max_mismatches:
-          return 100
       else:
         return 100
     

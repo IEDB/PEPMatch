@@ -28,6 +28,7 @@ benchmarking.xlsx
 notes.txt
 pepmatch.py
 test.csv
+wheelhouse/
 
 # keep test data
 !pepmatch/tests/data/

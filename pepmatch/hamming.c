@@ -1,26 +1,28 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
-static PyObject* hamming(PyObject* self, PyObject* args) {
-    const char *s1;
-    const char *s2;
-    Py_ssize_t len;
-    int distance = 0;
 
-    if (!PyArg_ParseTuple(args, "s#s#", &s1, &len, &s2, &len)) {
+static PyObject* hamming(PyObject* self, PyObject* args) {
+    const char *kmer1;
+    const char *kmer2;
+    int max_mismatches;
+    Py_ssize_t len1, len2;
+
+    if (!PyArg_ParseTuple(args, "s#s#i", &kmer1, &len1, &kmer2, &len2, &max_mismatches)) {
         return NULL;
     }
 
-    const char *end = s1 + len;
-    while (s1 < end) {
-        if (*s1 != *s2) {
-            distance++;
+    int mismatches = 0;
+    for (int i = 0; kmer1[i] && kmer2[i]; ++i) {
+        if (kmer1[i] != kmer2[i]) {
+            mismatches++;
+            if (mismatches > max_mismatches) {
+                return PyLong_FromLong(max_mismatches + 1);
+            }
         }
-        s1++;
-        s2++;
     }
 
-    return PyLong_FromLong(distance);
+    return PyLong_FromLong(mismatches);
 }
 
 static PyMethodDef methods[] = {

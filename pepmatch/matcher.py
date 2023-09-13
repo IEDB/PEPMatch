@@ -538,9 +538,9 @@ class Matcher:
     for i in range(0, idx, self.k):
       kmer_to_check = rev_kmer_dict.get(kmer_hit + i - idx)
       if kmer_to_check is not None:
-        mismatches += hamming(kmer_to_check, kmers[i])
+        mismatches += hamming(kmer_to_check, kmers[i], self.max_mismatches)
         if mismatches > self.max_mismatches:
-          return 100
+          return 100 # return a large number to indicate no match
       else:
         return 100
     
@@ -562,9 +562,9 @@ class Matcher:
     for i in range(self.k + idx, len(kmers), self.k):
       kmer_to_check = rev_kmer_dict.get(kmer_hit + i - idx)
       if kmer_to_check is not None:
-        mismatches += hamming(kmer_to_check, kmers[i])
+        mismatches += hamming(kmer_to_check, kmers[i], self.max_mismatches)
         if mismatches > self.max_mismatches:
-          return 100
+          return 100 # return a large number to indicate no match
       else:
         return 100
     

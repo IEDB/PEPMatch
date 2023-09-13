@@ -1,22 +1,27 @@
 import pandas as pd
 import multiprocessing as mp
 from Bio import SeqIO
+
 from .matcher import Matcher
 
 
 class ParallelMatcher(Matcher):
   def __init__(self, n_jobs=1, **kwargs):
+    self.kwargs = kwargs
+    self.n_jobs = n_jobs
+
     self.query = kwargs['query']
     self.preprocessed_files_path = kwargs['preprocessed_files_path']
     self.output_format = kwargs['output_format']
+
     self.output_name = kwargs['output_name']
-    self.n_jobs = n_jobs
-    self.kwargs = kwargs
+    if self.output_name == '':
+      self.output_name = 'PEPMatch_results'
 
 
   def _split_query(self):
     query = self.query
-    if type(query) != list:
+    if not isinstance(query, list):
       query = [str(record.seq) for record in list(SeqIO.parse(self.query, 'fasta'))]
 
     query_chunks = []

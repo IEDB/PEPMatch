@@ -10,11 +10,11 @@ class ParallelMatcher(Matcher):
     self.kwargs = kwargs
     self.n_jobs = n_jobs
 
-    self.query = kwargs['query']
-    self.preprocessed_files_path = kwargs['preprocessed_files_path']
-    self.output_format = kwargs['output_format']
+    self.query = kwargs.get('query', [])
+    self.output_format = kwargs.get('output_format', 'csv')
+    self.preprocessed_files_path = kwargs.get('preprocessed_files_path', '.')
 
-    self.output_name = kwargs['output_name']
+    self.output_name = kwargs.get('output_name', '')
     if self.output_name == '':
       self.output_name = 'PEPMatch_results'
 

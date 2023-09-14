@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import argparse
 import time
 import sys
 import pandas as pd
@@ -12,105 +11,40 @@ import glob
 
 from pathlib import Path
 
-# global variables for generalization
-benchmark_columns = [
-  'Name', 'Preprocessing Proteome (s)', 'Preprocessing Query (s)',
-  'Searching Time (s)', 'Total Time (s)', 'Memory Usage (MB)', 'Accuracy (%)'
-]
 
-valid_datasets = ['mhc_ligands', 'milk', 'coronavirus', 'neoepitopes']
-
-directory = os.path.dirname(os.path.abspath(__file__))
-
-# adding the toplevel directory to the system path so we can import pepmatch
-pepmatch_dir = str(Path(directory).parent)
-sys.path.insert(0, pepmatch_dir)
-
-# adding the methods directory to the system path so we can import all other methods
-methods_dir = str(Path(directory)) + '/methods'
-sys.path.insert(0, methods_dir)
-
-def parse_arguments():
-  # add arguments
-  parser = argparse.ArgumentParser()
-
-  # select the benchmarking dataset (mhc_ligands, milk, coronavirus, neoepitopes)
-  parser.add_argument(
-    '-d', '--dataset', nargs=1, type=str, default = ['mhc_ligands']
-  )
-
-  # skip_memory_benchmark - a Boolean for whether to skip the memory benchmark
-  parser.add_argument(
-    '-s', '--skip_mem', action='store_true'
-  )
-
-  # include text-shifting methods for benchmarking
-  parser.add_argument(
-    '-t', '--text_shifting', action='store_true'
-  )
-
-  arguments = parser.parse_args()
-
-  dataset = arguments.dataset[0]
-  skip_mem = arguments.skip_mem
-  text_shifting = arguments.text_shifting
-
-  if dataset not in valid_datasets:
-    raise ValueError(
-      'Invalid dataset. ' \
-      'Please pass "mhc_ligands", "milk", "coronavirus", or "neoepitopes".'
-    )
-
-  benchmark_options = [dataset, skip_mem, text_shifting]
-
-  return benchmark_options
+# add pepmatch and other methods to sys path for importing
+for path in [str(Path(__file__).parent), str(Path(__file__)) + '/methods']:
+  sys.path.insert(0, path)
 
 
-def accuracy(results, expected_file): 
-  """Function that calculates the accuracy of your tool from the query
-  that is being used.
+def run_benchmark(benchmark: str, benchmark_memory: bool, include_text_shifting: bool):
+  """Run the benchmarking for the specified benchmark. Return the benchmarking
+  speeds and memory usage for each method.
 
   Args:
-    results: list of results from the search.
-    expected_file: file with expected matches.
-  """
-  expected = []
+    benchmark (str): name of the benchmark to run (mhc_ligands, milk, coronavirus,
+      neoepitopes)
+    benchmark_memory (bool): whether or not to benchmark memory usage.
+    include_text_shifting (bool): whether or not to include text shifting methods.
+  """  
 
-  # open file with expected matches for checking accuracy
-  with open(expected_file, 'r') as f:
-    lines = f.readlines()
-    for line in lines:
-      expected.append(line.replace('\n', ''))
-
-
-  # return intersection of real and expected matches 
-  # divided by number of expected times 100 for percentage
-  
-  return len(set(results).intersection(set(expected))) / (len(expected)) * 100
-
-
-def benchmark_methods(benchmark_options):
-  """Function that benchmarks all methods in the methods directory.
-
-  Args:
-    benchmark_options: list of options for benchmarking tools.
-  """
-  dataset = benchmark_options[0]
-  skip_mem = benchmark_options[1]
-  include_text_shifting = benchmark_options[2]
-  
-  print('Benchmarking %s dataset...\n' % dataset)
+  print('Benchmarking %s dataset...\n' % benchmark)
 
   with open('benchmarking_parameters.json', 'r') as file:
     benchmarking_parameters = json.load(file)
 
-  inputs = benchmarking_parameters['datasets'][dataset]
+  inputs = benchmarking_parameters['datasets'][benchmark]
   methods = benchmarking_parameters['methods']
 
-  if not include_text_shifting:
+  if not include_text_shifting: # skip text shifting (horspool, boyer_moore, etc.)
     methods = [x for x in methods if not x['text_shifting']]
 
-  benchmark_df = pd.DataFrame(columns = benchmark_columns)
+  columns = [
+    'Name', 'Preprocessing Proteome (s)', 'Preprocessing Query (s)',
+    'Searching Time (s)', 'Total Time (s)', 'Memory Usage (MB)', 'Accuracy (%)'
+  ]
+
+  benchmark_df = pd.DataFrame(columns = columns)
   for method in methods:
     print('Initializing method...: ' + method['name'] + '\n')
     try:
@@ -124,10 +58,12 @@ def benchmark_methods(benchmark_options):
         )
       
       benchmark_tool = get_benchmark_object(
-        os.path.join(directory, inputs['query']),  
-        os.path.join(directory, inputs['proteome']), 
+        benchmark,
+        Path(__file__).parent / inputs['query'],  
+        Path(__file__).parent / inputs['proteome'],
         inputs['lengths'], inputs['mismatches'], 
-        method['method_parameters'])
+        method['method_parameters']
+      )
     
     except ValueError as error:
       print(error)
@@ -164,44 +100,82 @@ def benchmark_methods(benchmark_options):
     total_time += search_time
 
     memory_use = 'N/A'
-    if not skip_mem:
+    if benchmark_memory:
       print('Checking memory usage...\n')
       tracemalloc.start()
       benchmark_tool.search()
-      current, peak = tracemalloc.get_traced_memory()
+      _, peak = tracemalloc.get_traced_memory()
       memory_use = peak / (10**6)
       tracemalloc.stop()
 
     print('Calculating accuracy...\n')
     accuracy_result = accuracy(results, inputs['expected'])
-    
-    benchmarks = [
+
+    benchmark_stats = [
       str(benchmark_tool), 
       preprocess_proteome_time, 
       preprocess_query_time, 
       search_time, total_time, memory_use, accuracy_result
     ]
 
-    new_df = pd.DataFrame([benchmarks], columns = benchmark_columns)
+    new_df = pd.DataFrame([benchmark_stats], columns = columns)
     benchmark_df = pd.concat([benchmark_df, new_df], ignore_index = True)
 
     print('Done benchmarking', str(benchmark_tool), '\n\n')
-
     print(benchmark_df)
 
   return benchmark_df
 
 
+def accuracy(results, expected_file): 
+  """Function that calculates the accuracy of your tool from the query
+  that is being used.
+
+  Args:
+    results: list of results from the search.
+    expected_file: file with expected matches.
+  """
+  expected = []
+
+  # open file with expected matches for checking accuracy
+  with open(expected_file, 'r') as f:
+    lines = f.readlines()
+    for line in lines:
+      expected.append(line.replace('\n', ''))
+
+
+  # return intersection of real and expected matches 
+  # divided by number of expected times 100 for percentage
+  
+  return len(set(results).intersection(set(expected))) / (len(expected)) * 100
+
 
 def main():
-  benchmark_options = parse_arguments()
-  
-  master_df = benchmark_methods(benchmark_options)
-  master_df['Searching Time (s)'] = pd.to_numeric(master_df['Searching Time (s)'])
+  import argparse
+  parser = argparse.ArgumentParser()
 
-  master_df.round(3).to_csv(
-    '%s_benchmarking.tsv' % benchmark_options[0], sep='\t', index=False
+  parser.add_argument(
+    '-b', '--benchmark',
+    choices=['mhc_ligands', 'milk', 'coronavirus', 'neoepitopes'],
+    required=True
   )
+  parser.add_argument(
+    '-m', '--benchmark_memory', action='store_true', default=False
+  )
+  parser.add_argument(
+    '-t', '--include_text_shifting', action='store_true', default=False
+  )
+
+  args = parser.parse_args()
+  benchmark = args.benchmark
+  benchmark_memory = args.benchmark_memory
+  include_text_shifting = args.include_text_shifting
+  
+  master_df = run_benchmark(
+    benchmark, benchmark_memory, include_text_shifting
+  )
+  master_df['Searching Time (s)'] = pd.to_numeric(master_df['Searching Time (s)'])
+  master_df.round(3).to_csv('%s_benchmarking.tsv' % benchmark, sep='\t', index=False)
 
   # remove files after benchmarking
   for file in glob.glob('*.db') + glob.glob('*.pkl'):

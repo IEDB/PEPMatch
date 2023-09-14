@@ -92,7 +92,7 @@ jobs:
     - name: Run Test
       run: pytest pepmatch/tests/test_discontinuous_search.py
 
-  testmismatch:
+  testparallelmatch:
     name: Parallel Test
     runs-on: ubuntu-latest
 

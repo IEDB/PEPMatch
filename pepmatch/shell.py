@@ -36,7 +36,7 @@ def run_matcher():
   parser.add_argument('-b', '--best_match', action='store_true', default=False)
   parser.add_argument('-f', '--output_format', default='csv')
   parser.add_argument('-o', '--output_name', default='')
-  parser.add_argument('-v', '--sequence_version', action='store_true', default=True)
+  parser.add_argument('-v', '--sequence_version', action='store_false', default=True)
   parser.add_argument('-d', '--discontinuous_epitopes', default='')
   parser.add_argument('-n', '--n_jobs', type=int, default=1)
 

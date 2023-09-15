@@ -23,6 +23,7 @@ class Benchmarker(ParallelMatcher):
       max_mismatches=max_mismatches,
       best_match=True if max_mismatches == -1 else False,
       output_format='dataframe',
+      sequence_version=False,
       n_jobs=5
     )
 
@@ -52,23 +53,5 @@ class Benchmarker(ParallelMatcher):
     
 
   def search(self) -> list:
-    """Call overarching match function. Then convert results into the standard format
-    needed to calculate accuracy.
-    """
-    matches = self.match()
-
-    all_matches = []
-    for i, match in matches.iterrows():
-      match_string = ''
-      match_string += match['Query Sequence'] + ','
-      match_string += match['Matched Sequence'] + ','
-      match_string += match['Protein ID'] + ','
-      match_string += str(match['Mismatches']) + ','
-      try:
-        match_string += str(match['Index start'] - 1)
-      except TypeError:
-        match_string += ''
-        
-      all_matches.append(match_string)
-    
-    return all_matches
+    """Call overarching match function which returns a dataframe of matches."""
+    return self.match()

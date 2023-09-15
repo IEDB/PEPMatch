@@ -17,7 +17,9 @@ for path in [str(Path(__file__).parent), str(Path(__file__)) + '/methods']:
   sys.path.insert(0, path)
 
 
-def run_benchmark(benchmark: str, benchmark_memory: bool, include_text_shifting: bool):
+def run_benchmark(
+  benchmark: str, benchmark_memory: bool, include_text_shifting: bool
+) -> pd.DataFrame:
   """Run the benchmarking for the specified benchmark. Return the benchmarking
   speeds and memory usage for each method.
 
@@ -25,8 +27,7 @@ def run_benchmark(benchmark: str, benchmark_memory: bool, include_text_shifting:
     benchmark (str): name of the benchmark to run (mhc_ligands, milk, coronavirus,
       neoepitopes)
     benchmark_memory (bool): whether or not to benchmark memory usage.
-    include_text_shifting (bool): whether or not to include text shifting methods.
-  """  
+    include_text_shifting (bool): whether or not to include text shifting methods."""  
 
   print('Benchmarking %s dataset...\n' % benchmark)
 
@@ -94,7 +95,7 @@ def run_benchmark(benchmark: str, benchmark_memory: bool, include_text_shifting:
 
     print('Searching...\n')
     search_time_start = time.time()
-    results = benchmark_tool.search()
+    results_df = benchmark_tool.search()
     search_time_end = time.time()
     search_time = search_time_end - search_time_start
     total_time += search_time
@@ -109,13 +110,17 @@ def run_benchmark(benchmark: str, benchmark_memory: bool, include_text_shifting:
       tracemalloc.stop()
 
     print('Calculating accuracy...\n')
-    accuracy_result = accuracy(results, inputs['expected'])
+    expected_df = pd.read_csv(inputs['expected'], sep='\t')
+    accuracy_result = accuracy(results_df, expected_df)
 
     benchmark_stats = [
-      str(benchmark_tool), 
-      preprocess_proteome_time, 
-      preprocess_query_time, 
-      search_time, total_time, memory_use, accuracy_result
+      str(benchmark_tool),
+      preprocess_proteome_time,
+      preprocess_query_time,
+      search_time,
+      total_time,
+      memory_use,
+      accuracy_result
     ]
 
     new_df = pd.DataFrame([benchmark_stats], columns = columns)
@@ -127,27 +132,28 @@ def run_benchmark(benchmark: str, benchmark_memory: bool, include_text_shifting:
   return benchmark_df
 
 
-def accuracy(results, expected_file): 
+def accuracy(results_df: pd.DataFrame, expected_df: pd.DataFrame) -> float:
   """Function that calculates the accuracy of your tool from the query
   that is being used.
 
   Args:
-    results: list of results from the search.
-    expected_file: file with expected matches.
-  """
-  expected = []
+    results: pandas dataframe with results from the benchmarking.
+    expected_df: pandas dataframe with expected matches for the benchmarking."""
 
-  # open file with expected matches for checking accuracy
-  with open(expected_file, 'r') as f:
-    lines = f.readlines()
-    for line in lines:
-      expected.append(line.replace('\n', ''))
+  columns = ['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']
+  results = results_df[columns].drop_duplicates(subset=columns)
+  expected = expected_df[columns].drop_duplicates(subset=columns)
 
+  matched_rows = pd.merge(results, expected, how='inner', on=columns)
+  matched_rows = matched_rows.drop_duplicates(subset=columns)
 
-  # return intersection of real and expected matches 
-  # divided by number of expected times 100 for percentage
-  
-  return len(set(results).intersection(set(expected))) / (len(expected)) * 100
+  # calculate the accuracy
+  total_expected = len(expected)
+  total_matched = len(matched_rows)
+
+  accuracy = (total_matched / total_expected) * 100
+
+  return min(accuracy, 100)
 
 
 def main():

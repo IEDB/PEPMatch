@@ -18,6 +18,8 @@ class ParallelMatcher(Matcher):
     if self.output_name == '':
       self.output_name = 'PEPMatch_results'
 
+    assert self.output_format in ['csv', 'tsv', 'xlsx', 'json', 'html', 'dataframe']
+
 
   def _split_query(self):
     query = self.query
@@ -64,6 +66,8 @@ class ParallelMatcher(Matcher):
     path = f'{self.preprocessed_files_path}/{self.output_name}'
     if self.output_format == 'csv':
       return df.to_csv(f'{path}.csv', index=False)
+    elif self.output_format == 'tsv':
+      return df.to_csv(f'{path}.tsv', sep='\t', index=False)
     elif self.output_format == 'xlsx':
       return df.to_excel(f'{path}.xlsx', index=False)
     elif self.output_format == 'json':

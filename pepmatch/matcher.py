@@ -12,7 +12,7 @@ from .preprocessor import Preprocessor
 from .hamming import hamming
 
 
-VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'xlsx', 'json', 'html']
+VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'tsv', 'xlsx', 'json', 'html']
 
 class Matcher:
   """
@@ -31,7 +31,7 @@ class Matcher:
   multiple times to get the best match quickly.
 
   Optional: output and output_format arguments to write results to file.
-  Supported formats are "csv", "xlsx", "json", and "html"."""
+  Supported formats are "csv", "tsv", "xlsx", "json", and "html"."""
 
   def __init__(
     self,
@@ -51,7 +51,7 @@ class Matcher:
     if output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError(
         'Invalid output format, please choose `dataframe`, '
-        '`csv`, `xlsx`, `json`, or `html`.'
+        '`csv`, `tsv`, `xlsx`, `json`, or `html`.'
       )
 
     # initialize query and output name based on input type
@@ -853,6 +853,8 @@ class Matcher:
     path = f'{self.preprocessed_files_path}/{self.output_name}'
     if self.output_format == 'csv':
       return df.to_csv(f'{path}.csv', index=False)
+    elif self.output_format == 'tsv':
+      return df.to_csv(f'{path}.tsv', sep='\t', index=False)
     elif self.output_format == 'xlsx':
       return df.to_excel(f'{path}.xlsx', index=False)
     elif self.output_format == 'json':

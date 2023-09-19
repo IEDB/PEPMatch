@@ -1,7 +1,7 @@
 import pandas as pd
 import multiprocessing as mp
-from Bio import SeqIO
 
+from .helpers import parse_fasta
 from .matcher import Matcher
 
 
@@ -24,10 +24,13 @@ class ParallelMatcher(Matcher):
   def _split_query(self):
     query = self.query
     if not isinstance(query, list):
-      query = [str(record.seq) for record in list(SeqIO.parse(self.query, 'fasta'))]
+      query = [str(record.seq) for record in parse_fasta(self.query)]
+
+    # set # of jobs to # of queries if # of jobs is greater than # of queries
+    self.n_jobs = len(query) if self.n_jobs > len(query) else self.n_jobs
 
     query_chunks = []
-    chunk_size = len(query) // self.n_jobs
+    chunk_size = max(1, len(query) // self.n_jobs)
 
     for i in range(self.n_jobs):
       start_idx = i * chunk_size

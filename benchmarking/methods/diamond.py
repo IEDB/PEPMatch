@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from Bio import SeqIO
 import os
+import pandas as pd
+from Bio import SeqIO
 
 
 directory = os.path.dirname(os.path.abspath(__file__))
@@ -18,12 +19,11 @@ class DIAMOND(object):
 
     self.query = query
     self.proteome = proteome
-    self.proteome_name = proteome.replace('.fasta', '')
+    self.proteome_name = str(proteome).replace('.fasta', '')
 
     self.max_mismatches = max_mismatches
 
     bin_directory = method_parameters['bin_directory']
-
     self.bin_file = os.path.join(bin_directory, 'diamond')
 
 
@@ -35,7 +35,7 @@ class DIAMOND(object):
     os.system(f"{self.bin_file} makedb --in {self.proteome} -d {self.proteome_name}")
   
 
-  def diamond_search(self, query, proteome):
+  def diamond_search(self):
     os.system(
       f"{self.bin_file} blastp -d {self.proteome_name} -q {self.query} -o matches.m8 "
       f"-e 10000 -k 100 --ultra-sensitive --masking 0 -f 6 "
@@ -49,8 +49,10 @@ class DIAMOND(object):
         match = []
         result = line.split('\t')
         for i in range(len(result)):
+          if i == 3: 
+            continue  # skip the max_mismatches column
           if i == 4:
-            match.append(int(result[i].replace('\n', '')) - 1)
+            match.append(int(result[i].replace('\n', '')))
           else:
             match.append(result[i])
 
@@ -60,7 +62,11 @@ class DIAMOND(object):
 
 
 class Benchmarker(DIAMOND):
-  def __init__(self, query, proteome, lengths, max_mismatches, method_parameters):
+  def __init__(
+    self, benchmark: str, query: str, proteome: str, lengths: list, max_mismatches: int,
+    method_parameters: dict
+  ):
+    self.benchmark = benchmark
     self.query = query
     self.proteome = proteome
     self.lengths = lengths
@@ -83,7 +89,7 @@ class Benchmarker(DIAMOND):
 
 
   def search(self):
-    matches = self.diamond_search(self.query, self.proteome)
+    matches = self.diamond_search()
 
     all_matches = []
     for match in matches:
@@ -93,10 +99,13 @@ class Benchmarker(DIAMOND):
       except IndexError:
         pass
       all_matches.append(','.join([str(i) for i in match]))
-
+    
+    all_matches = [match.split(',') for match in all_matches]
+    columns = ['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']
+    
     os.remove('matches.m8')
     os.remove(
       os.path.dirname(self.proteome) + '/%s.dmnd' % self.proteome_name.split('/')[-1]
     )
 
-    return all_matches
+    return pd.DataFrame(all_matches, columns = columns)

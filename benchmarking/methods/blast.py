@@ -35,7 +35,7 @@ class BLAST(object):
   
 
   def preprocess(self):
-    os.system(self.makeblastdb_path + ' -in ' + self.proteome + ' -dbtype prot')
+    os.system(self.makeblastdb_path + ' -in ' + str(self.proteome) + ' -dbtype prot')
   
 
   def blast_search(self):
@@ -73,15 +73,14 @@ class BLAST(object):
 
     df = pd.read_csv(
       'output.csv', 
-      names = ['Peptide Sequence', 'Protein ID', 'Sequence Identity', 
-               'Length', 'Mismatches', 'Gap Openings', 'Query start', 
-               'Query end', 'Index start', 'Index end', 'e value', 'bit score'])
-
-    
+      names = [
+        'Peptide Sequence', 'Protein ID', 'Sequence Identity', 
+        'Length', 'Mismatches', 'Gap Openings', 'Query start', 
+        'Query end', 'Index start', 'Index end', 'e value', 'bit score'
+      ]
+    )
     df['Peptide Sequence'] = df['Peptide Sequence'].apply(str)
     df = df.replace({'Peptide Sequence': peptide_dict})
-
-    df['Index start'] = df['Index start'].apply(lambda x: x - 1)
 
     df.to_csv('blast_results.csv')
 
@@ -95,22 +94,24 @@ class BLAST(object):
       
       peptide_sequence = row['Peptide Sequence']
       protein_id = row['Protein ID']
-      mismatches = row['Mismatches']
-      index_start = int(row['Index start'])
+      index_start = int(row['Index start']) - 1 # BLAST is 1-indexed
       
       all_matches.append((
         peptide_sequence, 
         protein_dict[protein_id][index_start:(index_start+len(peptide_sequence))],
         protein_id,
-        mismatches,
-        index_start,
+        index_start + 1,
       ))
 
     return all_matches
 
 
 class Benchmarker(BLAST):
-  def __init__(self, query, proteome, lengths, max_mismatches, method_parameters):
+  def __init__(
+    self, benchmark: str, query: str, proteome: str, lengths: list, max_mismatches: int,
+    method_parameters: dict
+  ):
+    self.benchmark = benchmark
     self.query = query
     self.proteome = proteome
     self.lengths = lengths
@@ -138,12 +139,14 @@ class Benchmarker(BLAST):
     all_matches = []
     for match in matches:
       match = list(match)
-      # try taking the UniProt ID - else do nothing 
-      try:
+      try: # try taking the UniProt ID - else do nothing 
         match[2] = match[2].split('|')[1]
       except IndexError:
         pass
       all_matches.append(','.join([str(i) for i in match]))
+
+    all_matches = [match.split(',') for match in all_matches]
+    columns = ['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']
 
     for extension in ['pdb', 'phr', 'pin', 'psq', 'ptf', 'pot', 'pto']:
       os.remove(glob.glob(os.path.dirname(self.proteome) + '/*.' + extension)[0])
@@ -151,4 +154,4 @@ class Benchmarker(BLAST):
     os.remove('output.csv')
     os.remove('blast_results.csv')
 
-    return all_matches
+    return pd.DataFrame(all_matches, columns = columns)

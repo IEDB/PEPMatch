@@ -12,9 +12,10 @@ import glob
 from pathlib import Path
 
 
-# add pepmatch and other methods to sys path for importing
-for path in [str(Path(__file__).parent), str(Path(__file__)) + '/methods']:
-  sys.path.insert(0, path)
+# add methods to sys path for importing
+methods_dir = str(Path(__file__).parent / 'methods')
+if methods_dir not in sys.path:
+  sys.path.insert(0, methods_dir)
 
 
 def run_benchmark(
@@ -50,20 +51,21 @@ def run_benchmark(
     print('Initializing method...: ' + method['name'] + '\n')
     try:
       if (method['name'] == 'PEPMatch'):
-        get_benchmark_object = getattr(
+        benchmark_object = getattr(
           importlib.import_module('pepmatch.benchmarker'), 'Benchmarker'
         )
       else:
-        get_benchmark_object = getattr(
+        benchmark_object = getattr(
           importlib.import_module(method['name']), 'Benchmarker'
         )
-      
-      benchmark_tool = get_benchmark_object(
-        benchmark,
-        Path(__file__).parent / inputs['query'],  
-        Path(__file__).parent / inputs['proteome'],
-        inputs['lengths'], inputs['mismatches'], 
-        method['method_parameters']
+
+      benchmark_tool = benchmark_object(
+        benchmark=benchmark,
+        query=Path(__file__).parent / inputs['query'],
+        proteome=Path(__file__).parent / inputs['proteome'],
+        lengths=inputs['lengths'], 
+        max_mismatches=inputs['mismatches'],
+        method_parameters=method['method_parameters']
       )
     
     except ValueError as error:
@@ -143,6 +145,8 @@ def accuracy(results_df: pd.DataFrame, expected_df: pd.DataFrame) -> float:
   columns = ['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']
   results = results_df[columns].drop_duplicates(subset=columns)
   expected = expected_df[columns].drop_duplicates(subset=columns)
+
+  results['Index start'] = results['Index start'].astype(int)
 
   matched_rows = pd.merge(results, expected, how='inner', on=columns)
   matched_rows = matched_rows.drop_duplicates(subset=columns)

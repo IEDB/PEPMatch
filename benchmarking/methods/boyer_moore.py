@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import pandas as pd
 from Bio import SeqIO
 
 
@@ -222,7 +223,7 @@ class BoyerMoore(object):
               mismatched = True
               break
           if not mismatched:
-            all_matches.append((p, p, str(protein.id), 0, i))
+            all_matches.append((p, p, str(protein.id), i+1))
             skip_gs = self.match_skip()
             shift = max(shift, skip_gs)
           i += shift
@@ -231,12 +232,16 @@ class BoyerMoore(object):
 
 
 class Benchmarker(BoyerMoore):
-  def __init__(self, query, proteome, lengths, max_mismatches, method_parameters):
+  def __init__(
+    self, benchmark: str, query: str, proteome: str, lengths: list, max_mismatches: int,
+    method_parameters: dict
+  ):
     if max_mismatches > 0:
       raise ValueError(self.__str__() + ' cannot do any mismatching.\n')
     elif max_mismatches == -1:
       raise ValueError(self.__str__() + ' does not have a best match feature.\n')
     
+    self.benchmark = benchmark
     self.query = query
     self.proteome = proteome
     self.lengths = lengths
@@ -266,5 +271,10 @@ class Benchmarker(BoyerMoore):
       match = list(match)
       match[2] = match[2].split('|')[1]
       all_matches.append(','.join([str(i) for i in match]))
+    
+    all_matches = [match.split(',') for match in all_matches]
+    columns = ['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']
 
-    return all_matches
+    print(all_matches)
+    
+    return pd.DataFrame(all_matches, columns = columns)

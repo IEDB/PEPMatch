@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import pandas as pd
 from Bio import SeqIO
 
 
@@ -60,19 +61,24 @@ class Z(object):
             all_matches.append((
               str(peptide.seq), 
               str(peptide.seq), 
-              str(protein.id), 0, i - len(pattern) - 1
+              str(protein.id), 
+              i - len(pattern)
             ))
 
     return all_matches
 
 
 class Benchmarker(Z):
-  def __init__(self, query, proteome, lengths, max_mismatches, method_parameters):
+  def __init__(
+    self, benchmark: str, query: str, proteome: str, lengths: list, max_mismatches: int,
+    method_parameters: dict
+  ):
     if max_mismatches > 0:
       raise ValueError(self.__str__() + ' cannot do any mismatching.\n')
     elif max_mismatches == -1:
       raise ValueError(self.__str__() + ' does not have a best match feature.\n')
 
+    self.benchmark = benchmark
     self.query = query
     self.proteome = proteome
     self.lengths = lengths
@@ -102,4 +108,7 @@ class Benchmarker(Z):
       match[2] = match[2].split('|')[1]
       all_matches.append(','.join([str(i) for i in match]))
 
-    return all_matches
+    all_matches = [match.split(',') for match in all_matches]
+    columns = ['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']
+    
+    return pd.DataFrame(all_matches, columns = columns)

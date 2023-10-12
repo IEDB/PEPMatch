@@ -795,7 +795,7 @@ class Matcher:
 
       idx = df.groupby( # take matches with the least number of mismatches   
         ['Query Sequence']
-      )['Mismatches'].transform(min) == df['Mismatches']
+      )['Mismatches'].transform('min') == df['Mismatches']
       df = df[idx]
 
       # fill NaN values with 0 - otherwise pandas will drop the rows
@@ -806,13 +806,13 @@ class Matcher:
       # take matches that are in the gene priority proteome 
       idx = df.groupby(
         ['Query Sequence']
-      )['Gene Priority'].transform(max) == df['Gene Priority']
+      )['Gene Priority'].transform('max') == df['Gene Priority']
       df = df[idx]
       
       # and with the best protein existence level
       idx = df.groupby(
         ['Query Sequence']
-      )['Protein Existence Level'].transform(min) == df['Protein Existence Level']
+      )['Protein Existence Level'].transform('min') == df['Protein Existence Level']
       df = df[idx]
 
       # filter fragments

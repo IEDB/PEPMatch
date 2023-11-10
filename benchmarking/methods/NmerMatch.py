@@ -6,6 +6,7 @@ import pprint
 import subprocess
 import csv
 import os
+import pandas as pd
 from Bio import SeqIO
 
 
@@ -22,7 +23,9 @@ class Benchmarker(object):
   # in your PERL5LIB environment variable, that should be passed
   # as the perl_include_path here. E.g., if libraries are installed
   # to 'mylibs', the argument to be passed would be mylibs/lib/perl5
-  def __init__(self, query, proteome, lengths, mismatches, method_parameters):
+  def __init__(
+      self, benchmark, query, proteome, lengths, max_mismatches, method_parameters
+    ):
     """Initialize the tool to run the benchmarks
 
     Positional arguments:
@@ -35,11 +38,11 @@ class Benchmarker(object):
     catalog_master_dir -- directory in which to store the database catalogs
     output_master_dir -- directory in which to store the output files
     """
-
+    self.benchmark = benchmark
     self.query = query
     self.proteome = proteome
 
-    self.mismatches = mismatches
+    self.mismatches = max_mismatches
 
     # this must be defined in method_parameters; the rest of the
     # parameters are optional and have defaults
@@ -240,14 +243,18 @@ class Benchmarker(object):
             prot, pos = mpp.split(':')
             try:
               results.append(
-                ",".join([row[0], row[1], prot.split('|')[1], row[2], pos])
+                ",".join([row[0], row[1], prot.split('|')[1], pos])
               )
             except IndexError:
               results.append(
-                ",".join([row[0], row[1], prot, row[2], pos])
+                ",".join([row[0], row[1], prot, pos])
               )
-
-    return results
+    
+    columns = ['Query Sequence', 'Matched Sequence', 'Protein ID', 'Index start']
+    results_df = pd.DataFrame([s.split(',') for s in results], columns = columns)
+    results_df.to_csv('/home/dan/Desktop/nmermatch_results.csv', sep='\t', index=False)
+    results_df['Index start'] = results_df['Index start'].astype(int) + 1
+    return results_df
 
 
 def main():

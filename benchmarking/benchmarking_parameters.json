@@ -33,7 +33,7 @@
         "methods": [
                 {
                         "name": "PEPMatch",
-                        "text_shifting": 0,
+                        "text_shifting": 1,
                         "method_parameters":{
                                 "output_format": "dataframe"
                         }

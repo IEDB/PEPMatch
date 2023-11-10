@@ -8,14 +8,14 @@ class Benchmarker(ParallelMatcher):
 
   def __init__(
     self, benchmark: str, query: str, proteome: str, lengths: list, max_mismatches: int,
-    algorithm_parameters: dict
+    method_parameters: dict
   ):
     self.benchmark = benchmark
     self.query = query
     self.proteome = proteome
     self.max_mismatches = max_mismatches
     self.lengths = lengths
-    self.algorithm_parameters = algorithm_parameters
+    self.method_parameters = method_parameters
     
     super().__init__(
       query=query,

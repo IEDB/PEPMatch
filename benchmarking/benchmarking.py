@@ -146,8 +146,8 @@ def accuracy(results_df: pd.DataFrame, expected_df: pd.DataFrame) -> float:
   results = results_df[columns].drop_duplicates(subset=columns)
   expected = expected_df[columns].drop_duplicates(subset=columns)
 
-  results['Index start'] = results['Index start'].astype(int)
-
+  results['Index start'] = results['Index start'].fillna(0).astype(int)
+  
   matched_rows = pd.merge(results, expected, how='inner', on=columns)
   matched_rows = matched_rows.drop_duplicates(subset=columns)
 

@@ -76,14 +76,10 @@ pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
 ```python
 from pepmatch import Preprocessor, Matcher
 
-# proteome, k, preprocessed_format, target directory, gene_priority_proteome
-Preprocessor(
-  'proteomes/human.fasta', '.', 'proteomes/human_gp.fasta'
-).sql_proteome(k = 5) # preprocessing only needs to be done once!
+Preprocessor('proteomes/human.fasta').sql_proteome(k = 5) 
 
-# query, proteome, max_mismatches, k, preprocessed files directory
-Matcher(
-  'queries/mhc_ligands_test.fasta', 'proteomes/human.fasta', 0, 5, '.'
+Matcher( # 0 mismatches, k = 5
+  'queries/mhc-ligands-test.fasta', 'proteomes/human.fasta', 0, 5
 ).match()
 ```
 
@@ -93,12 +89,29 @@ Matcher(
 ```python
 from pepmatch import Preprocessor, Matcher
 
-# proteome, k, preprocessed_format, target directory
 Preprocessor('proteomes/human.fasta').pickle_proteome(k = 3)
 
-# query, proteome, max_mismatches, k, preprocessed files directory
-Matcher(
-  'queries/neoepitopes_test.fasta', 'proteomes/human.fasta', 3, 3
+Matcher( # 3 mismatches, k = 3
+  'queries/neoepitopes-test.fasta', 'proteomes/human.fasta', 3, 3
+).match()
+```
+
+
+### Parallel Matcher Example
+
+To run a job on multiple cores, use the `ParallelMatcher` class. The `n_jobs` parameter specifies the number of cores to use.
+
+```python
+from pepmatch import Preprocessor, ParallelMatcher 
+
+Preprocessor('proteomes/betacoronaviruses.fasta').pickle_proteome(k = 3)
+
+ParallelMatcher(
+  query='queries/coronavirus-test.fasta',
+  proteome_file='proteomes/betacoronaviruses.fasta',
+  max_mismatches=3,
+  k=3,
+  n_jobs=2
 ).match()
 ```
 
@@ -106,9 +119,9 @@ Matcher(
 ### Best Match Example
 
 ```python
-from pepmatch import Preprocessor, Matcher
+from pepmatch import Matcher
 Matcher(
-  'queries/milk_peptides.fasta', 'proteomes/human.fasta', best_match=True
+  'queries/milk-peptides-test.fasta', 'proteomes/human.fasta', best_match=True
 ).match()
 ```
 
@@ -117,10 +130,12 @@ The best match parameter without k or mismatch inputs will produce the best matc
 
 ### Outputs
 
-As mentioned above, outputs can be specified with the ```output_format``` parameter in the ```Matcher``` class. The following formats are allowed: `dataframe`, `csv`, `xlsx`, `json`, and `html`.
+As mentioned above, outputs can be specified with the ```output_format``` parameter in the ```Matcher``` class. The following formats are allowed: `dataframe`, `tsv`, `csv`, `xlsx`, `json`, and `html`.
 
 If specifying `dataframe`, the ```match()``` method will return a pandas dataframe which can be stored as a variable:
 
 ```python
-df = Matcher('queries/neoepitopes_test.fasta', 'human.fasta', 3, 3, output_format='dataframe').match()
+df = Matcher(
+  'queries/neoepitopes-test.fasta', 'proteomes/human.fasta', 3, 3, output_format='dataframe'
+).match()
 ```

@@ -139,3 +139,10 @@ df = Matcher(
   'queries/neoepitopes-test.fasta', 'proteomes/human.fasta', 3, 3, output_format='dataframe'
 ).match()
 ```
+
+
+### Citation
+
+If you use PEPMatch in your research, please cite the following paper:
+
+Marrama D, Chronister WD, Westernberg L, et al. PEPMatch: a tool to identify short peptide sequence matches in large sets of proteins. BMC Bioinformatics. 2023;24(1):485. Published 2023 Dec 18. doi:10.1186/s12859-023-05606-4

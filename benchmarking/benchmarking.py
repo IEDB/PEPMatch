@@ -43,7 +43,7 @@ def run_benchmark(
 
   columns = [
     'Name', 'Preprocessing Proteome (s)', 'Preprocessing Query (s)',
-    'Searching Time (s)', 'Total Time (s)', 'Memory Usage (MB)', 'Accuracy (%)'
+    'Searching Time (s)', 'Total Time (s)', 'Memory Usage (MB)', 'Recall (%)'
   ]
 
   benchmark_df = pd.DataFrame(columns = columns)
@@ -111,9 +111,9 @@ def run_benchmark(
       memory_use = peak / (10**6)
       tracemalloc.stop()
 
-    print('Calculating accuracy...\n')
+    print('Calculating recall...\n')
     expected_df = pd.read_csv(inputs['expected'], sep='\t')
-    accuracy_result = accuracy(results_df, expected_df)
+    recall_result = recall(results_df, expected_df)
 
     benchmark_stats = [
       str(benchmark_tool),
@@ -122,7 +122,7 @@ def run_benchmark(
       search_time,
       total_time,
       memory_use,
-      accuracy_result
+      recall_result
     ]
 
     new_df = pd.DataFrame([benchmark_stats], columns = columns)
@@ -134,8 +134,8 @@ def run_benchmark(
   return benchmark_df
 
 
-def accuracy(results_df: pd.DataFrame, expected_df: pd.DataFrame) -> float:
-  """Function that calculates the accuracy of your tool from the query
+def recall(results_df: pd.DataFrame, expected_df: pd.DataFrame) -> float:
+  """Function that calculates the recall of your tool from the query
   that is being used.
 
   Args:
@@ -151,13 +151,13 @@ def accuracy(results_df: pd.DataFrame, expected_df: pd.DataFrame) -> float:
   matched_rows = pd.merge(results, expected, how='inner', on=columns)
   matched_rows = matched_rows.drop_duplicates(subset=columns)
 
-  # calculate the accuracy
+  # calculate the recall
   total_expected = len(expected)
   total_matched = len(matched_rows)
 
-  accuracy = (total_matched / total_expected) * 100
+  recall = (total_matched / total_expected) * 100
 
-  return min(accuracy, 100)
+  return min(recall, 100)
 
 
 def main():

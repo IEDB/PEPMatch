@@ -66,8 +66,13 @@ Note: PEPMatch can also search for discontinuous epitopes in the residue:index f
 ### Command Line Example
 
 ```bash
+# exact matching example
 pepmatch-preprocess -p human.fasta -k 5 -f sql
 pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
+
+# mismatching example
+pepmatch-preprocess -p human.fasta -k 3 -f pickle
+pepmatch-match -q neoepitopes.fasta -p human.fasta -m 3 -k 3
 ```
 
 

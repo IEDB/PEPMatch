@@ -807,7 +807,9 @@ class Matcher:
       df = df[idx]
       
       # and with the best protein existence level
-      idx = (df.groupby(['Query Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']) | df['Protein Existence Level'].isna()
+      idx = (df.groupby(
+        ['Query Sequence']
+      )['Protein Existence Level'].transform('min') == df['Protein Existence Level']) | df['Protein Existence Level'].isna()
       df = df[idx]
 
       # filter fragments
@@ -832,10 +834,13 @@ class Matcher:
 
     # force integers on some columns
     int_cols = [
-      'Taxon ID', 'Mismatches', 'Index start', 'Index end', 'Protein Existence Level'
+      'Mismatches', 'Index start', 'Index end', 'Protein Existence Level'
     ]
     df[int_cols] = df[int_cols].astype('Int64')
-
+    df['Taxon ID'] = df['Taxon ID'].apply(
+      lambda x: int(x) if isinstance(x, float) else x
+    )
+    
     return df
 
 

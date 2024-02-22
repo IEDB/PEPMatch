@@ -102,13 +102,11 @@ class Matcher:
       query: either a FASTA file or a Python list of peptides.
       proteome_file: the proteome FASTA file.
       output_name: the name of the output file."""
-    
     if isinstance(query, list):
       if output_name:
         self.output_name = output_name
       else:
         self.output_name = 'PEPMatch_results'
-      
       return [seq.upper() for seq in query]
     
     else: # parse from FASTA if not Python list
@@ -838,21 +836,21 @@ class Matcher:
 
     return df
 
+  def _get_function_pointer(self, df: pd.DataFrame):
+    """Returns the df conversion function, given the required output format
+    
+    Args:
+      df: the dataframe of the matches."""
+    return [df.to_csv, df.to_csv, df.to_excel, df.to_json, df.to_html][
+      ['csv', 'tsv', 'xlsx', 'json', 'html'].index(self.output_format)
+    ]
 
   def _output_matches(self, df: pd.DataFrame) -> None:
     """Write Pandas dataframe to format that is specified
     
     Args:
       df: the dataframe of the matches."""
-    
-    path = f'{self.preprocessed_files_path}/{self.output_name}'
-    if self.output_format == 'csv':
-      return df.to_csv(f'{path}.csv', index=False)
-    elif self.output_format == 'tsv':
-      return df.to_csv(f'{path}.tsv', sep='\t', index=False)
-    elif self.output_format == 'xlsx':
-      return df.to_excel(f'{path}.xlsx', index=False)
-    elif self.output_format == 'json':
-      return df.to_json(f'{path}.json', index=False)
-    elif self.output_format == 'html':
-      return df.to_html(f'{path}.html', index=False)
+    path = f'{self.output_name}.{self.output_format}'
+    pointer = self._get_function_pointer(df)
+
+    return pointer(path, index=False) if self.output_format != 'tsv' else pointer(path, sep='\t', index=False)

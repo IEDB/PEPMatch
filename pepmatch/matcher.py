@@ -847,10 +847,20 @@ class Matcher:
 
   def _output_matches(self, df: pd.DataFrame) -> None:
     """Write Pandas dataframe to format that is specified
-    
+
     Args:
       df: the dataframe of the matches."""
-    path = f'{self.output_name}.{self.output_format}'
-    pointer = self._get_function_pointer(df)
+    
+    # appends '.' + filetype if the name does not already contain it
+    path = self.output_name.__str__()
+    if path.split('.')[-1] != self.output_format:
+      path += f".{self.output_format}"
 
-    return pointer(path, index=False) if self.output_format != 'tsv' else pointer(path, sep='\t', index=False)
+    output = self._get_function_pointer(df)
+
+    if self.output_format == 'tsv':
+      output(path, sep='\t', index=False)
+    elif self.output_format == 'json':
+      output(path, orient='split', index=False)
+    else:
+      output(path, index=False)

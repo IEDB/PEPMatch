@@ -837,10 +837,7 @@ class Matcher:
       'Mismatches', 'Index start', 'Index end', 'Protein Existence Level'
     ]
     df[int_cols] = df[int_cols].astype('Int64')
-    df['Taxon ID'] = df['Taxon ID'].apply(
-      lambda x: int(x) if isinstance(x, float) else x
-    )
-    
+
     return df
 
 

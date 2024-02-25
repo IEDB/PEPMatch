@@ -837,7 +837,7 @@ class Matcher:
       'Mismatches', 'Index start', 'Index end', 'Protein Existence Level'
     ]
     df[int_cols] = df[int_cols].astype('Int64')
-
+    # TODO: convert taxon ID to int if possible
     return df
 
 

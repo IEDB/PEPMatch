@@ -836,7 +836,7 @@ class Matcher:
 
     return df
 
-  def _get_function_pointer(self, df: pd.DataFrame):
+  def _get_output_function(self, df: pd.DataFrame):
     """Returns the df conversion function, given the required output format
     
     Args:
@@ -856,7 +856,7 @@ class Matcher:
     if path.split('.')[-1] != self.output_format:
       path += f".{self.output_format}"
 
-    output = self._get_function_pointer(df)
+    output = self._get_output_function(df)
 
     if self.output_format == 'tsv':
       output(path, sep='\t', index=False)

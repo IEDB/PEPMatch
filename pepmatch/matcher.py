@@ -805,7 +805,8 @@ class Matcher:
       # take matches that are in the gene priority proteome
       df = df[self._take_matches(df, "Gene Priority", "max")]
 
-      # and with the best protein existence level
+      # and with the best protein existence leve
+      idx = self._take_matches(df, "Protein Existence Level")
       df = df[self._take_matches(df, "Protein Existence Level")]
 
       # filter fragments
@@ -830,10 +831,13 @@ class Matcher:
 
     # force integers on some columns
     int_cols = [
-      'Taxon ID', 'Mismatches', 'Index start', 'Index end', 'Protein Existence Level'
+      'Mismatches', 'Index start', 'Index end', 'Protein Existence Level'
     ]
     df[int_cols] = df[int_cols].astype('Int64')
-
+    df['Taxon ID'] = df['Taxon ID'].apply(
+      lambda x: int(x) if isinstance(x, float) else x
+    )
+    
     return df
 
   def _get_output_function(self, df: pd.DataFrame):

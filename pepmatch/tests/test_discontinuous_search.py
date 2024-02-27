@@ -1,16 +1,9 @@
 #!/usr/bin/env python3
 
-import pytest
 import pandas as pd
 import pandas.testing as pdt
-from pathlib import Path
-
+from common_features import *
 from pepmatch import Matcher
-
-
-@pytest.fixture
-def proteome_path() -> Path:
-  return Path(__file__).parent / 'data' / 'proteome.fasta'
 
 
 @pytest.fixture

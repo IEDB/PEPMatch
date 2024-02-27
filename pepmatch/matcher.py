@@ -102,13 +102,11 @@ class Matcher:
       query: either a FASTA file or a Python list of peptides.
       proteome_file: the proteome FASTA file.
       output_name: the name of the output file."""
-    
     if isinstance(query, list):
       if output_name:
         self.output_name = output_name
       else:
         self.output_name = 'PEPMatch_results'
-      
       return [seq.upper() for seq in query]
     
     else: # parse from FASTA if not Python list
@@ -764,6 +762,9 @@ class Matcher:
 
     return all_matches
 
+  def _take_matches(self, df: pd.DataFrame, search: str, min_max: str = 'min'):
+    return (df.groupby(['Query Sequence'])[search].transform(min_max) == df[search]) | df[search].isna()
+
 
   def _dataframe_matches(self, all_matches: list) -> pd.DataFrame:
     """Return Pandas dataframe of the results.
@@ -794,23 +795,18 @@ class Matcher:
           return group
 
       # take matches with the least number of mismatches
-      idx = (df.groupby(['Query Sequence'])['Mismatches'].transform('min') == df['Mismatches']) | df['Mismatches'].isna()
-      df = df[idx]
+      df = df[self._take_matches(df, "Mismatches")]
 
       # fill NaN values with 0 - otherwise pandas will drop the rows
       df[['Gene Priority', 'Protein Existence Level']] = df[
          ['Gene Priority', 'Protein Existence Level']
       ].fillna(value=0)
 
-      # take matches that are in the gene priority proteome 
-      idx = (df.groupby(['Query Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']) | df['Gene Priority'].isna()
-      df = df[idx]
-      
-      # and with the best protein existence level
-      idx = (df.groupby(
-        ['Query Sequence']
-      )['Protein Existence Level'].transform('min') == df['Protein Existence Level']) | df['Protein Existence Level'].isna()
-      df = df[idx]
+      # take matches that are in the gene priority proteome
+      df = df[self._take_matches(df, "Gene Priority", "max")]
+
+      # and with the best protein existence leve
+      df = df[self._take_matches(df, "Protein Existence Level")]
 
       # filter fragments
       df = df.groupby(
@@ -840,21 +836,31 @@ class Matcher:
     # TODO: convert taxon ID to int if possible
     return df
 
-
-  def _output_matches(self, df: pd.DataFrame) -> None:
-    """Write Pandas dataframe to format that is specified
+  def _get_output_function(self, df: pd.DataFrame):
+    """Returns the df conversion function, given the required output format
     
     Args:
       df: the dataframe of the matches."""
+    return [df.to_csv, df.to_csv, df.to_excel, df.to_json, df.to_html][
+      ['csv', 'tsv', 'xlsx', 'json', 'html'].index(self.output_format)
+    ]
+
+  def _output_matches(self, df: pd.DataFrame) -> None:
+    """Write Pandas dataframe to format that is specified
+
+    Args:
+      df: the dataframe of the matches."""
     
-    path = f'{self.preprocessed_files_path}/{self.output_name}'
-    if self.output_format == 'csv':
-      return df.to_csv(f'{path}.csv', index=False)
-    elif self.output_format == 'tsv':
-      return df.to_csv(f'{path}.tsv', sep='\t', index=False)
-    elif self.output_format == 'xlsx':
-      return df.to_excel(f'{path}.xlsx', index=False)
+    # appends '.' + filetype if the name does not already contain it
+    path = self.output_name.__str__()
+    if path.split('.')[-1] != self.output_format:
+      path += f".{self.output_format}"
+
+    output = self._get_output_function(df)
+
+    if self.output_format == 'tsv':
+      output(path, sep='\t', index=False)
     elif self.output_format == 'json':
-      return df.to_json(f'{path}.json', index=False)
-    elif self.output_format == 'html':
-      return df.to_html(f'{path}.html', index=False)
+      output(path, orient='split', index=False)
+    else:
+      output(path, index=False)

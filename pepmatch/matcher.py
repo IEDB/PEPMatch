@@ -806,7 +806,6 @@ class Matcher:
       df = df[self._take_matches(df, "Gene Priority", "max")]
 
       # and with the best protein existence leve
-      idx = self._take_matches(df, "Protein Existence Level")
       df = df[self._take_matches(df, "Protein Existence Level")]
 
       # filter fragments

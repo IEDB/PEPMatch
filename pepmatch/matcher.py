@@ -762,6 +762,9 @@ class Matcher:
 
     return all_matches
 
+  def _take_matches(self, df: pd.DataFrame, search: str, min_max: str = 'min'):
+    return (df.groupby(['Query Sequence'])[search].transform(min_max) == df[search]) | df[search].isna()
+
 
   def _dataframe_matches(self, all_matches: list) -> pd.DataFrame:
     """Return Pandas dataframe of the results.
@@ -792,21 +795,18 @@ class Matcher:
           return group
 
       # take matches with the least number of mismatches
-      idx = (df.groupby(['Query Sequence'])['Mismatches'].transform('min') == df['Mismatches']) | df['Mismatches'].isna()
-      df = df[idx]
+      df = df[self._take_matches(df, "Mismatches")]
 
       # fill NaN values with 0 - otherwise pandas will drop the rows
       df[['Gene Priority', 'Protein Existence Level']] = df[
          ['Gene Priority', 'Protein Existence Level']
       ].fillna(value=0)
 
-      # take matches that are in the gene priority proteome 
-      idx = (df.groupby(['Query Sequence'])['Gene Priority'].transform('max') == df['Gene Priority']) | df['Gene Priority'].isna()
-      df = df[idx]
-      
+      # take matches that are in the gene priority proteome
+      df = df[self._take_matches(df, "Gene Priority", "max")]
+
       # and with the best protein existence level
-      idx = (df.groupby(['Query Sequence'])['Protein Existence Level'].transform('min') == df['Protein Existence Level']) | df['Protein Existence Level'].isna()
-      df = df[idx]
+      df = df[self._take_matches(df, "Protein Existence Level")]
 
       # filter fragments
       df = df.groupby(

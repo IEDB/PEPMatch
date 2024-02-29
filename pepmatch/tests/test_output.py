@@ -53,8 +53,9 @@ def test_local_creation(match, simple_dataframe):
 
 def test_relative_creation(match, simple_dataframe):
   """Tests for creation given a relative path"""
-
-  relative_location = Path("../pepmatch/relative.csv")
+  
+  base_path = Path(__file__).parent
+  relative_location = base_path / "relative.csv"
   _creation_calls(match, relative_location, simple_dataframe)
 
   assert relative_location.exists()

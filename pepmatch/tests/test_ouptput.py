@@ -9,6 +9,16 @@ from pepmatch.matcher import VALID_OUTPUT_FORMATS
 
 
 @pytest.fixture
+def proteome_path() -> Path:
+  return Path(__file__).parent / 'data' / 'proteome.fasta'
+
+
+@pytest.fixture
+def query_path() -> Path:
+  return Path(__file__).parent / 'data' / 'exact_match_query.fasta'
+
+
+@pytest.fixture
 def match(proteome_path, query_path):
     return Matcher(
         query=query_path,

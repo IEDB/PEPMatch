@@ -3,7 +3,6 @@
 import os
 import pandas as pd
 import pandas.testing as pdt
-from common_features import *
 from pepmatch import Preprocessor, ParallelMatcher
 
   

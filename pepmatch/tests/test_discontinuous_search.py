@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
+import pytest
 import pandas as pd
 import pandas.testing as pdt
-from common_features import *
+from pathlib import Path
 from pepmatch import Matcher
 
 

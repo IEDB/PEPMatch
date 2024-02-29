@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""
-Tests for the creation of file creation by Matcher objects
-"""
-from pandas import DataFrame as DF
+
+import pandas as pd
+import pytest
+from pathlib import Path
 from os import remove
-from common_features import *
 from pepmatch import Matcher
 from pepmatch.matcher import VALID_OUTPUT_FORMATS
+
 
 @pytest.fixture
 def match(proteome_path, query_path):
@@ -19,10 +19,9 @@ def match(proteome_path, query_path):
     )
 
 
-# fixtures and supporting
 @pytest.fixture
 def simple_dataframe():
-  return DF(data={"col1" : [1, 2], "col2": [3, 4]})
+  return pd.DataFrame(data={"col1" : [1, 2], "col2": [3, 4]})
 
 
 def _creation_calls(_matcher, _path, _df):
@@ -32,7 +31,6 @@ def _creation_calls(_matcher, _path, _df):
   _matcher._output_matches(_df)
 
 
-# Actual tests
 def test_local_creation(match, simple_dataframe):
   """Test creation given the local path"""
 
@@ -46,7 +44,7 @@ def test_local_creation(match, simple_dataframe):
 def test_relative_creation(match, simple_dataframe):
   """Tests for creation given a relative path"""
 
-  relative_location = Path(f"../PEPMatch/relative.csv")
+  relative_location = Path("../pepmatch/relative.csv")
   _creation_calls(match, relative_location, simple_dataframe)
 
   assert relative_location.exists()

@@ -169,7 +169,7 @@ class Preprocessor:
         'protein_id       TEXT NOT NULL,'\
         'protein_name     TEXT NOT NULL,'\
         'species          TEXT NOT NULL,'\
-        'taxon_id         INTEGER NOT NULL,'\
+        'taxon_id         TEXT NOT NULL,'\
         'gene             TEXT NOT NULL,'\
         'pe_level         INTEGER NOT NULL,'\
         'sequence_version INTEGER NOT NULL,'\

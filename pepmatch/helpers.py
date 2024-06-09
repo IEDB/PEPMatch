@@ -32,23 +32,28 @@ def extract_metadata(record: SeqRecord) -> list:
     record: protein SeqRecord from proteome FASTA file.
   """
   regexes = {
-      'protein_id': re.compile(r"\|([^|]*)\|"),     # between | and |
-      'protein_name': re.compile(r"\s(.+?)\sOS"),   # between space and space before OS
-      'species': re.compile(r"OS=(.+?)\sOX"),       # between OS= and space before OX
-      'taxon_id': re.compile(r"OX=(.+?)(\s|$)"),         # between OX= and space
-      'gene': re.compile(r"GN=(.+?)(\s|$)"),             # between GN= and space
-      'pe_level': re.compile(r"PE=(.+?)(\s|$)"),         # between PE= and space
-      'sequence_version': re.compile(r"SV=(.+?)(\s|$)"), # between SV= and space
-      'gene_priority': re.compile(r"GP=(.+?)(\s|$)"),    # between GP= and space
+    'protein_id': re.compile(r"\|([^|]*)\|"),     # between | and |
+    'protein_name': re.compile(r"\s(.+?)\sOS"),   # between space and space before OS
+    'species': re.compile(r"OS=(.+?)\sOX"),       # between OS= and space before OX
+    'taxon_id': re.compile(r"OX=(.+?)(\s|$)"),         # between OX= and space
+    'gene': re.compile(r"GN=(.+?)(\s|$)"),             # between GN= and space
+    'pe_level': re.compile(r"PE=(.+?)(\s|$)"),         # between PE= and space
+    'sequence_version': re.compile(r"SV=(.+?)(\s|$)"), # between SV= and space
+    'gene_priority': re.compile(r"GP=(.+?)(\s|$)"),    # between GP= and space
+    'swissprot': re.compile(r"^(tr|sp)\|"),        # between > and |
   }
   metadata = []
   for key in regexes: # loop through compiled regexes to extract metadata
     match = regexes[key].search(str(record.description))
-    
     if match:
-      metadata.append(match.group(1))
+      if key == 'swissprot':
+        metadata.append('1') if match.group(1) == 'sp' else metadata.append('0')
+      else:
+        metadata.append(match.group(1))
     else:
-      if key == 'protein_id':
+      if key == 'swissprot':
+        metadata.append('0')
+      elif key == 'protein_id':
         metadata.append(str(record.id)) # get record.id from FASTA header instead
       elif key == 'sequence_version':
         metadata.append('1')

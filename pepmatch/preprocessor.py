@@ -173,7 +173,8 @@ class Preprocessor:
         'gene             TEXT NOT NULL,'\
         'pe_level         INTEGER NOT NULL,'\
         'sequence_version INTEGER NOT NULL,'\
-        'gene_priority    INTEGER NOT NULL)'\
+        'gene_priority    INTEGER NOT NULL,'\
+        'swissprot        INTEGER NOT NULL)'\
     )
 
 
@@ -200,7 +201,7 @@ class Preprocessor:
       metadata_table: name of the metadata table."""
     
     cursor.executemany(
-      f'INSERT INTO "{metadata_table}" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+      f'INSERT INTO "{metadata_table}" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
       self.all_metadata
     )
 

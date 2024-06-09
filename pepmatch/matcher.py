@@ -824,9 +824,8 @@ class Matcher:
       )   
       df['Protein ID'] = df['Protein ID'] + df['Sequence Version']
     
-    # drop "Sequence Version" and "Gene Priority" columns
+    # drop "Sequence Version" column
     df.drop(columns=['Sequence Version'], inplace=True)
-    df.drop(columns=['Gene Priority'], inplace=True)
 
     # force integers on some columns
     int_cols = [

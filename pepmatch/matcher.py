@@ -12,7 +12,9 @@ from .preprocessor import Preprocessor
 from .hamming import hamming
 
 
+NUM_OUTPUT_COLUMNS = 14
 VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'tsv', 'xlsx', 'json', 'html']
+
 
 class Matcher:
   """
@@ -321,7 +323,7 @@ class Matcher:
     
     all_matches = []
     if not matches:
-      all_matches.append((peptide,) + (np.nan,) * 13)
+      all_matches.append((peptide,) + (np.nan,) * NUM_OUTPUT_COLUMNS)
     else:
       for match in matches:
         protein_number = (match - (match % 1000000)) // 1000000
@@ -629,7 +631,7 @@ class Matcher:
     
     all_matches = []
     if not matches:
-      all_matches.append((peptide,) + (np.nan,) * 13)
+      all_matches.append((peptide,) + (np.nan,) * NUM_OUTPUT_COLUMNS)
     else:
       for match in matches:
         metadata_key = (match[2] - (match[2] % 1000000)) // 1000000
@@ -760,7 +762,7 @@ class Matcher:
 
       if not match:
         all_matches.append(
-          (', '.join([x[0] + str(x[1]) for x in dis_epitope]),) + (np.nan,) * 14
+          (', '.join([x[0] + str(x[1]) for x in dis_epitope]),) + (np.nan,) * NUM_OUTPUT_COLUMNS
         )
 
     return all_matches

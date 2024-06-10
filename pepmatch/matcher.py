@@ -345,7 +345,8 @@ class Matcher:
           (match % 1000000) + len(peptide), # index end
           protein_data[6],                  # protein existence level
           protein_data[7],                  # sequence version
-          protein_data[8])                  # gene priority flag
+          protein_data[8],                  # gene priority flag
+          protein_data[9])                  # swissprot flag
         
         all_matches.append(match_data)
 
@@ -657,7 +658,8 @@ class Matcher:
           index_end,                    # index end
           pe_level,                     # protein existence level
           metadata[6],                  # sequence version
-          metadata[7]                   # gene priority flag
+          metadata[7],                  # gene priority flag
+          metadata[8]                   # swissprot flag
         )
         all_matches.append(match_data)
 
@@ -748,7 +750,8 @@ class Matcher:
               dis_epitope[-1][1],                           # index end
               metadata[5],                                  # protein existence level
               metadata[6],                                  # sequence version
-              metadata[7])                                  # gene priority flag
+              metadata[7],                                  # gene priority flag
+              metadata[8])                                  # swissprot flag
             
             all_matches.append(match_data)
         
@@ -757,7 +760,7 @@ class Matcher:
 
       if not match:
         all_matches.append(
-          (', '.join([x[0] + str(x[1]) for x in dis_epitope]),) + (np.nan,) * 13
+          (', '.join([x[0] + str(x[1]) for x in dis_epitope]),) + (np.nan,) * 14
         )
 
     return all_matches
@@ -771,13 +774,14 @@ class Matcher:
     
     Args:
       all_matches: the list of all matches for all peptides."""
-    
-    df = pd.DataFrame(all_matches,
-                      columns=['Query Sequence', 'Matched Sequence', 'Protein ID',
-                               'Protein Name', 'Species', 'Taxon ID', 'Gene',
-                               'Mismatches', 'Mutated Positions','Index start',
-                               'Index end', 'Protein Existence Level',
-                               'Sequence Version', 'Gene Priority'])
+    df = pd.DataFrame(
+      all_matches,
+      columns=[
+        'Query Sequence', 'Matched Sequence', 'Protein ID', 'Protein Name', 'Species',
+        'Taxon ID', 'Gene', 'Mismatches', 'Mutated Positions','Index start', 'Index end',
+        'Protein Existence Level', 'Sequence Version', 'Gene Priority', 'SwissProt Reviewed'
+      ]
+    )
 
     if self.best_match:
       def filter_fragments(group: pd.DataFrame) -> pd.DataFrame:
@@ -856,7 +860,6 @@ class Matcher:
       path += f".{self.output_format}"
 
     output = self._get_output_function(df)
-
     if self.output_format == 'tsv':
       output(path, sep='\t', index=False)
     elif self.output_format == 'json':

@@ -185,12 +185,18 @@ class Preprocessor:
       cursor: cursor object to execute SQL commands.
       kmers_table: name of the k-mers table.
       k: k-mer length to split the proteome into."""
-    
+    batch_size = 10000
     kmer_rows = []
+
     for protein_count, seq in enumerate(self.all_seqs):
-        for j, kmer in enumerate(split_sequence(seq, k)):
-            kmer_rows.append((kmer, (protein_count + 1) * 1000000 + j))
-    cursor.executemany(f'INSERT INTO "{kmers_table}" VALUES (?, ?)', kmer_rows)
+      for j, kmer in enumerate(split_sequence(seq, k)):
+        kmer_rows.append((kmer, (protein_count + 1) * 1000000 + j))
+        if len(kmer_rows) >= batch_size:
+          cursor.executemany(f'INSERT INTO "{kmers_table}" VALUES (?, ?)', kmer_rows)
+          kmer_rows.clear()
+
+    if kmer_rows:
+      cursor.executemany(f'INSERT INTO "{kmers_table}" VALUES (?, ?)', kmer_rows)
 
 
   def _insert_metadata(self, cursor: sqlite3.Cursor, metadata_table: str) -> None:

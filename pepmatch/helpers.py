@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import re
 
 from Bio import SeqIO

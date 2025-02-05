@@ -276,7 +276,9 @@ class Matcher:
 
       kmer_hit_list = []
       for kmer, index in kmer_indexes:
-        kmer_hit_list.append(index - all_kmers.index(kmer))
+        kmer_positions = [i for i, k in enumerate(all_kmers) if k == kmer] # this accounts for duplicate k-mers
+        for pos in kmer_positions:
+          kmer_hit_list.append(index - pos)
 
       matches = []
       sum_hits = Counter(kmer_hit_list)

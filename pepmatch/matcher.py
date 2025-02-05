@@ -736,7 +736,7 @@ class Matcher:
           )
           if residue_matches >= (len(dis_epitope) - self.max_mismatches):
             match = True
-            metadata = extract_metadata(protein_record)
+            metadata = extract_metadata(protein_record, False)
             match_data = (
               ', '.join(                                    # query epitope
                 [x[0] + str(x[1]) for x in dis_epitope]),

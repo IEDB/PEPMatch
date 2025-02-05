@@ -24,7 +24,7 @@ def split_sequence(sequence: str, k: int) -> list:
   return [sequence[i:i+k] for i in range(len(sequence) - k + 1)]
 
 
-def extract_metadata(record: SeqRecord) -> list:
+def extract_metadata(record: SeqRecord, header_id: bool) -> list:
   """Extract metadata from a FASTA header.
   Args: 
     record: protein SeqRecord from proteome FASTA file.
@@ -46,6 +46,8 @@ def extract_metadata(record: SeqRecord) -> list:
     if match:
       if key == 'swissprot':
         metadata.append('1') if match.group(1) == 'sp' else metadata.append('0')
+      elif key == 'protein_id':
+        metadata.append(match.group(1)) if not header_id else metadata.append(str(record.id))
       else:
         metadata.append(match.group(1))
     else:

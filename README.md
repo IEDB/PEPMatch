@@ -41,6 +41,7 @@ pip install pepmatch
 ```proteome``` - Path to proteome file to search against.\
 ```k``` - k-mer size to break up proteome into.\
 ```preprocessed_format``` - SQLite ("sqlite") or "pickle".\
+```header_id``` - Default=False, extracts the full FASTA header ID for protein identification. Typically in this format: >XX|YYYYYY|ZZ_ZZZZZ from UniProt and PEPMatch will extract YYYYYY. Pass `-H` flag in terminal to take the full header ID.
 ```preprocessed_files_path``` - (optional) Directory where you want preprocessed files to go. Default is current directory.\
 ```gene_priority_proteome``` - (optional) Subset of ```proteome``` with prioritized protein IDs.\
 

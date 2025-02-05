@@ -34,6 +34,7 @@ class Preprocessor:
     self,
     proteome,
     proteome_name='',
+    header_id=False,
     preprocessed_files_path='.',
     gene_priority_proteome=''
   ):
@@ -51,6 +52,10 @@ class Preprocessor:
       self.proteome_name = str(proteome).split('/')[-1].split('.')[0]
     else:
       self.proteome_name = proteome_name
+
+    # if True, extracts the full header ID from the FASTA file such as >sp|P05067|A4_HUMAN will ouput
+    # this instead of just P05067
+    self.header_id = header_id
 
     # extract all the data from the proteome
     self.all_seqs, self.all_metadata = self._get_data_from_proteome()
@@ -110,7 +115,7 @@ class Preprocessor:
       all_seqs.append(str(record.seq))
 
       metadata = [protein_number]
-      metadata.extend(extract_metadata(record))
+      metadata.extend(extract_metadata(record, self.header_id))
 
       all_metadata.append(tuple(metadata))
       protein_number += 1

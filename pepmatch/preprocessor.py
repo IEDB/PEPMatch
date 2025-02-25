@@ -1,6 +1,7 @@
 import _pickle as pickle
 import sqlite3
 import os
+import re
 
 from .helpers import parse_fasta, split_sequence, extract_metadata
 
@@ -107,21 +108,44 @@ class Preprocessor:
     2. A list of metadata in tuples. The metadata includes the protein ID,
        protein name, species, taxon ID, gene, protein existence level,
        sequence version, and gene priority label."""
-    
+
+    def extract_accession(record_id):
+      """Helper function to extract UniProt accession from record ID"""
+      accession = str(record_id)
+      id_match = re.search(r"\|([^|]*)\|", accession)
+      if id_match:
+        accession = id_match.group(1)
+      return accession
+
     all_seqs = []
     all_metadata = []
     protein_number = 1
+    
+    canonical_pe_levels = {}  # this loop is to assign swissprot isoforms their canonical PE level
+    for record in self.proteome:
+      accession = extract_accession(record.id)
+      base_accession = accession.split('-')[0] if '-' in accession else accession
+      pe_match = re.search(r"PE=(\d+)", str(record.description))
+      if pe_match and '-' not in accession:
+        canonical_pe_levels[base_accession] = pe_match.group(1)
+    
     for record in self.proteome:
       all_seqs.append(str(record.seq))
-
       metadata = [protein_number]
-      metadata.extend(extract_metadata(record, self.header_id))
+      extracted_metadata = extract_metadata(record, self.header_id)
 
+      accession = extract_accession(record.id)
+      if '-' in accession and extracted_metadata[5] == '0':  # index 5 is PE level
+        base_accession = accession.split('-')[0]
+        if base_accession in canonical_pe_levels:
+          extracted_metadata[5] = canonical_pe_levels[base_accession]
+      
+      metadata.extend(extracted_metadata)
       all_metadata.append(tuple(metadata))
       protein_number += 1
-
+        
     return all_seqs, all_metadata
-
+    
 
   def sql_proteome(self, k: int) -> None:
     """Writes the kmers_table and metadata_table to a SQLite database.

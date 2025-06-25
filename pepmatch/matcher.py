@@ -839,8 +839,12 @@ class Matcher:
     int_cols = [
       'Mismatches', 'Index start', 'Index end', 'Protein Existence Level'
     ]
-    df[int_cols] = df[int_cols].astype('Int64')
-    # TODO: convert taxon ID to int if possible
+
+    for col in int_cols:
+      df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    df[int_cols] = df[int_cols].astype('Int32')
+
     return df
 
   def _get_output_function(self, df: pd.DataFrame):

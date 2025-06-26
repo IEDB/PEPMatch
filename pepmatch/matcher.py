@@ -842,6 +842,12 @@ class Matcher:
 
     Args:
       df: the dataframe of the matches."""
+    
+    # for files that can't do nested data, we convert mutated positions column to string
+    if self.output_format in ['csv', 'tsv', 'xlsx']:
+      df = df.with_columns(
+        pl.col("Mutated Positions").list.eval(pl.element().cast(pl.Utf8)).list.join("; ")
+      )
 
     # appends '.' + filetype if the name does not already contain it
     path = self.output_name.__str__()

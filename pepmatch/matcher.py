@@ -844,9 +844,13 @@ class Matcher:
       df: the dataframe of the matches."""
     
     # for files that can't do nested data, we convert mutated positions column to string
-    if self.output_format in ['csv', 'tsv', 'xlsx']:
-      df = df.with_columns(
-        pl.col("Mutated Positions").list.eval(pl.element().cast(pl.Utf8)).list.join("; ")
+    df_to_write = df.clone()
+    if "Mutated Positions" in df_to_write.columns and self.output_format in ['csv', 'tsv', 'xlsx']:
+      df_to_write = df_to_write.with_columns(
+        pl.when(pl.col("Mutated Positions").list.len() > 0)
+          .then(pl.format("[{}]", pl.col("Mutated Positions").list.eval(pl.element().cast(pl.Utf8)).list.join(", ")))
+          .otherwise(pl.lit("[]"))
+          .alias("Mutated Positions")
       )
 
     # appends '.' + filetype if the name does not already contain it

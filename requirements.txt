@@ -1,4 +1,4 @@
-biopython>=1.78
-polars>=1.31.0
-xlsxwriter>=3.2.5
+-e .
+
+pytest>=8.0
 pre-commit>=3.3.2

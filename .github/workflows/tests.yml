@@ -9,124 +9,47 @@ on:
       - master
 
 jobs:
+  test:
+    name: Run Test - ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        include:
+          - name: Exact Match
+            test-file: pepmatch/tests/test_exact_match.py
+          - name: Mismatch
+            test-file: pepmatch/tests/test_mismatching.py
+          - name: Best Match
+            test-file: pepmatch/tests/test_best_match.py
+          - name: Discontinuous Epitope
+            test-file: pepmatch/tests/test_discontinuous_search.py
+          - name: Parallel
+            test-file: pepmatch/tests/test_parallel_match.py
+          - name: Output
+            test-file: pepmatch/tests/test_output.py
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11' 
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install pytest
+
+    - name: Run Test
+      run: pytest ${{ matrix.test-file }}
+
   linter:
     name: Ruff Linter
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: chartboost/ruff-action@v1
-        if: false
-
-  testexactmatch:
-    name: Exact Match Test
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install pytest
-    - name: Run Test
-      run: pytest pepmatch/tests/test_exact_match.py
-
-  testmismatch:
-    name: Mismatch Test
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install pytest
-    - name: Run Test
-      run: pytest pepmatch/tests/test_mismatching.py
-
-  testbestmatch:
-    name: Best Match Test
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install pytest
-    - name: Run Test
-      run: pytest pepmatch/tests/test_best_match.py
-
-  testdiscontinuoussearch:
-    name: Discontinuous Epitope Search Test
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install pytest
-    - name: Run Test
-      run: pytest pepmatch/tests/test_discontinuous_search.py
-
-  testparallelmatch:
-    name: Parallel Test
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install pytest
-    - name: Run Test
-      run: pytest pepmatch/tests/test_parallel_match.py
-
-  testoutput:
-    name: Output Test
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install pytest
-    - name: Run Test
-      run: pytest pepmatch/tests/test_output.py

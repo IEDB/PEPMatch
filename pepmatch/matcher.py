@@ -1,8 +1,8 @@
+from __future__ import annotations
 import os
 import _pickle as pickle
 import sqlite3
-import pandas as pd
-import numpy as np
+import polars as pl
 
 from typing import Union
 from collections import Counter, defaultdict
@@ -13,7 +13,7 @@ from .hamming import hamming
 
 
 NUM_OUTPUT_COLUMNS = 14
-VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'tsv', 'xlsx', 'json', 'html']
+VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'tsv', 'xlsx', 'json']
 
 
 class Matcher:
@@ -33,7 +33,7 @@ class Matcher:
   multiple times to get the best match quickly.
 
   Optional: output and output_format arguments to write results to file.
-  Supported formats are "csv", "tsv", "xlsx", "json", and "html"."""
+  Supported formats are "csv", "tsv", "xlsx", and "json"."""
 
   def __init__(
     self,
@@ -53,7 +53,7 @@ class Matcher:
     if output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError(
         'Invalid output format, please choose `dataframe`, '
-        '`csv`, `tsv`, `xlsx`, `json`, or `html`.'
+        '`csv`, `tsv`, `xlsx`, or `json`.'
       )
 
     # initialize query and output name based on input type
@@ -205,36 +205,29 @@ class Matcher:
     """Overarching function that calls the appropriate search matching function
     based on the parameters."""
 
+    query_matches = []
     if self.query:
-      
       if self.max_mismatches == -1:
-        query_df = self._dataframe_matches(self.best_match_search())
-
+        query_matches = self.best_match_search()
       elif self.max_mismatches > 0:
-        query_df = self._dataframe_matches(self.mismatch_search())
-      
+        query_matches = self.mismatch_search()
       else:
-        query_df = self._dataframe_matches(self.exact_match_search())
-    
-    else:
-      query_df = pd.DataFrame()
+        query_matches = self.exact_match_search()
 
-    # search for discontinuous epitopes if they exist
+    discontinuous_matches = []
     if self.discontinuous_epitopes:
-      discontinuous_df = self._dataframe_matches(self.discontinuous_search())
-    else:
-      discontinuous_df = pd.DataFrame()
+      discontinuous_matches = self.discontinuous_search()
 
-    # combine the dataframes if both query and discontinuous epitopes exist
-    df = pd.concat([query_df, discontinuous_df], ignore_index=True)
+    query_df = self._dataframe_matches(query_matches)
+    discontinuous_df = self._dataframe_matches(discontinuous_matches)
 
-    # return a dataframe instead of outputting file if specified
+    df = pl.concat([query_df, discontinuous_df], how="vertical")
+
     if self.output_format == 'dataframe':
       return df
-    
     else:
       self._output_matches(df)
-
+    
 
   def exact_match_search(self) -> list:
     """Using preprocessed data within a SQLite database and the query peptides,
@@ -325,7 +318,7 @@ class Matcher:
     
     all_matches = []
     if not matches:
-      all_matches.append((peptide,) + (np.nan,) * NUM_OUTPUT_COLUMNS)
+      all_matches.append((peptide,) + (None,) * NUM_OUTPUT_COLUMNS)
     else:
       for match in matches:
         protein_number = (match - (match % 1000000)) // 1000000
@@ -633,7 +626,7 @@ class Matcher:
     
     all_matches = []
     if not matches:
-      all_matches.append((peptide,) + (np.nan,) * NUM_OUTPUT_COLUMNS)
+      all_matches.append((peptide,) + (None,) * NUM_OUTPUT_COLUMNS)
     else:
       for match in matches:
         metadata_key = (match[2] - (match[2] % 1000000)) // 1000000
@@ -645,8 +638,8 @@ class Matcher:
         index_start = int((match[2] % 1000000) + 1)
         index_end = int((match[2] % 1000000) + len(peptide))
 
-        taxon_id = int(metadata[3]) if metadata[3] else np.nan
-        pe_level = int(metadata[5]) if metadata[5] else np.nan
+        taxon_id = int(metadata[3]) if metadata[3] else None
+        pe_level = int(metadata[5]) if metadata[5] else None
 
         match_data = (
           peptide,                      # query peptide
@@ -682,6 +675,8 @@ class Matcher:
 
       # optimal # of mismatches for k and smallest peptide
       self.max_mismatches = (self.lengths[0] // self.k) - 1 
+      if self.max_mismatches < 0:
+        self.max_mismatches = 0
 
       if self.max_mismatches == 0:
         matches = self.exact_match_search()
@@ -691,7 +686,7 @@ class Matcher:
       # separate out peptides that did not match into a new query
       self.new_query = []
       for match in matches:
-        if not pd.isna(match[1]):
+        if match[1] is not None:
           all_matches.append(match)
         else:
           self.new_query.append(match[0])
@@ -709,7 +704,7 @@ class Matcher:
           matches = self.mismatch_search()
           self.new_query = []
           for match in matches:
-            if not pd.isna(match[1]):
+            if match[1] is not None:
               all_matches.append(match)
             else:
               self.new_query.append(match[0])
@@ -764,113 +759,101 @@ class Matcher:
 
       if not match:
         all_matches.append(
-          (', '.join([x[0] + str(x[1]) for x in dis_epitope]),) + (np.nan,) * NUM_OUTPUT_COLUMNS
+          (', '.join([x[0] + str(x[1]) for x in dis_epitope]),) + (None,) * NUM_OUTPUT_COLUMNS
         )
 
     return all_matches
 
-  def _take_matches(self, df: pd.DataFrame, search: str, min_max: str = 'min'):
-    return (df.groupby(['Query Sequence'])[search].transform(min_max) == df[search]) | df[search].isna()
 
-
-  def _dataframe_matches(self, all_matches: list) -> pd.DataFrame:
+  def _dataframe_matches(self, all_matches: list) -> pl.DataFrame:
     """Return Pandas dataframe of the results.
     
     Args:
       all_matches: the list of all matches for all peptides."""
-    df = pd.DataFrame(
-      all_matches,
-      columns=[
-        'Query Sequence', 'Matched Sequence', 'Protein ID', 'Protein Name', 'Species',
-        'Taxon ID', 'Gene', 'Mismatches', 'Mutated Positions','Index start', 'Index end',
-        'Protein Existence Level', 'Sequence Version', 'Gene Priority', 'SwissProt Reviewed'
-      ]
-    )
 
-    if self.best_match:
-      def filter_fragments(group: pd.DataFrame) -> pd.DataFrame:
-        """Takes out matches with 'Fragment' in the protein name if there are other
-        matches without 'Fragment'.
+    schema = [
+      ('Query Sequence', pl.Utf8), ('Matched Sequence', pl.Utf8), ('Protein ID', pl.Utf8),
+      ('Protein Name', pl.Utf8), ('Species', pl.Utf8), ('Taxon ID', pl.Int64),
+      ('Gene', pl.Utf8), ('Mismatches', pl.Int64), ('Mutated Positions', pl.List(pl.Int64)),
+      ('Index start', pl.Int64), ('Index end', pl.Int64),
+      ('Protein Existence Level', pl.Int64), ('Sequence Version', pl.Int64),
+      ('Gene Priority', pl.Int64), ('SwissProt Reviewed', pl.Boolean)
+    ]
 
-        Args:
-          group: the group of matches for a given query peptide.
-        """
-        group['Protein Name'] = group['Protein Name'].astype(str)
-        no_fragments = group[~group['Protein Name'].str.contains('Fragment')]
-        if len(no_fragments) > 0:
-          return no_fragments
-        else:
-          return group
+    # If all_matches is empty, return an empty DataFrame with the correct schema
+    if not all_matches:
+      return pl.DataFrame(schema=schema).drop("Sequence Version")
 
-      # take matches with the least number of mismatches
-      df = df[self._take_matches(df, "Mismatches")]
+    df = pl.DataFrame(all_matches, schema=schema, orient="row")
 
-      # fill NaN values with 0 - otherwise pandas will drop the rows
-      df[['Gene Priority', 'Protein Existence Level']] = df[
-         ['Gene Priority', 'Protein Existence Level']
-      ].fillna(value=0)
-
-      # take matches that are in the gene priority proteome
-      df = df[self._take_matches(df, "Gene Priority", "max")]
-
-      # and with the best protein existence leve
-      df = df[self._take_matches(df, "Protein Existence Level")]
-
-      # filter fragments
-      df = df.groupby(
-        'Query Sequence', group_keys=False
-      ).apply(filter_fragments).reset_index(drop=True)
-
-      # sort values by protein ID and drop duplicates, guaranteeing same results 
-      df.sort_values(by=['Query Sequence', 'Protein ID', 'Index start'], inplace=True)
-      df.drop_duplicates(['Query Sequence'], inplace=True)
+    if self.best_match and df.height > 0:
+      df = (
+        df.sort('Protein ID', 'Index start') # Sort first for consistent unique selection
+        .with_columns(
+          # Create a boolean flag to identify rows that are NOT fragments
+          (~pl.col("Protein Name").str.contains("Fragment")).alias("is_not_fragment")
+        )
+        .with_columns(
+          # Check if *any* non-fragment matches exist within a query group
+          pl.col("is_not_fragment").any().over("Query Sequence").alias("has_non_fragment_match")
+        )
+        .filter(
+          # Keep a row if:
+          # 1. It is a non-fragment match, AND its group has non-fragment matches
+          # 2. OR, its group has *no* non-fragment matches at all (so we keep the fragments)
+          (pl.col("is_not_fragment") & pl.col("has_non_fragment_match")) |
+          (~pl.col("has_non_fragment_match"))
+        )
+        .with_columns([
+          # Use window functions to find the best value per group for filtering
+          pl.col("Mismatches").min().over("Query Sequence").alias("min_mismatches"),
+          pl.col("Gene Priority").max().over("Query Sequence").alias("max_gene_priority"),
+          pl.col("Protein Existence Level").min().over("Query Sequence").alias("min_pe_level")
+        ])
+        .filter(
+          # Filter for rows that match the best criteria within their group
+          (pl.col("Mismatches") == pl.col("min_mismatches")) &
+          (pl.col("Gene Priority") == pl.col("max_gene_priority")) &
+          (pl.col("Protein Existence Level") == pl.col("min_pe_level"))
+        )
+        # This is equivalent to pandas' drop_duplicates(subset, keep='first')
+        .unique(subset=["Query Sequence"], keep="first", maintain_order=True)
+        # Clean up helper columns
+        .drop([
+          "is_not_fragment", "has_non_fragment_match", "min_mismatches", 
+          "max_gene_priority", "min_pe_level"
+        ])
+      )
 
     if self.sequence_version:
-      # combine protein ID and sequence version
-      df['Sequence Version'] = df['Sequence Version'].apply(
-        lambda x: f'.{int(x)}' if not pd.isna(x) else ''
-      )   
-      df['Protein ID'] = df['Protein ID'] + df['Sequence Version']
-    
-    # drop "Sequence Version" column
-    df.drop(columns=['Sequence Version'], inplace=True)
+      # Combine protein ID and sequence version using Polars expressions
+      df = df.with_columns(
+        pl.when(pl.col("Sequence Version").is_not_null())
+          .then(pl.col("Protein ID") + "." + pl.col("Sequence Version").cast(pl.Utf8))
+          .otherwise(pl.col("Protein ID"))
+          .alias("Protein ID")
+      )
 
-    # force integers on some columns
-    int_cols = [
-      'Mismatches', 'Index start', 'Index end', 'Protein Existence Level'
-    ]
+    return df.drop("Sequence Version")
 
-    for col in int_cols:
-      df[col] = pd.to_numeric(df[col], errors='coerce')
 
-    df[int_cols] = df[int_cols].astype('Int32')
-
-    return df
-
-  def _get_output_function(self, df: pd.DataFrame):
-    """Returns the df conversion function, given the required output format
-    
-    Args:
-      df: the dataframe of the matches."""
-    return [df.to_csv, df.to_csv, df.to_excel, df.to_json, df.to_html][
-      ['csv', 'tsv', 'xlsx', 'json', 'html'].index(self.output_format)
-    ]
-
-  def _output_matches(self, df: pd.DataFrame) -> None:
+  def _output_matches(self, df: pl.DataFrame) -> None:
     """Write Pandas dataframe to format that is specified
 
     Args:
       df: the dataframe of the matches."""
-    
+
     # appends '.' + filetype if the name does not already contain it
     path = self.output_name.__str__()
-    if path.split('.')[-1] != self.output_format:
+    if not path.lower().endswith(f".{self.output_format}"):
       path += f".{self.output_format}"
 
-    output = self._get_output_function(df)
-    if self.output_format == 'tsv':
-      output(path, sep='\t', index=False)
+    if self.output_format == 'csv':
+      df.write_csv(path)
+    elif self.output_format == 'tsv':
+      df.write_csv(path, separator='\t')
+    elif self.output_format == 'xlsx':
+      df.write_excel(path)
     elif self.output_format == 'json':
-      output(path, orient='split', index=False)
-    else:
-      output(path, index=False)
+      df.write_json(path)
+

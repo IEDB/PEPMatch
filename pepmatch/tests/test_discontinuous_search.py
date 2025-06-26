@@ -1,22 +1,16 @@
-#!/usr/bin/env python3
-
 import pytest
-import pandas as pd
-import pandas.testing as pdt
+import polars as pl
+import polars.testing as plt
 from pathlib import Path
-
 from pepmatch import Matcher
-
 
 @pytest.fixture
 def proteome_path() -> Path:
   return Path(__file__).parent / 'data' / 'proteome.fasta'
 
-
 @pytest.fixture
 def expected_path() -> Path:
   return Path(__file__).parent / 'data' / 'discontinuous_expected.csv'
-
 
 @pytest.fixture
 def query() -> list:
@@ -26,17 +20,16 @@ def query() -> list:
     'S2760, V2763, E2773, D2805, T2819, S2831, E2844, R2852, L2863'
   ]
 
-
 def test_discontinuous_search(proteome_path, query, expected_path):
   """Test searching discontinuous peptides in a proteome."""
+  
   df = Matcher(
     query=query,
     proteome_file=proteome_path,
     max_mismatches=0,
     output_format='dataframe'
   ).match()
-  df = df.sort_values(by=['Query Sequence']).reset_index(drop=True)
 
-  expected_df = pd.read_csv(expected_path)
-  expected_df= expected_df.sort_values(by=['Query Sequence']).reset_index(drop=True)
-  pdt.assert_series_equal(df['Protein ID'], expected_df['Protein ID'])
+  df = df.sort('Query Sequence')
+  expected_df = pl.read_csv(expected_path).sort('Query Sequence')
+  plt.assert_series_equal(df['Protein ID'], expected_df['Protein ID'])

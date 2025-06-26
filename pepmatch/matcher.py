@@ -109,10 +109,10 @@ class Matcher:
         self.output_name = output_name
       else:
         self.output_name = 'PEPMatch_results'
-      return [seq.upper() for seq in query]
+      return [seq.upper() for seq in query if isinstance(seq, str) and seq.strip()]
     
     else: # parse from FASTA if not Python list
-      parsed_query = [str(record.seq) for record in parse_fasta(query)]
+      parsed_query = [str(record.seq).upper() for record in parse_fasta(query) if str(record.seq).strip()]
       if output_name:
         self.output_name = output_name
       else: # output_name = query_name_to_proteome_name
@@ -120,7 +120,7 @@ class Matcher:
         proteome_name = str(proteome_file).split('/')[-1].split('.')[0]
         self.output_name = f'{query_name}_to_{proteome_name}'
 
-      return [seq.upper() for seq in parsed_query]
+      return parsed_query
 
 
   def _find_discontinuous_epitopes(self) -> list:

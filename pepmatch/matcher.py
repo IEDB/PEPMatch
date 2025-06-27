@@ -79,7 +79,7 @@ class Matcher:
     
     assert self.query or self.discontinuous_epitopes, 'Query is empty.'
     
-    self.lengths = sorted(set(len(peptide) for peptide in self.query))
+    self.lengths = sorted(set(len(peptide) for _, peptide in self.query))
     self.max_mismatches = max_mismatches
     self.preprocessed_files_path = preprocessed_files_path
     self.best_match = best_match
@@ -121,42 +121,49 @@ class Matcher:
         self.output_name = output_name
       else:
         self.output_name = 'PEPMatch_results'
-      return [seq.upper() for seq in query if isinstance(seq, str) and seq.strip()]
+      return [
+        (str(i+1), seq.upper())  # number each peptide in the list
+        for i, seq in enumerate(query) if isinstance(seq, str) and seq.strip()
+      ]
     
     else: # parse from FASTA if not Python list
-      parsed_query = [str(record.seq).upper() for record in parse_fasta(query) if str(record.seq).strip()]
+      parsed_query = [
+        (record.id, str(record.seq).upper()) 
+        for record in parse_fasta(query) if str(record.seq).strip()
+      ]
       if output_name:
         self.output_name = output_name
       else: # output_name = query_name_to_proteome_name
         query_name = str(query).split('/')[-1].split('.')[0]
         proteome_name = str(proteome_file).split('/')[-1].split('.')[0]
         self.output_name = f'{query_name}_to_{proteome_name}'
-
       return parsed_query
 
 
-  def _find_discontinuous_epitopes(self) -> list:
-    """Find discontinuous epitopes in query and store separately."""
-    discontinuous_epitopes = []
-    for peptide in self.query:
+  def _find_discontinuous_epitopes(self) -> dict:
+    """Find discontinuous epitopes and store them in a dictionary 
+    mapping their query_id to the parsed epitope."""
+    discontinuous_epitopes = {}
+    for query_id, peptide in self.query:
       try:
+        # Check if the peptide string can be parsed as a discontinuous epitope
         discontinuous_epitope = [(x[0], int(x[1:])) for x in peptide.split(', ')]
-        discontinuous_epitopes.append(discontinuous_epitope)
-      except ValueError:
+        discontinuous_epitopes[query_id] = discontinuous_epitope
+      except (ValueError, IndexError):
         continue
-
     return discontinuous_epitopes
 
 
   def _clean_query(self) -> list:
-    """Remove discontinous epitopes from query."""
-    epitopes = self.discontinuous_epitopes
-    discontinuous_epitope_strings = [
-      ', '.join([x[0] + str(x[1]) for x in epitopes[i]]) for i in range(len(epitopes))
+    """Remove discontinuous epitopes from the main query list."""
+    # Get the query_ids of all identified discontinuous epitopes
+    discontinuous_ids = set(self.discontinuous_epitopes.keys())
+    # Return a new query list excluding those IDs
+    return [
+        (query_id, peptide) for query_id, peptide in self.query 
+        if query_id not in discontinuous_ids
     ]
-    query_filtered = set(self.query) - set(discontinuous_epitope_strings)
-    return list(query_filtered)
-  
+
 
   def _initialize_k(self, k: int) -> tuple:
     """Initialize k and k_specified values based on k and max_mismatches input.
@@ -181,9 +188,9 @@ class Matcher:
       return {self.k: self.query}
     else:
       batched_peptides = defaultdict(list)
-      for seq in self.query:
+      for query_id, seq in self.query:
         key = len(seq) // (self.max_mismatches + 1)
-        batched_peptides[key].append(seq)
+        batched_peptides[key].append((query_id, seq))
       
       return dict(batched_peptides)
 
@@ -273,7 +280,7 @@ class Matcher:
       cursor = conn.cursor()
 
     all_matches = []
-    for peptide in self.query:
+    for query_id, peptide in self.query:
       
       if len(peptide) < self.k:
         continue
@@ -304,7 +311,7 @@ class Matcher:
           matches.append(hit)  # agree with the number of kmers used
 
       processed_matches = self._process_exact_matches(
-        peptide, matches, cursor, metadata_table_name
+        query_id, peptide, matches, cursor, metadata_table_name
       )
       all_matches.extend(processed_matches)
       pbar.update(1)
@@ -331,7 +338,7 @@ class Matcher:
 
 
   def _process_exact_matches(
-    self, peptide: str, matches: list, cursor: sqlite3.Cursor, metadata_table_name: str
+    self, query_id: str, peptide: str, matches: list, cursor: sqlite3.Cursor, metadata_table_name: str
   ) -> list:
     """Extract all metadata for the exact matches and return as a list of tuples.
     
@@ -343,7 +350,7 @@ class Matcher:
     
     all_matches = []
     if not matches:
-      all_matches.append((peptide,) + (None,) * NUM_OUTPUT_COLUMNS)
+      all_matches.append((query_id, peptide) + (None,) * NUM_OUTPUT_COLUMNS)
     else:
       for match in matches:
         protein_number = (match - (match % 1000000)) // 1000000
@@ -354,6 +361,7 @@ class Matcher:
         cursor.execute(query)
         protein_data = cursor.fetchone()
         match_data = (
+          query_id,                         # query identifier
           peptide,                          # query peptide
           peptide,                          # matched peptide (same as query)
           protein_data[1],                  # protein ID
@@ -397,7 +405,7 @@ class Matcher:
         Preprocessor(self.proteome).pickle_proteome(self.k)
         kmer_dict, rev_kmer_dict, metadata_dict = self._read_pickle_files()
 
-      for peptide in peptides:
+      for query_id, peptide in peptides:
 
         all_kmers = split_sequence(peptide, self.k)
 
@@ -412,7 +420,7 @@ class Matcher:
           )
 
         processed_matches = self._process_mismatch_matches(
-          peptide, matches, metadata_dict
+          query_id, peptide, matches, metadata_dict
         )
         all_matches.extend(processed_matches)
         if not self.best_match:
@@ -643,7 +651,7 @@ class Matcher:
 
 
   def _process_mismatch_matches(
-    self, peptide: str, matches: list, metadata_dict: dict
+    self, query_id: str, peptide: str, matches: list, metadata_dict: dict
   ) -> list:
     """Extract all metadata for the mismatch matches and return as a list of tuples.
     
@@ -654,7 +662,7 @@ class Matcher:
     
     all_matches = []
     if not matches:
-      all_matches.append((peptide,) + (None,) * NUM_OUTPUT_COLUMNS)
+      all_matches.append((query_id, peptide) + (None,) * NUM_OUTPUT_COLUMNS)
     else:
       for match in matches:
         metadata_key = (match[2] - (match[2] % 1000000)) // 1000000
@@ -670,6 +678,7 @@ class Matcher:
         pe_level = int(metadata[5]) if metadata[5] else None
 
         match_data = (
+          query_id,                     # query identifier
           peptide,                      # query peptide
           match[0],                     # matched peptide
           metadata[0],                  # protein ID
@@ -692,81 +701,92 @@ class Matcher:
 
 
   def best_match_search(self, pbar: Optional[TqdmDummy] = None) -> list:
-    """After calculating the splits we would need (starting with lowest peptide
-    length in query), we can then call the mismatch_search function. We use
-    the maximum # of mismatches calculated from the each length and split."""
-    
+    """Finds the best match for each peptide by iteratively decreasing k and
+    increasing the allowed number of mismatches until all peptides are matched."""
     print("Warning: best match search feature of PEPMatch may take awhile.")
     all_matches = []
-    unmatched_peptides_for_progress = self.query.copy()
+    peptides_to_search = self.query.copy() 
+    
+    # STAGE 1: try top k values to get matches that are quicker to get
+    if self.ks:
+      for k in self.ks:
+        if not peptides_to_search:
+          break
 
-    for k in self.ks:
-      self.k = k
+        self.k = k
+        self.k_specified = True
+        
+        min_remaining_len = min(len(p[1]) for p in peptides_to_search)
+        self.max_mismatches = (min_remaining_len // self.k) - 1
+        if self.max_mismatches < 0:
+          self.max_mismatches = 0
+          
+        print(f"Searching with k={self.k} and up to {self.max_mismatches} mismatches...")
+
+        self.query = peptides_to_search
+        self.batched_peptides = {0: self.query}
+
+        matches_this_pass = self.exact_match_search(pbar=TqdmDummy()) if self.max_mismatches == 0 else self.mismatch_search(pbar=TqdmDummy())
+        
+        unmatched_this_pass = []
+        matched_ids_this_pass = set()
+
+        for match in matches_this_pass:
+          if match[2] is not None:
+            all_matches.append(match)
+            if match[0] not in matched_ids_this_pass:
+              matched_ids_this_pass.add(match[0])
+              pbar.update(1)
+          else:
+            unmatched_this_pass.append((match[0], match[1]))
+
+        peptides_to_search = unmatched_this_pass
+
+    # STAGE 2: for peptides not found above, set k=2 and keep lowering mismatch threshold until we get one
+    if peptides_to_search:
+      self.k = 2
       self.k_specified = True
-      self.max_mismatches = (self.lengths[0] // self.k) - 1
-      if self.max_mismatches < 0:
+
+      if self.ks:
+        min_len = min(len(p[1]) for p in peptides_to_search)
+        self.max_mismatches = (min_len // 2) - 1
+        if self.max_mismatches < 0: self.max_mismatches = 0
+      else:
         self.max_mismatches = 0
-    
-      print(f"Searching peptides for matches with {self.max_mismatches} mismatches.")
-      if self.max_mismatches == 0:
-        matches = self.exact_match_search(pbar=TqdmDummy())
-      else:
-        matches = self.mismatch_search(pbar=TqdmDummy())
-      
-      self.new_query = []
-      peptides_matched_this_pass = set()
 
-      for match in matches:
-        if match[1] is not None:
-          all_matches.append(match)
-          peptides_matched_this_pass.add(match[0])
-        else:
-          self.new_query.append(match[0])
-    
-      if peptides_matched_this_pass:
-        newly_matched_count = sum(1 for p in unmatched_peptides_for_progress if p in peptides_matched_this_pass)
-        if newly_matched_count > 0:
-          pbar.update(newly_matched_count)
-          unmatched_peptides_for_progress = [
-            p for p in unmatched_peptides_for_progress if p not in peptides_matched_this_pass
-          ]
-
-      if not self.new_query:
-        if unmatched_peptides_for_progress:
-          pbar.update(len(unmatched_peptides_for_progress))
-        return all_matches
-      else:
-        self.query = self.new_query
-      
-      if self.k == 2:
+      while peptides_to_search:
         self.max_mismatches += 1
-        while self.new_query:
-          self.query = self.new_query
-          matches = self.mismatch_search(pbar=TqdmDummy())
-          self.new_query = []
-          peptides_matched_this_pass = set()
+        
+        shortest_remaining_len = min(len(p[1]) for p in peptides_to_search)
+        if self.max_mismatches >= shortest_remaining_len:
+          print(f"Stopping search: required mismatches ({self.max_mismatches}) exceeds peptide length ({shortest_remaining_len}).")
+          break 
 
-          for match in matches:
-            if match[1] is not None:
-              all_matches.append(match)
-              peptides_matched_this_pass.add(match[0])
-            else:
-              self.new_query.append(match[0])
+        print(f"Retrying with k=2 and up to {self.max_mismatches} mismatches...")
         
-          if peptides_matched_this_pass:
-            newly_matched_count = sum(1 for p in unmatched_peptides_for_progress if p in peptides_matched_this_pass)
-            if newly_matched_count > 0:
-              pbar.update(newly_matched_count)
-              unmatched_peptides_for_progress = [
-                p for p in unmatched_peptides_for_progress if p not in peptides_matched_this_pass
-              ]
-            
-          self.max_mismatches += 1
+        self.query = peptides_to_search
+        self.batched_peptides = {0: self.query}
         
-      self.batched_peptides = {0: self.query}
-    
-    if unmatched_peptides_for_progress:
-      pbar.update(len(unmatched_peptides_for_progress))
+        matches_this_pass = self.mismatch_search(pbar=TqdmDummy())
+        
+        unmatched_this_pass = []
+        matched_ids_this_pass = set()
+        for match in matches_this_pass:
+          if match[2] is not None:
+            all_matches.append(match)
+            if match[0] not in matched_ids_this_pass:
+              matched_ids_this_pass.add(match[0])
+              pbar.update(1)
+          else:
+            unmatched_this_pass.append((match[0], match[1]))
+
+        peptides_to_search = unmatched_this_pass
+
+    if peptides_to_search:
+      for query_id, peptide in peptides_to_search:
+        all_matches.append((query_id, peptide) + (None,) * NUM_OUTPUT_COLUMNS)
+      pbar.update(len(peptides_to_search))
+
     return all_matches
 
 
@@ -776,8 +796,9 @@ class Matcher:
     the query epitope residues up to the maximum number of mismatches."""
 
     all_matches = []
-    for dis_epitope in self.discontinuous_epitopes:
+    for query_id, dis_epitope in self.discontinuous_epitopes.items():
       match = False
+      query_peptide_str = ', '.join([x[0] + str(x[1]) for x in dis_epitope])
       for protein_record in parse_fasta(self.proteome):
         try:
           residue_matches = sum(
@@ -787,8 +808,8 @@ class Matcher:
             match = True
             metadata = extract_metadata(protein_record, False)
             match_data = (
-              ', '.join(                                    # query epitope
-                [x[0] + str(x[1]) for x in dis_epitope]),
+              query_id,
+              query_peptide_str,                            # query peptide
               ', '.join(                                    # matched epitope
                 [protein_record.seq[x[1] - 1] + str(x[1]) for x in dis_epitope]), 
               metadata[0],                                  # protein ID
@@ -807,16 +828,13 @@ class Matcher:
               metadata[8])                                  # swissprot flag
             
             all_matches.append(match_data)
-            pbar.update(1)
         
         except IndexError:
           continue
 
       if not match:
-        all_matches.append(
-          (', '.join([x[0] + str(x[1]) for x in dis_epitope]),) + (None,) * NUM_OUTPUT_COLUMNS
-        )
-
+        all_matches.append((query_id, query_peptide_str) + (None,) * (NUM_OUTPUT_COLUMNS))
+      pbar.update(1)
     return all_matches
 
 
@@ -827,12 +845,12 @@ class Matcher:
       all_matches: the list of all matches for all peptides."""
 
     schema = [
-      ('Query Sequence', pl.Utf8), ('Matched Sequence', pl.Utf8), ('Protein ID', pl.Utf8),
-      ('Protein Name', pl.Utf8), ('Species', pl.Utf8), ('Taxon ID', pl.Int64),
-      ('Gene', pl.Utf8), ('Mismatches', pl.Int64), ('Mutated Positions', pl.List(pl.Int64)),
-      ('Index start', pl.Int64), ('Index end', pl.Int64),
-      ('Protein Existence Level', pl.Int64), ('Sequence Version', pl.Int64),
-      ('Gene Priority', pl.Int64), ('SwissProt Reviewed', pl.Boolean)
+      ('Query ID', pl.Utf8), ('Query Sequence', pl.Utf8), ('Matched Sequence', pl.Utf8),
+      ('Protein ID', pl.Utf8), ('Protein Name', pl.Utf8), ('Species', pl.Utf8),
+      ('Taxon ID', pl.Int64), ('Gene', pl.Utf8), ('Mismatches', pl.Int64),
+      ('Mutated Positions', pl.List(pl.Int64)), ('Index start', pl.Int64),
+      ('Index end', pl.Int64), ('Protein Existence Level', pl.Int64),
+      ('Sequence Version', pl.Int64), ('Gene Priority', pl.Int64), ('SwissProt Reviewed', pl.Boolean)
     ]
 
     if not all_matches:
@@ -848,23 +866,23 @@ class Matcher:
           (~pl.col("Protein Name").str.contains("Fragment")).alias("is_not_fragment")
         )
         .with_columns(
-          pl.col("is_not_fragment").any().over("Query Sequence").alias("has_non_fragment_match")
+          pl.col("is_not_fragment").any().over("Query ID").alias("has_non_fragment_match")
         )
         .filter(
           (pl.col("is_not_fragment") & pl.col("has_non_fragment_match")) |
           (~pl.col("has_non_fragment_match"))
         )
         .with_columns([
-          pl.col("Mismatches").min().over("Query Sequence").alias("min_mismatches"),
-          pl.col("Gene Priority").max().over("Query Sequence").alias("max_gene_priority"),
-          pl.col("Protein Existence Level").min().over("Query Sequence").alias("min_pe_level")
+          pl.col("Mismatches").min().over("Query ID").alias("min_mismatches"),
+          pl.col("Gene Priority").max().over("Query ID").alias("max_gene_priority"),
+          pl.col("Protein Existence Level").min().over("Query ID").alias("min_pe_level")
         ])
         .filter(
           (pl.col("Mismatches") == pl.col("min_mismatches")) &
           (pl.col("Gene Priority") == pl.col("max_gene_priority")) &
           (pl.col("Protein Existence Level") == pl.col("min_pe_level"))
         )
-        .unique(subset=["Query Sequence"], keep="first", maintain_order=True)
+        .unique(subset=["Query ID"], keep="first", maintain_order=True)
         .drop([
           "is_not_fragment", "has_non_fragment_match", "min_mismatches", 
           "max_gene_priority", "min_pe_level"

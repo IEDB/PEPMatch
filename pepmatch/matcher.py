@@ -702,92 +702,83 @@ class Matcher:
 
   def best_match_search(self, pbar: Optional[TqdmDummy] = None) -> list:
     """Finds the best match for each peptide by iteratively decreasing k and
-    increasing the allowed number of mismatches until all peptides are matched."""
-    print("Warning: best match search feature of PEPMatch may take awhile.")
-    all_matches = []
-    peptides_to_search = self.query.copy() 
-    
-    # STAGE 1: try top k values to get matches that are quicker to get
+    increasing the allowed number of mismatches, reporting progress after each stage."""
+
+    print("\n=== Warning: best match search feature of PEPMatch may take awhile. ===")
+    all_found_matches = []
+    peptides_to_search = self.query.copy()
+    initial_peptide_count = len(peptides_to_search)
+    print(f"Starting best match search for {initial_peptide_count} peptides.")
+
+    # STAGE 1: Try top k values to get matches that are quicker to get
     if self.ks:
       for k in self.ks:
         if not peptides_to_search:
-          break
+          break # stop if all peptides have been matched
 
-        self.k = k
-        self.k_specified = True
-        
-        min_remaining_len = min(len(p[1]) for p in peptides_to_search)
-        self.max_mismatches = (min_remaining_len // self.k) - 1
+        min_len = min(len(p[1]) for p in peptides_to_search)
+        self.max_mismatches = (min_len // k) - 1
         if self.max_mismatches < 0:
           self.max_mismatches = 0
-          
-        print(f"Searching with k={self.k} and up to {self.max_mismatches} mismatches...")
-
-        self.query = peptides_to_search
-        self.batched_peptides = {0: self.query}
-
-        matches_this_pass = self.exact_match_search(pbar=TqdmDummy()) if self.max_mismatches == 0 else self.mismatch_search(pbar=TqdmDummy())
         
-        unmatched_this_pass = []
-        matched_ids_this_pass = set()
-
+        self.k, self.k_specified = k, True
+        self.query, self.batched_peptides = peptides_to_search, {0: peptides_to_search}
+        
+        if self.max_mismatches == 0:
+          matches_this_pass = self.exact_match_search(pbar=TqdmDummy())
+        else:
+          matches_this_pass = self.mismatch_search(pbar=TqdmDummy())
+          
+        peptides_still_unmatched = []
+        peptides_matched_count = 0
+        
         for match in matches_this_pass:
           if match[2] is not None:
-            all_matches.append(match)
-            if match[0] not in matched_ids_this_pass:
-              matched_ids_this_pass.add(match[0])
-              pbar.update(1)
-          else:
-            unmatched_this_pass.append((match[0], match[1]))
-
-        peptides_to_search = unmatched_this_pass
-
-    # STAGE 2: for peptides not found above, set k=2 and keep lowering mismatch threshold until we get one
+            all_found_matches.append(match)
+            peptides_matched_count += 1
+          else:  
+            peptides_still_unmatched.append((match[0], match[1]))
+            
+        print(
+          f"-> k={k}, mismatches<={self.max_mismatches}: {len(peptides_still_unmatched)} remaining."
+        )
+        peptides_to_search = peptides_still_unmatched
+      
+    # STAGE 2: For peptides not found above, use k=2 and increase the mismatch threshold
     if peptides_to_search:
-      self.k = 2
-      self.k_specified = True
-
-      if self.ks:
-        min_len = min(len(p[1]) for p in peptides_to_search)
-        self.max_mismatches = (min_len // 2) - 1
-        if self.max_mismatches < 0: self.max_mismatches = 0
-      else:
-        self.max_mismatches = 0
+      self.k, self.k_specified = 2, True
+      self.max_mismatches = (min(len(p[1]) for p in peptides_to_search) // 2)
 
       while peptides_to_search:
+        shortest_len = min(len(p[1]) for p in peptides_to_search)
+        if self.max_mismatches >= shortest_len:
+          print(f"Stopping search: required mismatches ({self.max_mismatches}) exceeds peptide length ({shortest_len}).")
+          break
+        
         self.max_mismatches += 1
-        
-        shortest_remaining_len = min(len(p[1]) for p in peptides_to_search)
-        if self.max_mismatches >= shortest_remaining_len:
-          print(f"Stopping search: required mismatches ({self.max_mismatches}) exceeds peptide length ({shortest_remaining_len}).")
-          break 
+        self.query, self.batched_peptides = peptides_to_search, {0: peptides_to_search}
 
-        print(f"Retrying with k=2 and up to {self.max_mismatches} mismatches...")
-        
-        self.query = peptides_to_search
-        self.batched_peptides = {0: self.query}
-        
         matches_this_pass = self.mismatch_search(pbar=TqdmDummy())
+        peptides_still_unmatched = []
+        peptides_matched_count = 0
         
-        unmatched_this_pass = []
-        matched_ids_this_pass = set()
         for match in matches_this_pass:
           if match[2] is not None:
-            all_matches.append(match)
-            if match[0] not in matched_ids_this_pass:
-              matched_ids_this_pass.add(match[0])
-              pbar.update(1)
+            all_found_matches.append(match)
+            peptides_matched_count += 1
           else:
-            unmatched_this_pass.append((match[0], match[1]))
-
-        peptides_to_search = unmatched_this_pass
-
+            peptides_still_unmatched.append((match[0], match[1]))
+            
+        print(f"-> k=2, mismatches<={self.max_mismatches}: Found {peptides_matched_count} new matches. {len(peptides_still_unmatched)} remaining.")
+        peptides_to_search = peptides_still_unmatched
+      
     if peptides_to_search:
+      print(f"Could not find matches for {len(peptides_to_search)} peptides.")
       for query_id, peptide in peptides_to_search:
-        all_matches.append((query_id, peptide) + (None,) * NUM_OUTPUT_COLUMNS)
-      pbar.update(len(peptides_to_search))
+        all_found_matches.append((query_id, peptide) + (None,) * NUM_OUTPUT_COLUMNS)
 
-    return all_matches
+    pbar.update(initial_peptide_count)
+    return all_found_matches
 
 
   def discontinuous_search(self, pbar: Optional[TqdmDummy] = None) -> list:

@@ -1,7 +1,7 @@
 from __future__ import annotations 
 import polars as pl
 import multiprocessing as mp
-from .helpers import parse_fasta
+from .helpers import parse_fasta, output_matches
 from .matcher import Matcher
 
 class ParallelMatcher(Matcher):
@@ -64,7 +64,7 @@ class ParallelMatcher(Matcher):
     if self.output_format == 'dataframe':
       return df
     else:
-      self._output_matches(df)
+      output_matches(df, self.output_format, self.output_name)
 
   def _output_matches(self, df: pl.DataFrame) -> None:
     path = self.output_name.__str__()

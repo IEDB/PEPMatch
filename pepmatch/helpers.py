@@ -1,4 +1,5 @@
 import re
+import polars as pl
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -63,3 +64,29 @@ def extract_metadata(record: SeqRecord, header_id: bool) -> list:
         metadata.append('')  # empty strings for string columns
 
   return metadata
+
+
+def output_matches(df: pl.DataFrame, output_format: str, output_name: str) -> None:
+  df_to_write = df.clone()  # for files that can't do nested data, we convert mutated positions column to string
+  if "Mutated Positions" in df_to_write.columns and output_format in ['csv', 'tsv', 'xlsx']:
+    df_to_write = df_to_write.with_columns(
+      pl.when(pl.col("Mutated Positions").list.len() > 0)
+        .then(pl.format("[{}]", pl.col("Mutated Positions").list.eval(pl.element().cast(pl.Utf8)).list.join(", ")))
+        .otherwise(pl.lit("[]"))
+        .alias("Mutated Positions")
+    )
+
+  # appends '.' + filetype if the name does not already contain it
+  path = output_name.__str__()
+  if not path.lower().endswith(f".{output_format}"):
+    path += f".{output_format}"
+
+  if output_format == 'csv':
+    df_to_write.write_csv(path)
+  elif output_format == 'tsv':
+    df_to_write.write_csv(path, separator='\t')
+  elif output_format == 'xlsx':
+    df_to_write.write_excel(path)
+  elif output_format == 'json':
+    df_to_write.write_json(path)
+

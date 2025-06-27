@@ -250,16 +250,27 @@ class Matcher:
     preprocessed_db = os.path.join(
       self.preprocessed_files_path, self.proteome_name + '.db'
     )
-    if not os.path.isfile(preprocessed_db):
-      Preprocessor(self.proteome).sql_proteome(self.k)
-
     kmers_table_name = f'{self.proteome_name}_{str(self.k)}mers'
     metadata_table_name = f'{self.proteome_name}_metadata'
 
-    conn = sqlite3.connect(
-      os.path.join(self.preprocessed_files_path, f'{self.proteome_name}.db')
-    )
+    conn = sqlite3.connect(preprocessed_db)
     cursor = conn.cursor()
+
+    cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{kmers_table_name}'")
+    if cursor.fetchone() is None:
+      cursor.close()
+      conn.close()
+
+      print(
+        f"\nPre-existing database found, but required k-mer table ('{kmers_table_name}') is missing."
+        f"\nCreating table for k={self.k}. This may take a bit..."
+      )
+      
+      p = Preprocessor(self.proteome, preprocessed_files_path=self.preprocessed_files_path)
+      p.sql_proteome(self.k)
+      
+      conn = sqlite3.connect(preprocessed_db)
+      cursor = conn.cursor()
 
     all_matches = []
     for peptide in self.query:
@@ -382,6 +393,7 @@ class Matcher:
       try:
         kmer_dict, rev_kmer_dict, metadata_dict = self._read_pickle_files()
       except FileNotFoundError: # do preprocessing if pickle files don't exist
+        print(f"\nPickle files not found, building files for k={self.k}. This may take a bit...")
         Preprocessor(self.proteome).pickle_proteome(self.k)
         kmer_dict, rev_kmer_dict, metadata_dict = self._read_pickle_files()
 
@@ -868,6 +880,3 @@ class Matcher:
       )
 
     return df.drop("Sequence Version")
-
-
-

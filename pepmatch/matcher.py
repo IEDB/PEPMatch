@@ -15,7 +15,6 @@ class TqdmDummy:
   """A dummy class that mimics tqdm for when it's not installed."""
   def __init__(self, *args, **kwargs): pass
   def update(self, n=1): pass
-  def close(self): pass
   def __enter__(self): return self
   def __exit__(self, exc_type, exc_val, exc_tb): pass
 
@@ -269,8 +268,7 @@ class Matcher:
       conn.close()
 
       print(
-        f"\nPre-existing database found, but required k-mer table ('{kmers_table_name}') is missing."
-        f"\nCreating table for k={self.k}. This may take a bit..."
+        f"\nMissing preprocessed file or table. Creating table for k={self.k}. This may take a bit..."
       )
       
       p = Preprocessor(self.proteome, preprocessed_files_path=self.preprocessed_files_path)
@@ -769,7 +767,7 @@ class Matcher:
           else:
             peptides_still_unmatched.append((match[0], match[1]))
             
-        print(f"-> k=2, mismatches<={self.max_mismatches}: Found {peptides_matched_count} new matches. {len(peptides_still_unmatched)} remaining.")
+        print(f"-> k=2, mismatches<={self.max_mismatches}: {len(peptides_still_unmatched)} remaining.")
         peptides_to_search = peptides_still_unmatched
       
     if peptides_to_search:

@@ -836,7 +836,7 @@ class Matcher:
     schema = [
       ('Query ID', pl.Utf8), ('Query Sequence', pl.Utf8), ('Matched Sequence', pl.Utf8),
       ('Protein ID', pl.Utf8), ('Protein Name', pl.Utf8), ('Species', pl.Utf8),
-      ('Taxon ID', pl.Int64), ('Gene', pl.Utf8), ('Mismatches', pl.Int64),
+      ('Taxon ID', pl.Utf8), ('Gene', pl.Utf8), ('Mismatches', pl.Int64),
       ('Mutated Positions', pl.List(pl.Int64)), ('Index start', pl.Int64),
       ('Index end', pl.Int64), ('Protein Existence Level', pl.Int64),
       ('Sequence Version', pl.Int64), ('Gene Priority', pl.Int64), ('SwissProt Reviewed', pl.Boolean)

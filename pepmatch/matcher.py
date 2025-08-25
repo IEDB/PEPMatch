@@ -241,6 +241,7 @@ class Matcher:
     query_df = self._dataframe_matches(query_matches)
     discontinuous_df = self._dataframe_matches(discontinuous_matches)
     df = pl.concat([query_df, discontinuous_df], how="vertical")
+    print(df)
 
     if self.output_format == 'dataframe':
       return df
@@ -305,7 +306,7 @@ class Matcher:
       matches = []
       sum_hits = Counter(kmer_hit_list)
       for hit, count in sum_hits.items():
-        if count == len(target_kmers): # number of index recordings that 
+        if count >= len(target_kmers): # number of index recordings that 
           matches.append(hit)  # agree with the number of kmers used
 
       processed_matches = self._process_exact_matches(

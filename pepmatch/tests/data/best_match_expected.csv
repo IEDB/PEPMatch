@@ -1,6 +1,6 @@
-Query Sequence,Matched Sequence,Protein ID,Protein Name,Species,Taxon ID,Gene,Mismatches,Mutated Positions,Index start,Index end,Protein Existence Level
-AVNPRDQEMAAGF,TVNLMDQELHDLN,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,8,"[1, 4, 5, 9, 10, 11, 12, 13]",599,611,1
-EMRAQNFDVIRLSTYR,ALRNLNFDNMQLQDYL,Q66431.1,RNA-directed RNA polymerase L,Dugbe virus (isolate ArD44313),766194,L,10,"[1, 2, 4, 5, 9, 10, 11, 13, 14, 16]",432,447,1
-KPEFYTPVDGGT,KVPKFEKQQGGT,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,8,"[2, 3, 4, 5, 6, 7, 8, 9]",300,311,1
-MISSNPQVQYHNDKYISNTSG,MISRNPTVLDRQSRASSVREL,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,14,"[4, 7, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21]",92,112,1
-SRASSYILSWRPLRGPGQEVPGSPQ,LAASNIAMSWSSTDIKGEKVILSGR,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,18,"[1, 2, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 18, 19, 21, 22, 24, 25]",937,961,1
+Query ID,Query Sequence,Matched Sequence,Protein ID,Protein Name,Species,Taxon ID,Gene,Mismatches,Mutated Positions,Index start,Index end,Protein Existence Level,Gene Priority,SwissProt Reviewed
+1,SRASSYILSWRPLRGPGQEVPGSPQ,SIRSSYSRGGGGGGGGGGGGGGGGG,P35527.3,"Keratin, type I cytoskeletal 9",Homo sapiens,9606,KRT9,18,"[2, 3, 7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 19, 20, 21, 23, 24, 25]",14,38,1,0,true
+3,MISSNPQVQYHNDKYISNTSG,MISRNPTVLDRQSRASSVREL,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,14,"[4, 7, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21]",92,112,1,0,true
+4,KPEFYTPVDGGT,KVPKFEKQQGGT,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,8,"[2, 3, 4, 5, 6, 7, 8, 9]",300,311,1,0,true
+2,AVNPRDQEMAAGF,TVNLMDQELHDLN,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,8,"[1, 4, 5, 9, 10, 11, 12, 13]",599,611,1,0,true
+5,EMRAQNFDVIRLSTYR,ALRNLNFDNMQLQDYL,Q66431.1,RNA-directed RNA polymerase L,Dugbe virus (isolate ArD44313),766194,L,10,"[1, 2, 4, 5, 9, 10, 11, 13, 14, 16]",432,447,1,0,true

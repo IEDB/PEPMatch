@@ -1,7 +1,8 @@
-Query Sequence,Matched Sequence,Protein ID,Protein Name,Species,Taxon ID,Gene,Mismatches,Mutated Positions,Index start,Index end,Protein Existence Level
-MSDNPKLKKEKKLSEIA,MSDNPKLKKEKKLSEIA,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,0,[],1535,1551,1
-CNERFERLMKELSE,CNERFERLMKELSE,Q66431.1,RNA-directed RNA polymerase L,Dugbe virus (isolate ArD44313),766194,L,0,[],1261,1274,1
-LPDGVWEES,LPDGVWEES,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,0,[],857,865,1
-MENQIKANNKKEFDEWFKPFSEK,MENQIKANNKKEFDEWFKPFSEK,Q8V336.1,Nucleoprotein,Dugbe virus (isolate ArD44313),766194,N,0,[],1,23,3
-LAVLDPKVNSSWLS,LAVLDPKVNSSWLS,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,0,[],1193,1206,1
-FAKEPEPTIDE,,,,,,,,,,,
+Query ID,Query Sequence,Matched Sequence,Protein ID,Protein Name,Species,Taxon ID,Gene,Mismatches,Mutated Positions,Index start,Index end,Protein Existence Level,Gene Priority,SwissProt Reviewed
+1,LPDGVWEES,LPDGVWEES,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,0,[],857,865,1,0,true
+2,LAVLDPKVNSSWLS,LAVLDPKVNSSWLS,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,0,[],1193,1206,1,0,true
+3,MSDNPKLKKEKKLSEIA,MSDNPKLKKEKKLSEIA,Q02004.1,Envelopment polyprotein,Dugbe virus (isolate ArD44313),766194,GP,0,[],1535,1551,1,0,true
+4,CNERFERLMKELSE,CNERFERLMKELSE,Q66431.1,RNA-directed RNA polymerase L,Dugbe virus (isolate ArD44313),766194,L,0,[],1261,1274,1,0,true
+5,MENQIKANNKKEFDEWFKPFSEK,MENQIKANNKKEFDEWFKPFSEK,Q8V336.1,Nucleoprotein,Dugbe virus (isolate ArD44313),766194,N,0,[],1,23,3,0,true
+6,GGGGGGGLGSGGSIRSSY,GGGGGGGLGSGGSIRSSY,P35527.3,"Keratin, type I cytoskeletal 9",Homo sapiens,9606,KRT9,0,[],2,19,1,0,true
+7,FAKEPEPTIDE,,,,,,,,[],,,,,

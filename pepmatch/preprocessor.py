@@ -3,7 +3,12 @@ import sqlite3
 import os
 import re
 
-from .helpers import parse_fasta, split_sequence, extract_metadata
+from .helpers import parse_fasta, split_sequence, extract_metadata, TqdmDummy
+
+try:
+  from tqdm import tqdm
+except ImportError:
+  tqdm = TqdmDummy
 
 
 class Preprocessor:
@@ -217,12 +222,14 @@ class Preprocessor:
     batch_size = 10000
     kmer_rows = []
 
-    for protein_count, seq in enumerate(self.all_seqs):
-      for j, kmer in enumerate(split_sequence(seq, k)):
-        kmer_rows.append((kmer, (protein_count + 1) * 1000000 + j))
-        if len(kmer_rows) >= batch_size:
-          cursor.executemany(f'INSERT INTO "{kmers_table}" VALUES (?, ?)', kmer_rows)
-          kmer_rows.clear()
+    with tqdm(total=len(self.all_seqs), desc="Processing proteins for SQL", unit="protein") as pbar:
+      for protein_count, seq in enumerate(self.all_seqs):
+        for j, kmer in enumerate(split_sequence(seq, k)):
+          kmer_rows.append((kmer, (protein_count + 1) * 1000000 + j))
+          if len(kmer_rows) >= batch_size:
+            cursor.executemany(f'INSERT INTO "{kmers_table}" VALUES (?, ?)', kmer_rows)
+            kmer_rows.clear()
+        pbar.update(1)
 
     if kmer_rows:
       cursor.executemany(f'INSERT INTO "{kmers_table}" VALUES (?, ?)', kmer_rows)
@@ -268,12 +275,14 @@ class Preprocessor:
     
     # create kmer_dict and metadata_dict out of self.all_seqs and self.all_metadata
     kmer_dict = {}
-    for protein_count, seq in enumerate(self.all_seqs):
-      for j, kmer in enumerate(split_sequence(seq, k)):
-        if kmer in kmer_dict.keys(): # add index to k-mer list
-          kmer_dict[kmer].append((protein_count + 1) * 1000000 + j) 
-        else: # create entry for new k-mer
-          kmer_dict[kmer] = [(protein_count + 1) * 1000000 + j] 
+    with tqdm(total=len(self.all_seqs), desc="Processing proteins for pickle", unit="protein") as pbar:
+      for protein_count, seq in enumerate(self.all_seqs):
+        for j, kmer in enumerate(split_sequence(seq, k)):
+          if kmer in kmer_dict.keys(): # add index to k-mer list
+            kmer_dict[kmer].append((protein_count + 1) * 1000000 + j) 
+          else: # create entry for new k-mer
+            kmer_dict[kmer] = [(protein_count + 1) * 1000000 + j] 
+        pbar.update(1)
     
     metadata_dict = {}
     for data in self.all_metadata:

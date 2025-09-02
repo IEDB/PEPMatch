@@ -7,21 +7,15 @@ import polars as pl
 from typing import Optional, Union
 from collections import Counter, defaultdict
 
-from .helpers import parse_fasta, split_sequence, extract_metadata, output_matches
+from .helpers import parse_fasta, split_sequence, extract_metadata, output_matches, TqdmDummy
 from .preprocessor import Preprocessor
 from .hamming import hamming
-
-class TqdmDummy:
-  """A dummy class that mimics tqdm for when it's not installed."""
-  def __init__(self, *args, **kwargs): pass
-  def update(self, n=1): pass
-  def __enter__(self): return self
-  def __exit__(self, exc_type, exc_val, exc_tb): pass
 
 try:
   from tqdm import tqdm  # for progress bar during search
 except ImportError:
   tqdm = TqdmDummy
+
 
 NUM_OUTPUT_COLUMNS = 14
 VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'tsv', 'xlsx', 'json']

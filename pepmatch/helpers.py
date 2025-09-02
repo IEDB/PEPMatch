@@ -5,6 +5,14 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
 
+class TqdmDummy:
+  """A dummy class that mimics tqdm for when it's not installed."""
+  def __init__(self, *args, **kwargs): pass
+  def update(self, n=1): pass
+  def __enter__(self): return self
+  def __exit__(self, exc_type, exc_val, exc_tb): pass
+
+
 def parse_fasta(file: str) -> list:
   """Return a parsed Biopython SeqRecord object from a FASTA file.
   Args:

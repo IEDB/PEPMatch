@@ -281,6 +281,16 @@ class Matcher:
       all_kmers = split_sequence(peptide, self.k)
       target_kmers = self._get_target_kmers(all_kmers)
 
+      # get the exact indices to match
+      target_indices = list(range(0, len(all_kmers), self.k))
+      if (len(all_kmers) - 1) not in target_indices:
+        target_indices.append(len(all_kmers) - 1)
+      
+      # create a precise map from a target k-mer's sequence to its valid position(s).
+      target_kmer_positions = defaultdict(list)
+      for index in target_indices:
+        target_kmer_positions[all_kmers[index]].append(index)
+
       # SQL fetch
       sql_placeholders = ', '.join('?' * len(target_kmers))
       sql_query = f"""
@@ -292,14 +302,14 @@ class Matcher:
 
       kmer_hit_list = []
       for kmer, index in kmer_indexes:
-        kmer_positions = [i for i, k in enumerate(all_kmers) if k == kmer] # this accounts for duplicate k-mers
-        for pos in kmer_positions:
+        correct_positions = target_kmer_positions.get(kmer, [])
+        for pos in correct_positions:
           kmer_hit_list.append(index - pos)
 
       matches = []
       sum_hits = Counter(kmer_hit_list)
       for hit, count in sum_hits.items():
-        if count >= len(target_kmers): # number of index recordings that 
+        if count == len(target_kmers): # number of index recordings that 
           matches.append(hit)  # agree with the number of kmers used
 
       processed_matches = self._process_exact_matches(
@@ -320,12 +330,12 @@ class Matcher:
     Args:
       all_kmers: all possible kmers of the query peptide for a given k."""
     
-    if len(all_kmers) == self.k:
-        return all_kmers
+    if len(all_kmers) == 1:
+      return all_kmers
 
     target_kmers = all_kmers[::self.k]
     if all_kmers[-1] != target_kmers[-1]:
-        target_kmers.append(all_kmers[-1])
+      target_kmers.append(all_kmers[-1])
     return target_kmers
 
 

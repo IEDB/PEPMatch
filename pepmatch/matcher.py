@@ -48,7 +48,7 @@ class Matcher:
     k=0,
     preprocessed_files_path='.',
     best_match=False,
-    output_format='csv',
+    output_format='dataframe',
     output_name='',
     sequence_version=True
   ):

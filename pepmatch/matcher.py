@@ -279,38 +279,37 @@ class Matcher:
 
       # split peptide into kmers - only use kmers necessary that overlap entire peptide
       all_kmers = split_sequence(peptide, self.k)
-      target_kmers = self._get_target_kmers(all_kmers)
 
-      # get the exact indices to match
       target_indices = list(range(0, len(all_kmers), self.k))
       if (len(all_kmers) - 1) not in target_indices:
         target_indices.append(len(all_kmers) - 1)
-      
-      # create a precise map from a target k-mer's sequence to its valid position(s).
+      target_indices = sorted(list(set(target_indices)))
+
       target_kmer_positions = defaultdict(list)
       for index in target_indices:
-        target_kmer_positions[all_kmers[index]].append(index)
+        kmer = all_kmers[index]
+        target_kmer_positions[kmer].append(index)
 
-      # SQL fetch
-      sql_placeholders = ', '.join('?' * len(target_kmers))
+      unique_target_kmers = list(target_kmer_positions.keys())
+      sql_placeholders = ', '.join('?' * len(unique_target_kmers))
       sql_query = f"""
                    SELECT kmer, idx FROM "{kmers_table_name}" 
                    WHERE kmer IN ({sql_placeholders})
                    """
-      cursor.execute(sql_query, target_kmers)
+      cursor.execute(sql_query, unique_target_kmers)
       kmer_indexes = cursor.fetchall()
 
       kmer_hit_list = []
-      for kmer, index in kmer_indexes:
+      for kmer, db_index in kmer_indexes:
         correct_positions = target_kmer_positions.get(kmer, [])
         for pos in correct_positions:
-          kmer_hit_list.append(index - pos)
+          kmer_hit_list.append(db_index - pos)
 
       matches = []
       sum_hits = Counter(kmer_hit_list)
       for hit, count in sum_hits.items():
-        if count == len(target_kmers): # number of index recordings that 
-          matches.append(hit)  # agree with the number of kmers used
+        if count == len(target_indices):
+          matches.append(hit)
 
       processed_matches = self._process_exact_matches(
         query_id, peptide, matches, cursor, metadata_table_name
@@ -322,21 +321,6 @@ class Matcher:
     conn.close()
 
     return all_matches
-
-
-  def _get_target_kmers(self, all_kmers: list) -> list:
-    """Return the target kmers that overlap the entire peptide.
-    
-    Args:
-      all_kmers: all possible kmers of the query peptide for a given k."""
-    
-    if len(all_kmers) == 1:
-      return all_kmers
-
-    target_kmers = all_kmers[::self.k]
-    if all_kmers[-1] != target_kmers[-1]:
-      target_kmers.append(all_kmers[-1])
-    return target_kmers
 
 
   def _process_exact_matches(

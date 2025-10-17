@@ -19,17 +19,17 @@ def expected_path() -> Path:
 
 def test_exact_match(proteome_path, query_path, expected_path):
   """Test exact matching of query peptides to a proteome. The query is various peptides
-  searched in the Dugbe virus proteome (isolate ArD44313). Test for k=4 and k=9."""
+  searched in the Dugbe virus proteome (isolate ArD44313). Test for k=5 and k=9."""
   preprocessor = Preprocessor(proteome_path)
-  preprocessor.sql_proteome(k=4)
+  preprocessor.sql_proteome(k=5)
   preprocessor.sql_proteome(k=9)
 
-  # match using k=4
+  # match using k=5
   df = Matcher(
     query=query_path,
     proteome_file=proteome_path,
     max_mismatches=0,
-    k=4,
+    k=5,
     output_format='dataframe'
   ).match()
   

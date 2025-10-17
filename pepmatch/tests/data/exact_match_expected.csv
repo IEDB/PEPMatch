@@ -7,3 +7,4 @@ Query ID,Query Sequence,Matched Sequence,Protein ID,Protein Name,Species,Taxon I
 6,GGGGGGGLGSGGSIRSSY,GGGGGGGLGSGGSIRSSY,P35527.3,"Keratin, type I cytoskeletal 9",Homo sapiens,9606,KRT9,0,[],2,19,1,0,true
 7,KAKQEEKEEEEEEKEEEEEEKEEKAIARE,KAKQEEKEEEEEEKEEEEEEKEEKAIARE,P10354.1,Chromogranin-A,Rattus norvegicus,10116,Chga,0,[],227,255,1,0,true
 8,FAKEPEPTIDE,,,,,,,,[],,,,,
+9,HQAAPPPPPPPP,,,,,,,,[],,,,,

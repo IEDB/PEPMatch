@@ -63,11 +63,15 @@ def extract_metadata(record: SeqRecord, header_id: bool) -> list:
       if key == 'swissprot':
         metadata.append('0')
       elif key == 'protein_id':
-        metadata.append(str(record.id)) # get record.id from FASTA header instead
+        metadata.append(str(record.id))  # get record.id from FASTA header instead
+      elif key == 'protein_name':
+        header = str(record.description)
+        parts = header.split(None, 1)  # split on first whitespace
+        metadata.append(parts[1] if len(parts) > 1 else '')  # use all the rest of the description if available
       elif key == 'sequence_version':
         metadata.append('1')
       elif key in ['pe_level', 'gene_priority']:
-        metadata.append('0') # zeros for integer columns
+        metadata.append('0')  # zeros for integer columns
       else:
         metadata.append('')  # empty strings for string columns
 

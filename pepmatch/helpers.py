@@ -67,7 +67,12 @@ def extract_metadata(record: SeqRecord, header_id: bool) -> list:
       elif key == 'protein_name':
         header = str(record.description)
         parts = header.split(None, 1)  # split on first whitespace
-        metadata.append(parts[1] if len(parts) > 1 else '')  # use all the rest of the description if available
+        if len(parts) > 1:
+          name = parts[1]
+          name = re.sub(r'\sGP=\d+\s*$', '', name)
+          metadata.append(name)
+        else:
+          metadata.append('')
       elif key == 'sequence_version':
         metadata.append('1')
       elif key in ['pe_level', 'gene_priority']:

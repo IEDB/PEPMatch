@@ -61,6 +61,14 @@ pepmatch-preprocess -p human.fasta -k 5 -f sql
 pepmatch-preprocess -p human.fasta -k 3 -f pickle
 ```
 
+##### Flags
+* `-p`, `--proteome` (Required): Path to the proteome FASTA file.
+* `-k`, `--kmer_size` (Required): The k-mer size to use for indexing.
+* `-f`, `--preprocess_format` (Required): The format for the preprocessed database (`sql` or `pickle`).
+* `-n`: A custom name for the proteome.
+* `-P`: Path to the directory to save preprocessed files.
+* `-g`: Path to a gene priority proteome file (UniProt specific 1-1 protein per gene file to prioritize matches later)
+
 #### 2. Matching
 
 The `pepmatch-match` command runs the search against a preprocessed proteome.
@@ -72,6 +80,19 @@ pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
 # Find matches with up to 3 mismatches (-m 3) using the 3-mer database
 pepmatch-match -q neoepitopes.fasta -p human.fasta -m 3 -k 3
 ```
+
+##### Flags
+
+* `-q`, `--query` (Required): Path to the query peptide FASTA file.
+* `-p`, `--proteome_file` (Required): Path to the original proteome FASTA file.
+* `-m`: Maximum number of mismatches allowed (e.g., `0` for exact).
+* `-k`: The k-mer size to use (must match the preprocessed file).
+* `-P`: Path to the directory containing preprocessed files.
+* `-b`: Enable "best match" mode.
+* `-f`: Output format (`csv`, `tsv`, `xlsx`, `json`). Defaults to `csv`.
+* `-o`: Name of the output file (do not include the file extension, i.e. `.csv`)
+* `-v`: Disable sequence versioning (e.g. for protein ID P05067.1, ".1" will be removed.)
+* `-n`: Number of parallel processing jobs (CPU cores) to use.
 
 ### Python API Usage
 

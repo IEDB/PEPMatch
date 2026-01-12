@@ -836,35 +836,40 @@ class Matcher:
     df = pl.DataFrame(all_matches, schema=schema, orient="row")
 
     if self.best_match and df.height > 0:
-      df = (
-        df.sort('Protein ID', 'Index start')
-        .with_columns(
-          # create boolean flag to identify rows that are NOT fragments
-          (~pl.col("Protein Name").str.contains("Fragment")).alias("is_not_fragment")
+      matched_df = df.filter(pl.col("Matched Sequence").is_not_null())
+      unmatched_df = df.filter(pl.col("Matched Sequence").is_null())
+
+      if matched_df.height > 0:
+        matched_df = (
+          matched_df.sort('Protein ID', 'Index start')
+          .with_columns(
+            (~pl.col("Protein Name").str.contains("Fragment")).alias("is_not_fragment")
+          )
+          .with_columns(
+            pl.col("is_not_fragment").any().over("Query ID").alias("has_non_fragment_match")
+          )
+          .filter(
+            (pl.col("is_not_fragment") & pl.col("has_non_fragment_match")) |
+            (~pl.col("has_non_fragment_match"))
+          )
+          .with_columns([
+            pl.col("Mismatches").min().over("Query ID").alias("min_mismatches"),
+            pl.col("Gene Priority").max().over("Query ID").alias("max_gene_priority"),
+            pl.col("Protein Existence Level").min().over("Query ID").alias("min_pe_level")
+          ])
+          .filter(
+            (pl.col("Mismatches") == pl.col("min_mismatches")) &
+            (pl.col("Gene Priority") == pl.col("max_gene_priority")) &
+            (pl.col("Protein Existence Level") == pl.col("min_pe_level"))
+          )
+          .unique(subset=["Query ID"], keep="first", maintain_order=True)
+          .drop([
+            "is_not_fragment", "has_non_fragment_match", "min_mismatches", 
+            "max_gene_priority", "min_pe_level"
+          ])
         )
-        .with_columns(
-          pl.col("is_not_fragment").any().over("Query ID").alias("has_non_fragment_match")
-        )
-        .filter(
-          (pl.col("is_not_fragment") & pl.col("has_non_fragment_match")) |
-          (~pl.col("has_non_fragment_match"))
-        )
-        .with_columns([
-          pl.col("Mismatches").min().over("Query ID").alias("min_mismatches"),
-          pl.col("Gene Priority").max().over("Query ID").alias("max_gene_priority"),
-          pl.col("Protein Existence Level").min().over("Query ID").alias("min_pe_level")
-        ])
-        .filter(
-          (pl.col("Mismatches") == pl.col("min_mismatches")) &
-          (pl.col("Gene Priority") == pl.col("max_gene_priority")) &
-          (pl.col("Protein Existence Level") == pl.col("min_pe_level"))
-        )
-        .unique(subset=["Query ID"], keep="first", maintain_order=True)
-        .drop([
-          "is_not_fragment", "has_non_fragment_match", "min_mismatches", 
-          "max_gene_priority", "min_pe_level"
-        ])
-      )
+
+      df = pl.concat([matched_df, unmatched_df], how="vertical")
 
     if self.sequence_version:
       df = df.with_columns(

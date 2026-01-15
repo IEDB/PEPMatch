@@ -867,7 +867,7 @@ class Matcher:
           .unique(subset=["Query ID"], keep="first", maintain_order=True)
           .drop([
             "is_not_fragment", "has_non_fragment_match", "min_mismatches", 
-            "max_gene_priority", "min_pe_level"
+            "max_gene_priority", "min_pe_level", "max_reviewed"
           ])
         )
 

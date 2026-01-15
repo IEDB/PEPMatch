@@ -17,7 +17,7 @@ class Preprocessor:
 
   Two tables are stored after the preprocessing:
   1. kmers - stores the k-mers and the index location of the k-mer within the
-             entire proteome. The index is the protein_number * 1000000 + 
+             entire proteome. The index is the protein_number * 10000000 + 
              the index within the protein.
   2. metadata - stores the metadata of the proteome. The metadata includes
                 the protein ID, protein name, species, taxon ID, gene,
@@ -225,7 +225,7 @@ class Preprocessor:
     with tqdm(total=len(self.all_seqs), desc="Processing proteins for SQL", unit="protein") as pbar:
       for protein_count, seq in enumerate(self.all_seqs):
         for j, kmer in enumerate(split_sequence(seq, k)):
-          kmer_rows.append((kmer, (protein_count + 1) * 1000000 + j))
+          kmer_rows.append((kmer, (protein_count + 1) * 10000000 + j))
           if len(kmer_rows) >= batch_size:
             cursor.executemany(f'INSERT INTO "{kmers_table}" VALUES (?, ?)', kmer_rows)
             kmer_rows.clear()
@@ -279,9 +279,9 @@ class Preprocessor:
       for protein_count, seq in enumerate(self.all_seqs):
         for j, kmer in enumerate(split_sequence(seq, k)):
           if kmer in kmer_dict.keys(): # add index to k-mer list
-            kmer_dict[kmer].append((protein_count + 1) * 1000000 + j) 
+            kmer_dict[kmer].append((protein_count + 1) * 10000000 + j) 
           else: # create entry for new k-mer
-            kmer_dict[kmer] = [(protein_count + 1) * 1000000 + j] 
+            kmer_dict[kmer] = [(protein_count + 1) * 10000000 + j] 
         pbar.update(1)
     
     metadata_dict = {}

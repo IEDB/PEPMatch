@@ -855,12 +855,14 @@ class Matcher:
           .with_columns([
             pl.col("Mismatches").min().over("Query ID").alias("min_mismatches"),
             pl.col("Gene Priority").max().over("Query ID").alias("max_gene_priority"),
-            pl.col("Protein Existence Level").min().over("Query ID").alias("min_pe_level")
+            pl.col("Protein Existence Level").min().over("Query ID").alias("min_pe_level"),
+            pl.col("SwissProt Reviewed").max().over("Query Sequence").alias("max_reviewed")
           ])
           .filter(
             (pl.col("Mismatches") == pl.col("min_mismatches")) &
             (pl.col("Gene Priority") == pl.col("max_gene_priority")) &
-            (pl.col("Protein Existence Level") == pl.col("min_pe_level"))
+            (pl.col("Protein Existence Level") == pl.col("min_pe_level")) &
+            (pl.col("SwissProt Reviewed") == pl.col("max_reviewed"))
           )
           .unique(subset=["Query ID"], keep="first", maintain_order=True)
           .drop([

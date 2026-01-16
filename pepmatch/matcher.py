@@ -7,7 +7,9 @@ import polars as pl
 from typing import Optional, Union
 from collections import Counter, defaultdict
 
-from .helpers import parse_fasta, split_sequence, extract_metadata, output_matches, TqdmDummy
+from .helpers import (
+  parse_fasta, split_sequence, extract_metadata, output_matches, TqdmDummy, PROTEIN_INDEX_MULTIPLIER
+)
 from .preprocessor import Preprocessor
 from .hamming import hamming
 
@@ -339,7 +341,7 @@ class Matcher:
       all_matches.append((query_id, peptide) + (None,) * NUM_OUTPUT_COLUMNS)
     else:
       for match in matches:
-        protein_number = (match - (match % 1000000)) // 1000000
+        protein_number = (match - (match % PROTEIN_INDEX_MULTIPLIER)) // PROTEIN_INDEX_MULTIPLIER
         query = f"""SELECT * 
                  FROM "{metadata_table_name}" 
                  WHERE protein_number = "{protein_number}"
@@ -357,8 +359,8 @@ class Matcher:
           protein_data[5],                  # gene symbol
           0,                                # 0 mismatches for exact match
           [],                               # mutated positions (none)
-          (match % 1000000) + 1,            # index start
-          (match % 1000000) + len(peptide), # index end
+          (match % PROTEIN_INDEX_MULTIPLIER) + 1,            # index start
+          (match % PROTEIN_INDEX_MULTIPLIER) + len(peptide), # index end
           protein_data[6],                  # protein existence level
           protein_data[7],                  # sequence version
           protein_data[8],                  # gene priority flag
@@ -651,14 +653,14 @@ class Matcher:
       all_matches.append((query_id, peptide) + (None,) * NUM_OUTPUT_COLUMNS)
     else:
       for match in matches:
-        metadata_key = (match[2] - (match[2] % 1000000)) // 1000000
+        metadata_key = (match[2] - (match[2] % PROTEIN_INDEX_MULTIPLIER)) // PROTEIN_INDEX_MULTIPLIER
         metadata = metadata_dict[metadata_key]
 
         mutated_positions = [
           i+1 for i in range(len(peptide)) if peptide[i] != match[0][i]
         ]
-        index_start = int((match[2] % 1000000) + 1)
-        index_end = int((match[2] % 1000000) + len(peptide))
+        index_start = int((match[2] % PROTEIN_INDEX_MULTIPLIER) + 1)
+        index_end = int((match[2] % PROTEIN_INDEX_MULTIPLIER) + len(peptide))
 
         taxon_id = int(metadata[3]) if metadata[3] else None
         pe_level = int(metadata[5]) if metadata[5] else None

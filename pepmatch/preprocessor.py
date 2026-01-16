@@ -3,7 +3,9 @@ import sqlite3
 import os
 import re
 
-from .helpers import parse_fasta, split_sequence, extract_metadata, TqdmDummy
+from .helpers import (
+  parse_fasta, split_sequence, extract_metadata, TqdmDummy, PROTEIN_INDEX_MULTIPLIER
+)
 
 try:
   from tqdm import tqdm
@@ -225,7 +227,7 @@ class Preprocessor:
     with tqdm(total=len(self.all_seqs), desc="Processing proteins for SQL", unit="protein") as pbar:
       for protein_count, seq in enumerate(self.all_seqs):
         for j, kmer in enumerate(split_sequence(seq, k)):
-          kmer_rows.append((kmer, (protein_count + 1) * 10000000 + j))
+          kmer_rows.append((kmer, (protein_count + 1) * PROTEIN_INDEX_MULTIPLIER + j))
           if len(kmer_rows) >= batch_size:
             cursor.executemany(f'INSERT INTO "{kmers_table}" VALUES (?, ?)', kmer_rows)
             kmer_rows.clear()
@@ -279,9 +281,9 @@ class Preprocessor:
       for protein_count, seq in enumerate(self.all_seqs):
         for j, kmer in enumerate(split_sequence(seq, k)):
           if kmer in kmer_dict.keys(): # add index to k-mer list
-            kmer_dict[kmer].append((protein_count + 1) * 10000000 + j) 
+            kmer_dict[kmer].append((protein_count + 1) * PROTEIN_INDEX_MULTIPLIER + j) 
           else: # create entry for new k-mer
-            kmer_dict[kmer] = [(protein_count + 1) * 10000000 + j] 
+            kmer_dict[kmer] = [(protein_count + 1) * PROTEIN_INDEX_MULTIPLIER + j] 
         pbar.update(1)
     
     metadata_dict = {}

@@ -4,6 +4,7 @@ import polars as pl
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
+PROTEIN_INDEX_MULTIPLIER= 10_000_000
 
 class TqdmDummy:
   """A dummy class that mimics tqdm for when it's not installed."""

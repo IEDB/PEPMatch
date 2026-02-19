@@ -1,268 +1,29 @@
-import _pickle as pickle
-import sqlite3
 import os
-import re
-
-from .helpers import (
-  parse_fasta, split_sequence, extract_metadata, TqdmDummy, PROTEIN_INDEX_MULTIPLIER
-)
-
-try:
-  from tqdm import tqdm
-except ImportError:
-  tqdm = TqdmDummy
-
+from ._rs import rs_preprocess
 
 class Preprocessor:
-  """Class that takes in a proteome FASTA file and preprocesses the file to be
-  used in the matching portion of PEPMatch.
-
-  Two tables are stored after the preprocessing:
-  1. kmers - stores the k-mers and the index location of the k-mer within the
-             entire proteome. The index is the protein_number * 10000000 + 
-             the index within the protein.
-  2. metadata - stores the metadata of the proteome. The metadata includes
-                the protein ID, protein name, species, taxon ID, gene,
-                protein existence level, sequence version, and gene priority
-
-  The tables are stored in a SQLite database file or in pickle files.
-
-  ** SQLite for exact matching and pickle files for mismatching. **
-
-  Optional:
-  preprocessed_files_path - location of where to put the preprocessed files."""
+  """Preprocesses a proteome FASTA file into a .pepidx binary index
+  optimized for fast peptide searching. The index stores k-mer positions,
+  protein sequences, and metadata in a single memory-mapped file."""
 
   def __init__(
     self,
     proteome,
     proteome_name='',
-    header_id=False,
     preprocessed_files_path='.',
   ):
-
     if not os.path.isdir(preprocessed_files_path):
       raise ValueError('Directory specified does not exist: ', preprocessed_files_path)
-
     self.preprocessed_files_path = preprocessed_files_path
-    self.proteome = parse_fasta(proteome)
+    self.proteome_file = str(proteome)
 
-    # extracting the proteome name from the file path if not specified
     if not proteome_name:
       self.proteome_name = str(proteome).split('/')[-1].split('.')[0]
     else:
       self.proteome_name = proteome_name
 
-    # if True, extracts the full header ID from the FASTA file such as >sp|P05067|A4_HUMAN will ouput
-    # this instead of just P05067
-    self.header_id = header_id
-
-    # extract all the data from the proteome
-    self.all_seqs, self.all_metadata = self._get_data_from_proteome()
-
-  def _get_data_from_proteome(self) -> tuple:
-    """Extract all the data from a FASTA file and returns two lists:
-
-    Use extract_metadata_from_fasta_header in helpers.py.
-
-    1. A list of sequences
-    2. A list of metadata in tuples. The metadata includes the protein ID,
-       protein name, species, taxon ID, gene, protein existence level,
-       sequence version, and gene priority label."""
-
-    def extract_accession(record_id):
-      """Helper function to extract UniProt accession from record ID"""
-      accession = str(record_id)
-      id_match = re.search(r"\|([^|]*)\|", accession)
-      if id_match:
-        accession = id_match.group(1)
-      return accession
-
-    all_seqs = []
-    all_metadata = []
-    protein_number = 1
-
-    canonical_pe_levels = {}  # this loop is to assign swissprot isoforms their canonical PE level
-    for record in self.proteome:
-      accession = extract_accession(record.id)
-      base_accession = accession.split('-')[0] if '-' in accession else accession
-      pe_match = re.search(r"PE=(\d+)", str(record.description))
-      if pe_match and '-' not in accession:
-        canonical_pe_levels[base_accession] = pe_match.group(1)
-
-    seen_genes = set()
-    for record in self.proteome:
-      all_seqs.append(str(record.seq))
-      metadata = [protein_number]
-      extracted_metadata = extract_metadata(record, self.header_id, seen_genes)
-
-      accession = extract_accession(record.id)
-      if '-' in accession and extracted_metadata[5] == '0':  # index 5 is PE level
-        base_accession = accession.split('-')[0]
-        if base_accession in canonical_pe_levels:
-          extracted_metadata[5] = canonical_pe_levels[base_accession]
-
-      metadata.extend(extracted_metadata)
-      all_metadata.append(tuple(metadata))
-      protein_number += 1
-
-    return all_seqs, all_metadata
-
-  def sql_proteome(self, k: int) -> None:
-    """Writes the kmers_table and metadata_table to a SQLite database.
-
-    Args:
-      k: k-mer length to split the proteome into."""
-
-    # create table names
-    kmers_table = f'{self.proteome_name}_{str(k)}mers'
-    metadata_table = f'{self.proteome_name}_metadata'
-
-    # connect to database
-    db_path = os.path.join(self.preprocessed_files_path, f'{self.proteome_name}.db')
-    with sqlite3.connect(db_path) as conn:
-      cursor = conn.cursor()
-
-      # check if kmers table already exists and exit if it does
-      # for some reason writing to the same table multiple times messes up results
-      if cursor.execute(
-        f'SELECT name FROM sqlite_master WHERE type="table" AND name="{kmers_table}";'
-      ).fetchone():
-        return
-
-      self._create_tables(cursor, kmers_table, metadata_table)
-      self._insert_kmers(cursor, kmers_table, k)
-      self._insert_metadata(cursor, metadata_table)
-      self._create_indexes(cursor, kmers_table, metadata_table)
-
-      conn.commit()
-
-  def _create_tables(
-    self, cursor: sqlite3.Cursor, kmers_table: str, metadata_table: str
-  ) -> None:
-    """Creates the kmers_table and metadata_table in the SQLite database.
-
-    Args:
-      cursor: cursor object to execute SQL commands.
-      kmers_table: name of the k-mers table.
-      metadata_table: name of the metadata table."""
-
-    cursor.execute(
-      f'CREATE TABLE IF NOT EXISTS "{kmers_table}" ('\
-        'kmer TEXT NOT NULL,'\
-        'idx  INTEGER NOT NULL)'
-      )
-    cursor.execute(
-      f'CREATE TABLE IF NOT EXISTS "{metadata_table}" ('\
-        'protein_number   INTEGER NOT NULL,'\
-        'protein_id       TEXT NOT NULL,'\
-        'protein_name     TEXT NOT NULL,'\
-        'species          TEXT NOT NULL,'\
-        'taxon_id         TEXT NOT NULL,'\
-        'gene             TEXT NOT NULL,'\
-        'pe_level         INTEGER NOT NULL,'\
-        'sequence_version INTEGER NOT NULL,'\
-        'gene_priority    INTEGER NOT NULL,'\
-        'swissprot        INTEGER NOT NULL)'\
+  def preprocess(self, k: int) -> None:
+    output_path = os.path.join(
+      self.preprocessed_files_path, f'{self.proteome_name}_{k}mers.pepidx'
     )
-
-  def _insert_kmers(self, cursor: sqlite3.Cursor, kmers_table: str, k: int) -> None:
-    """Inserts the k-mers into the kmers_table.
-
-    Args:
-      cursor: cursor object to execute SQL commands.
-      kmers_table: name of the k-mers table.
-      k: k-mer length to split the proteome into."""
-    batch_size = 10000
-    kmer_rows = []
-
-    with tqdm(total=len(self.all_seqs), desc="Processing proteins for SQL", unit="protein") as pbar:
-      for protein_count, seq in enumerate(self.all_seqs):
-        for j, kmer in enumerate(split_sequence(seq, k)):
-          kmer_rows.append((kmer, (protein_count + 1) * PROTEIN_INDEX_MULTIPLIER + j))
-          if len(kmer_rows) >= batch_size:
-            cursor.executemany(f'INSERT INTO "{kmers_table}" VALUES (?, ?)', kmer_rows)
-            kmer_rows.clear()
-        pbar.update(1)
-
-    if kmer_rows:
-      cursor.executemany(f'INSERT INTO "{kmers_table}" VALUES (?, ?)', kmer_rows)
-
-  def _insert_metadata(self, cursor: sqlite3.Cursor, metadata_table: str) -> None:
-    """Inserts the metadata into the metadata_table.
-
-    Args:
-      cursor: cursor object to execute SQL commands.
-      metadata_table: name of the metadata table."""
-
-    cursor.executemany(
-      f'INSERT INTO "{metadata_table}" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
-      self.all_metadata
-    )
-
-  def _create_indexes(
-    self, cursor: sqlite3.Cursor, kmers_table: str, metadata_table: str
-  ) -> None:
-    """Creates indexes for the kmers_table and metadata_table.
-
-    Args:
-      cursor: cursor object to execute SQL commands.
-      kmers_table: name of the k-mers table.
-      metadata_table: name of the metadata table."""
-
-    cursor.execute(
-      f'CREATE INDEX IF NOT EXISTS "{kmers_table}_kmer_idx" ON "{kmers_table}" (kmer)'
-    )
-    cursor.execute(
-      f'CREATE INDEX IF NOT EXISTS "{metadata_table}_protein_number_idx" '
-      f'ON "{metadata_table}" (protein_number)'
-    )
-
-  def pickle_proteome(self, k: int) -> None:
-    """Pickles the proteome into a dictionary of k-mers and a dictionary of metadata.
-
-    Args:
-      k: k-mer length to split the proteome into."""
-
-    # create kmer_dict and metadata_dict out of self.all_seqs and self.all_metadata
-    kmer_dict = {}
-    with tqdm(total=len(self.all_seqs), desc="Processing proteins for pickle", unit="protein") as pbar:
-      for protein_count, seq in enumerate(self.all_seqs):
-        for j, kmer in enumerate(split_sequence(seq, k)):
-          if kmer in kmer_dict.keys(): # add index to k-mer list
-            kmer_dict[kmer].append((protein_count + 1) * PROTEIN_INDEX_MULTIPLIER + j) 
-          else: # create entry for new k-mer
-            kmer_dict[kmer] = [(protein_count + 1) * PROTEIN_INDEX_MULTIPLIER + j] 
-        pbar.update(1)
-
-    metadata_dict = {}
-    for data in self.all_metadata:
-      metadata_dict[data[0]] = data[1:]
-
-    # write kmer_dict and metadata_dict to pickle files
-    with open(os.path.join(self.preprocessed_files_path, 
-      f'{self.proteome_name}_{str(k)}mers.pkl'), 'wb') as f:
-      pickle.dump(kmer_dict, f)
-
-    with open(os.path.join(self.preprocessed_files_path, 
-      f'{self.proteome_name}_metadata.pkl'), 'wb') as f:
-      pickle.dump(metadata_dict, f)
-
-  def preprocess(self, preprocess_format: str, k: int) -> None:
-    """Preprocesses the proteome and stores it in the specified format.
-
-    Args:
-      preprocess_format: format to store the proteome in (sql or pickle).
-      k: k-mer length to split the proteome into."""
-
-    if preprocess_format not in ('sql', 'pickle'):
-      raise AssertionError(
-        'Unexpected value of preprocessing format:', preprocess_format
-      )
-
-    assert k >= 2, 'k-sized split is invalid. Cannot be less than 2.'
-
-    # store data based on format specified
-    if preprocess_format == 'pickle':
-      self.pickle_proteome(k)
-    elif preprocess_format == 'sql':
-      self.sql_proteome(k)
+    rs_preprocess(self.proteome_file, k, output_path)

@@ -34,7 +34,7 @@ def split_sequence(sequence: str, k: int) -> list:
   return [sequence[i:i+k] for i in range(len(sequence) - k + 1)]
 
 
-def extract_metadata(record: SeqRecord, header_id: bool) -> list:
+def extract_metadata(record: SeqRecord, header_id: bool, seen_genes: set) -> list:
   """Extract metadata from a FASTA header.
   Args: 
     record: protein SeqRecord from proteome FASTA file.
@@ -47,39 +47,52 @@ def extract_metadata(record: SeqRecord, header_id: bool) -> list:
     'gene': re.compile(r"GN=(.+?)(\s|$)"),             # between GN= and space
     'pe_level': re.compile(r"PE=(.+?)(\s|$)"),         # between PE= and space
     'sequence_version': re.compile(r"SV=(.+?)(\s|$)"), # between SV= and space
-    'gene_priority': re.compile(r"GP=(.+?)(\s|$)"),    # between GP= and space
     'swissprot': re.compile(r"^(tr|sp)\|"),        # between > and |
   }
   metadata = []
+  swissprot = '0'
+  gene = ''
+  protein_id = ''
   for key in regexes: # loop through compiled regexes to extract metadata
     match = regexes[key].search(str(record.description))
     if match:
       if key == 'swissprot':
-        metadata.append('1') if match.group(1) == 'sp' else metadata.append('0')
+        val = '1' if match.group(1) == 'sp' else '0'
       elif key == 'protein_id':
-        metadata.append(match.group(1)) if not header_id else metadata.append(str(record.id))
+        val = str(record.id) if header_id else match.group(1)
       else:
-        metadata.append(match.group(1))
+        val = match.group(1)
     else:
       if key == 'swissprot':
-        metadata.append('0')
+        val = '0'
       elif key == 'protein_id':
-        metadata.append(str(record.id))  # get record.id from FASTA header instead
+        val = str(record.id)
       elif key == 'protein_name':
         header = str(record.description)
-        parts = header.split(None, 1)  # split on first whitespace
-        if len(parts) > 1:
-          name = parts[1]
-          name = re.sub(r'\sGP=\d+\s*$', '', name)
-          metadata.append(name)
-        else:
-          metadata.append('')
+        parts = header.split(None, 1)
+        val = parts[1] if len(parts) > 1 else ''  # get the rest of the description after ID
       elif key == 'sequence_version':
-        metadata.append('1')
-      elif key in ['pe_level', 'gene_priority']:
-        metadata.append('0')  # zeros for integer columns
+        val = '1'
+      elif key == 'pe_level':
+        val = '0'
       else:
-        metadata.append('')  # empty strings for string columns
+        val = ''
+
+    if key == 'swissprot':
+      swissprot = val
+    elif key == 'gene':
+      gene = val
+    elif key == 'protein_id':
+      protein_id = val
+
+    metadata.append(val)
+
+  # gene priority logic: if a protein is in SwissProt and does not have a dash ("-") and gene not seen yet
+  if swissprot == '1' and '-' not in protein_id and gene and gene not in seen_genes:
+    seen_genes.add(gene)
+    metadata.insert(-1, '1')
+  else:
+    metadata.insert(-1, '0')
 
   return metadata
 

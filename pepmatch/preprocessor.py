@@ -24,36 +24,27 @@ class Preprocessor:
   2. metadata - stores the metadata of the proteome. The metadata includes
                 the protein ID, protein name, species, taxon ID, gene,
                 protein existence level, sequence version, and gene priority
-                (1 if the protein is in the gene priority proteome, 0 otherwise).
 
   The tables are stored in a SQLite database file or in pickle files.
 
   ** SQLite for exact matching and pickle files for mismatching. **
 
   Optional:
-  preprocessed_files_path - location of where to put the preprocessed files.
+  preprocessed_files_path - location of where to put the preprocessed files."""
 
-  gene_priority_proteome - another proteome FASTA file that contains the proteins
-                           the canonical sequence for every gene of the species
-                           of the proteome. If this is specified, the GP=1 will
-                           be appended to the FASTA header of the proteins in
-                           this proteome. Otherwise, GP=0."""
   def __init__(
     self,
     proteome,
     proteome_name='',
     header_id=False,
     preprocessed_files_path='.',
-    gene_priority_proteome=''
   ):
 
     if not os.path.isdir(preprocessed_files_path):
       raise ValueError('Directory specified does not exist: ', preprocessed_files_path)
 
     self.preprocessed_files_path = preprocessed_files_path
-
-    # appending GP=# to the header of the proteome
-    self.proteome = self._append_gp_to_header(proteome, gene_priority_proteome)
+    self.proteome = parse_fasta(proteome)
 
     # extracting the proteome name from the file path if not specified
     if not proteome_name:
@@ -67,44 +58,6 @@ class Preprocessor:
 
     # extract all the data from the proteome
     self.all_seqs, self.all_metadata = self._get_data_from_proteome()
-
-
-  def _append_gp_to_header(
-    self, proteome: str, gene_priority_proteome: str
-  ) -> list:
-    """Appends GP=1 or GP=0 to the FASTA header of a proteome depending on
-    if the protein is in the gene priority proteome.
-
-    Args:
-      proteome: path to proteome FASTA file.
-      gene_priority_proteome: path to gene priority proteome FASTA file."""
-    
-    proteome_records = parse_fasta(proteome) # get regular proteome
-    try: # try to get gene priority proteome
-      gp_proteome_records = parse_fasta(gene_priority_proteome)
-    except FileNotFoundError:
-      gp_proteome_records = []
-
-    gp_ids = [] # get list of gene priority protein IDs
-    for record in gp_proteome_records:
-      gp_ids.append(record.id)
-    
-    records = []
-    for record in proteome_records:
-      if 'GP=' in record.description:
-        records.append(record)
-        continue
-      
-      if record.id in gp_ids:
-        GP = 'GP=1 '
-      else:
-        GP = 'GP=0 '
-
-      record.description += f' {GP}' # append notation to FASTA header
-      records.append(record)
-
-    return records
-
 
   def _get_data_from_proteome(self) -> tuple:
     """Extract all the data from a FASTA file and returns two lists:
@@ -127,7 +80,7 @@ class Preprocessor:
     all_seqs = []
     all_metadata = []
     protein_number = 1
-    
+
     canonical_pe_levels = {}  # this loop is to assign swissprot isoforms their canonical PE level
     for record in self.proteome:
       accession = extract_accession(record.id)
@@ -135,35 +88,35 @@ class Preprocessor:
       pe_match = re.search(r"PE=(\d+)", str(record.description))
       if pe_match and '-' not in accession:
         canonical_pe_levels[base_accession] = pe_match.group(1)
-    
+
+    seen_genes = set()
     for record in self.proteome:
       all_seqs.append(str(record.seq))
       metadata = [protein_number]
-      extracted_metadata = extract_metadata(record, self.header_id)
+      extracted_metadata = extract_metadata(record, self.header_id, seen_genes)
 
       accession = extract_accession(record.id)
       if '-' in accession and extracted_metadata[5] == '0':  # index 5 is PE level
         base_accession = accession.split('-')[0]
         if base_accession in canonical_pe_levels:
           extracted_metadata[5] = canonical_pe_levels[base_accession]
-      
+
       metadata.extend(extracted_metadata)
       all_metadata.append(tuple(metadata))
       protein_number += 1
-        
+
     return all_seqs, all_metadata
-    
 
   def sql_proteome(self, k: int) -> None:
     """Writes the kmers_table and metadata_table to a SQLite database.
-    
+
     Args:
       k: k-mer length to split the proteome into."""
-  
+
     # create table names
     kmers_table = f'{self.proteome_name}_{str(k)}mers'
     metadata_table = f'{self.proteome_name}_metadata'
-    
+
     # connect to database
     db_path = os.path.join(self.preprocessed_files_path, f'{self.proteome_name}.db')
     with sqlite3.connect(db_path) as conn:
@@ -182,7 +135,6 @@ class Preprocessor:
       self._create_indexes(cursor, kmers_table, metadata_table)
 
       conn.commit()
-
 
   def _create_tables(
     self, cursor: sqlite3.Cursor, kmers_table: str, metadata_table: str
@@ -213,7 +165,6 @@ class Preprocessor:
         'swissprot        INTEGER NOT NULL)'\
     )
 
-
   def _insert_kmers(self, cursor: sqlite3.Cursor, kmers_table: str, k: int) -> None:
     """Inserts the k-mers into the kmers_table.
 
@@ -236,19 +187,17 @@ class Preprocessor:
     if kmer_rows:
       cursor.executemany(f'INSERT INTO "{kmers_table}" VALUES (?, ?)', kmer_rows)
 
-
   def _insert_metadata(self, cursor: sqlite3.Cursor, metadata_table: str) -> None:
     """Inserts the metadata into the metadata_table.
 
     Args:
       cursor: cursor object to execute SQL commands.
       metadata_table: name of the metadata table."""
-    
+
     cursor.executemany(
       f'INSERT INTO "{metadata_table}" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
       self.all_metadata
     )
-
 
   def _create_indexes(
     self, cursor: sqlite3.Cursor, kmers_table: str, metadata_table: str
@@ -259,7 +208,7 @@ class Preprocessor:
       cursor: cursor object to execute SQL commands.
       kmers_table: name of the k-mers table.
       metadata_table: name of the metadata table."""
-    
+
     cursor.execute(
       f'CREATE INDEX IF NOT EXISTS "{kmers_table}_kmer_idx" ON "{kmers_table}" (kmer)'
     )
@@ -268,13 +217,12 @@ class Preprocessor:
       f'ON "{metadata_table}" (protein_number)'
     )
 
-
   def pickle_proteome(self, k: int) -> None:
     """Pickles the proteome into a dictionary of k-mers and a dictionary of metadata.
 
     Args:
       k: k-mer length to split the proteome into."""
-    
+
     # create kmer_dict and metadata_dict out of self.all_seqs and self.all_metadata
     kmer_dict = {}
     with tqdm(total=len(self.all_seqs), desc="Processing proteins for pickle", unit="protein") as pbar:
@@ -285,11 +233,11 @@ class Preprocessor:
           else: # create entry for new k-mer
             kmer_dict[kmer] = [(protein_count + 1) * PROTEIN_INDEX_MULTIPLIER + j] 
         pbar.update(1)
-    
+
     metadata_dict = {}
     for data in self.all_metadata:
       metadata_dict[data[0]] = data[1:]
-    
+
     # write kmer_dict and metadata_dict to pickle files
     with open(os.path.join(self.preprocessed_files_path, 
       f'{self.proteome_name}_{str(k)}mers.pkl'), 'wb') as f:
@@ -299,14 +247,13 @@ class Preprocessor:
       f'{self.proteome_name}_metadata.pkl'), 'wb') as f:
       pickle.dump(metadata_dict, f)
 
-
   def preprocess(self, preprocess_format: str, k: int) -> None:
     """Preprocesses the proteome and stores it in the specified format.
 
     Args:
       preprocess_format: format to store the proteome in (sql or pickle).
       k: k-mer length to split the proteome into."""
-    
+
     if preprocess_format not in ('sql', 'pickle'):
       raise AssertionError(
         'Unexpected value of preprocessing format:', preprocess_format

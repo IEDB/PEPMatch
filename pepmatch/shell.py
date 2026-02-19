@@ -14,7 +14,6 @@ def run_preprocessor():
   parser.add_argument('-f', '--preprocess_format', required=True)
   parser.add_argument('-H', '--header_id', action='store_true', default=False)
   parser.add_argument('-P', '--preprocessed_files_path', default='.')
-  parser.add_argument('-g', '--gene_priority_proteome', default='')
 
   args = parser.parse_args()
   
@@ -23,7 +22,6 @@ def run_preprocessor():
     proteome_name=args.proteome_name,
     header_id=args.header_id,
     preprocessed_files_path=args.preprocessed_files_path,
-    gene_priority_proteome=args.gene_priority_proteome
   ).preprocess(preprocess_format=args.preprocess_format, k=args.kmer_size)
 
 

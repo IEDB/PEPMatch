@@ -25,6 +25,8 @@ class Preprocessor:
       self.proteome_name = proteome_name
 
   def preprocess(self, k: int) -> None:
+    if k < 2:
+      raise ValueError('k must be >= 2.')
     output_path = os.path.join(
       self.preprocessed_files_path, f'{self.proteome_name}_{k}mers.pepidx'
     )

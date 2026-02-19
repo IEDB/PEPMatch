@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "pepmatch"
@@ -31,8 +31,10 @@ dev = [
   "pre-commit>=3.3.2",
 ]
 
-[tool.setuptools]
-packages = ["pepmatch"]
+[tool.maturin]
+manifest-path = "pepmatch/rs-engine/Cargo.toml"
+module-name = "pepmatch._rs"
+python-source = "."
 
 [tool.setuptools.dynamic]
 version = { attr = "pepmatch.version.__version__" }

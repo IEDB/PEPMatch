@@ -12,8 +12,10 @@ class Preprocessor:
     proteome_name='',
     preprocessed_files_path='.',
   ):
-    if not os.path.isdir(preprocessed_files_path):
-      raise ValueError('Directory specified does not exist: ', preprocessed_files_path)
+    if not os.path.isfile(str(proteome)):
+      raise FileNotFoundError(f'Proteome file not found: {proteome}')
+
+    os.makedirs(preprocessed_files_path, exist_ok=True)
     self.preprocessed_files_path = preprocessed_files_path
     self.proteome_file = str(proteome)
 

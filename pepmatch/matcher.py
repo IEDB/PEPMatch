@@ -142,7 +142,7 @@ class Matcher:
     if self.output_format == 'dataframe':
       return df
     else:
-      self.output_matches(df, self.output_format, self.output_name)
+      output_matches(df, self.output_format, self.output_name)
 
   def _pepidx_path(self, k):
     return os.path.join(

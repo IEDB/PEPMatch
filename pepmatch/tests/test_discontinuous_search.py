@@ -21,8 +21,6 @@ def query() -> list:
   ]
 
 def test_discontinuous_search(proteome_path, query, expected_path):
-  """Test searching discontinuous peptides in a proteome."""
-  
   df = Matcher(
     query=query,
     proteome_file=proteome_path,

@@ -3,7 +3,7 @@ use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 
-const PROTEIN_INDEX_MULTIPLIER: u64 = 10_000_000;
+const PROTEIN_INDEX_MULTIPLIER: u64 = 100_000_000;
 const HEADER_SIZE: usize = 8 + 1 + 4 + 8 + 8 + 8 + 8;
 
 struct PepIndex {

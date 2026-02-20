@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write, BufWriter};
 
-const PROTEIN_INDEX_MULTIPLIER: u64 = 10_000_000;
+const PROTEIN_INDEX_MULTIPLIER: u64 = 100_000_000;
 
 struct Protein {
     header: String,

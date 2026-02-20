@@ -1,189 +1,120 @@
-### Benchmarking
+# Benchmarking
 
-In order to improve on the tool, a system to compare current tools/algorithms (current list below) has been created. For each application above, specific parameters have been created with a specified query and proteome. To compare your tool/algorithm to the current ones, the following instructions should be implemented:
+Standardized framework for comparing peptide search tools. Results below were generated on an AMD Ryzen 5 5500U (6 cores / 12 threads).
 
-1. Tools should be broken down into initialization, query preprocessing, proteome preprocessing, and searching. Preprocessing is not required for every tool, but if it is, certain arguments must be passed in order to perform this task. Preprocessing is defined as performing some functions on the query or proteome before searching which helps speed this process up. Of course, searching is the actual runtime your tool performs to search each peptide through the specified proteome. In order to standardize the benchmarking smoothly, a Python wrapper between the benchmarking script and your tool's executable must be created.
+## Results
 
-2. A Python script called "benchmarking.py" is found within this repository and can be used to compare your tool with others. Currently, there are 4 benchmarking frameworks based on the 4 applications listed above. The names of the benchmarking frameworks are "mhc_ligands", "milk", "coronavirus" and "neoepitopes". In the benchmarking_parameters.json file, you can see the lengths of the query peptides, the mismatches required for the benchmarking, the query file, the proteome file, and the text file with the expected results from the search. Within this file is the list of algorithms which can be used for each application. Put your wrapper within the repository and add the module name to the algorithms list in the "benchmarking_parameters.json" file:
+Results now include the new Rust engine implementation vs the Python-only implementation (old) for PEPMatch.
 
-    ```
-    {
-        "datasets": {
-        .
-        .
-        .
-        },
-        "algorithms": [
-            {
-                    "name": "blast",
-                    "text_shifting": 0,
-                    "algorithm_parameters": {
-                            "bin_directory": "~/apps/ncbi-blast-2.10.0+/bin"
-                    }
-            },
-            {
-                    "name": YOUR_WRAPPER_MODULE
-                    "test_shifting": 0,
-                    "algorithm_parameters": {}
-            }
-        ]
+### MHC Class I Dataset
+1,000 9-mer peptides searched against the human proteome (~200,000 proteins) for exact matches.
 
-    }
-    ```
+| Method | Proteome Preprocessing (s) | Query Preprocessing (s) | Searching (s) | Total (s) | Recall (%) |
+|--------|---------------------------|------------------------|---------------|-----------|------------|
+| **PEPMatch** | **32.2** | **N/A** | **0.049** | **32.2** | **100** |
+| PEPMatch (old) | 39.6 | N/A | 0.08 | 39.7 | 100 |
+| NmerMatch | 53.7 | 0.006 | 12.3 | 66.0 | 100 |
+| BLAST | 1.27 | N/A | 11.3 | 12.6 | 98.3 |
+| DIAMOND | 0.25 | N/A | 5.01 | 5.26 | 1.5 |
+| MMseqs2 | 2.65 | N/A | 0.50 | 3.15 | 0.0 |
 
-    Please put the name of the module of your wrapper, boolean for if it is a text shifting algorithm (most likely no, so put 0), and any addition parameters your algorithm will need to be passed. This will then be passed into your wrapper and used however you need. The purpose of this is certain parameters (such as paths to files) will vary between users and labeling it here will prevent anyone having to change your wrapper in any way.
+### Neoepitopes Dataset
+1,735 15-mer peptides searched against the human proteome with up to 3 mismatches.
 
-    NOTE: as in the example above, the BLAST algorithm requires downloading the bin files from the NCBI site here: https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
+| Method | Proteome Preprocessing (s) | Query Preprocessing (s) | Searching (s) | Total (s) | Recall (%) |
+|--------|---------------------------|------------------------|---------------|-----------|------------|
+| **PEPMatch** | **5.3** | **N/A** | **0.459** | **5.7** | **100** |
+| PEPMatch (old) | 13.3 | N/A | 18.4 | 31.7 | 100 |
+| NmerMatch | 50.4 | 0.002 | 40.1 | 90.5 | 100 |
+| BLAST | 1.28 | N/A | 119.2 | 120.5 | 58.1 |
+| DIAMOND | 0.24 | N/A | 4.93 | 5.17 | 34.0 |
+| MMseqs2 | 2.28 | N/A | 0.59 | 2.87 | 24.6 |
 
-    You must have the "blastp" and "makeblastdb" bin files to run it, so download the ones needed for your operating system and specify the bin directory in the JSON file.
+### SARS-CoV-2 Dataset
+628 peptides (8-15 mers) searched against betacoronaviruses with up to 2 mismatches.
 
-3. You can then call the benchmarking script like this:
+| Method | Proteome Preprocessing (s) | Query Preprocessing (s) | Searching (s) | Total (s) | Recall (%) |
+|--------|---------------------------|------------------------|---------------|-----------|------------|
+| **PEPMatch** | **2.2** | **N/A** | **6.4** | **8.6** | **100** |
+| PEPMatch (old) | 34.1 | N/A | 32.6 | 66.7 | 100 |
+| NmerMatch | 214 | 0.003 | 21.3 | 235.9 | 100 |
+| BLAST | 0.51 | N/A | 115.9 | 116.4 | 73.3 |
+| DIAMOND | 0.15 | N/A | 3.45 | 3.60 | 6.4 |
+| MMseqs2 | 1.83 | N/A | 0.77 | 2.60 | 7.4 |
 
-    ```
-    ./benchmarking.py -d mhc_ligands -s -t
-    ```
-    Passing the "-d" argument with the framework you want to test your tool against will automatically pull the necessary parameters for that framework.
+### Milk Peptides Dataset
+111 15-mer peptides searched against the human proteome for best match.
 
-    Passing the "-s" argument in the command line will skip the memory benchmark which usually takes a long time.
+| Method | Proteome Preprocessing (s) | Query Preprocessing (s) | Searching (s) | Total (s) | Recall (%) |
+|--------|---------------------------|------------------------|---------------|-----------|------------|
+| **PEPMatch** | **69.6** | **N/A** | **3.7** | **73.3** | **100** |
+| PEPMatch (old) | 45.5 | N/A | 600.3 | 645.8 | 100 |
+| NmerMatch | 203.7 | 0.005 | 1,168 | 1,372 | 100 |
+| BLAST | 1.30 | N/A | 105.3 | 106.6 | 84.2 |
+| DIAMOND | 0.25 | N/A | 5.24 | 5.49 | 75.3 |
+| MMseqs2 | 2.25 | N/A | 0.48 | 2.73 | 75.6 |
 
-    NOTE: the memory benchmark is limited since the recording method will only account for the process ID for the benchmarking script. In the future, the benchmarking may be put in a container in order to improve on this.
+## Adding Your Tool
 
-    Lastly, passing the "-t" argument will include the text-shifting algorithms, which are algorithms used in various datasets for searching text files. These algorithms are often slow, and do not do mismatching, so they are just an option.
+To benchmark your tool against PEPMatch, create a Python wrapper with a `Benchmarker` class:
+```python
+class Benchmarker:
+  def __init__(self, benchmark, query, proteome, lengths, max_mismatches, method_parameters):
+    """
+    Args:
+      benchmark: dataset name (mhc_ligands, milk, coronavirus, neoepitopes)
+      query: path to query FASTA file
+      proteome: path to proteome FASTA file
+      lengths: list of peptide lengths in the query
+      max_mismatches: max substitutions allowed (0 = exact, -1 = best match)
+      method_parameters: dict of tool-specific parameters from benchmarking_parameters.json
+    """
+    self.query = query
+    self.proteome = proteome
+    self.max_mismatches = max_mismatches
+    # raise ValueError if your tool can't handle this dataset:
+    # if max_mismatches > 0:
+    #   raise ValueError('MyTool cannot do mismatching.')
+    # if max_mismatches == -1:
+    #   raise ValueError('MyTool does not have best match.')
 
-    The following are the list of inputs for each dataset:
+  def __str__(self):
+    return 'Your Tool Name'
 
-    - The MHC ligand benchmarking will run 1,000 9-mers through the human proteome for exact matches (0 mismatches).
-    - The milk benchmarking will run 111 15-mers through the human proteome for the best match. The parameter for mismatches is -1 in this case to indicate best match. If your tool does not have a best match optiion, raising an exception is sufficient and is described below.
-    - The coronavirus benchmarking will run 628 peptides of varying lengths (8-15) through a large FASTA file of other coronaviruses for up to and including 2 mismatches.
-    - The neoepitopes will run 1,735 15-mers through the human proteome for up to and including 3 mismatches.
+  def preprocess_proteome(self):
+    """Preprocess the proteome. Raise TypeError if not applicable."""
+    raise TypeError('MyTool does not preprocess proteomes.')
 
-    Simply pass "-d mhc_ligands", "-d milk", "-d coronavirus", or "-d neoepitopes" in the command line for the dataset you want to run.
+  def preprocess_query(self):
+    """Preprocess the query. Raise TypeError if not applicable."""
+    raise TypeError('MyTool does not preprocess queries.')
 
-4. Your wrapper needs to have a class called "Benchmarker" which will take all the parameters mentioned for initilization: the query file (FASTA), the proteome file (FASTA), lengths of query peptides, max number of mismatches and your additional algorithm_parameters.
-
-    The class can inherit from your actual tool or just be created as an object which will call your code's executable. The Benchmarker object will should then have the three methods: preprocess_proteome, preprocess_query, and search. Along with the three methods, you need an \_\_init\_\_ method taking in at least the lengths of the peptides and the corresponding mismatches. You will need a \_\_str\_\_ method that just returns the name of your tool as a string.
-
-    The Python class with its methods should be written like this with the following arguments:
-
-    ```
-    class Benchmarker(object):
-        def __init__(self, query, proteome, lengths, max_mismatches, algorithm_parameters):
-            self.query = query
-            self.proteome = proteome
-            self.max_mismatches = max_mismatches
-            self.lengths = lengths
-            self.algorithm_parameters = algorithm_parameters
-
-        def __str__(self):
-            return 'Name of your tool'
-
-        def preprocess_proteome(self):
-            ...
-        def preprocess_query(self):
-            ...
-        def search(self):
-            ...
-    ```
-
-    What you do with the arguments after they are passed is up to you. Having the other necessary arguments specific to your tool in the "benchmarking_parameters.json" file and importing them into your wrapper would be helpful so others can run your tool without having to alter your wrapper or code of your actual tool. The three methods are for the three separate calls that the script will perform in order to time each process.
-
-5. If your tool does not do any mismatching, raise a ValueError within your \_\_init\_\_ method:
-
-    Example:
-
-    ```
-    class Benchmarker(object):
-        def __init__(self, query, proteome, lengths, max_mismatches, algorithm_parameters):
-            if self.max_mismatches != 0:
-                raise ValueError(self.__str__() + ' cannot do any mismatching.\n')
-    ```
-
-    If your tool does not have a best match feature (can't take max_mismatches = -1 as argument), then raise a ValueError within your \_\_init\_\_ method:
-
-    ```
-    class Benchmarker(object):
-        def __init__(self, query, proteome, lengths, max_mismatches, algorithm_parameters):
-            if max_mismatches == -1:
-                raise ValueError(self.__str__() + ' does not have a best match feature.\n')
-    ```
-
-    And if your tool does not do query or proteome preprocessing, raise a TypeError within the method:
-
-    ```
-    class Benchmarker(object):
-    .
-    .
-    .
-        def preprocess_proteome(self, proteome):
-            raise TypeError(self.__str__() + ' does not preprocess proteomes.\n')
-    ```
-
-6. Lastly the results from your search method should be returned in a standard format, which will then be put through another function for accuracy. The results should be in a Python list with the format as follows: comma-separated values with the query peptide first, followed by the matched peptide within the proteome, followed by the protein ID it is found in, followed by the number of mismatches, and then lastly, the index position where the peptide is found.
-
-    NOTE: the index is 0-based, not 1-based, as is standard in Python.
-
-    Example:
-
-    ```
-    YLLDLHSYL,YLLDLHSYL,sp|O60337|MARH6_HUMAN,0,561
-    ```
-
-    This example is also the first result from the eluted MHC ligands benchmarking. The benchmarking script will then use these results and compare them to expected values. The output will be a percentage of correct results.
-
-7. Please take a look at the "benchmarking_example.py" script or the PEPMatch code to see how a wrapper should be look. If anything was unclear in this writeup, please email me at dmarrama@lji.org with any questions or bugs and I will clarify / make corrections.
-
-Good luck!
-
-
-## Current Algorithms
-
-- Exact Matching
-    - PEPMatch
-    - BLAST
-    - NmerMatch (Author: Jason Greenbaum)
-    - Text shifting algorithms
-        - Horspool
-        - Boyer-Moore
-        - Knuth-Morris-Pratt
-        - Z-algorithm
-- Mismatching
-    - PEPMatch
-    - BLAST
-    - NmerMatch (Author: Jason Greenbaum)
-
-### NmerMatch
-
-The NmerMatch code is provided in the [NmerMatch directory](NmerMatch).  It is a Perl application and will require some configuration.  Briefly, all that is required is running cpanm and pointing to the NmerMatch directory:
-
-```bash
-cpanm NmerMatch
+  def search(self):
+    """Run the search. Return a pandas DataFrame with columns:
+      Query Sequence, Matched Sequence, Protein ID, Index start
+    Index start is 1-based."""
+    ...
 ```
 
-A [README](NmerMatch/README.md) is included that details the installation of it's dependencies.  In addtion, there are several parameters in [benchmarking\_parameters.json](benchmarking\_parameters.json) that may need to be adjusted.
-
-This section sets the default parameters for the tool:
-
+Then add your tool to `benchmarking_parameters.json`:
 ```json
-                {
-                        "name": "NmerMatch",
-                        "text_shifting": 0,
-                        "algorithm_parameters":{
-                                "nmer_script_path": "NmerMatch/bin/run_nmer_match.pl",
-                                "perl_exe": "",
-                                "perl_include_path": "",
-                                "catalog_master_dir": "",
-                                "output_master_dir": "",
-                        }
-                 }
+{
+  "name": "your_module_name",
+  "text_shifting": 0,
+  "method_parameters": {}
+}
 ```
 
-**Algorithm Parameters**
+Place your wrapper in the `methods/` directory and run:
+```bash
+python benchmarking.py -b mhc_ligands
+python benchmarking.py -b neoepitopes
+python benchmarking.py -b coronavirus
+python benchmarking.py -b milk
+```
 
-* nmer\_script\_path - the path to the 'run\_nmer\_match.pl' script.  By default, we point to the one included in this package.
-* perl\_exe - by default, the 'perl' executable on the PATH will be used.  If a different one should be called instead, set that here.
-* perl\_include\_path - if any of the dependencies are installed to a path that is not in the default search path, add that path here.
-* catalog\_master\_dir - the directory in which to store the catalog/database files created by the tool.  By default, these will be created underneath $TMP.
-* output\_master\_dir - the directory in which to store the output of the tool.  By default, output will be stored in a directory under $TMP.
+### Flags
 
-
-Of course, if the algorithm is not of interest, the section referring to it in [benchmarking\_parameters.json](benchmarking_parameters.json) can be removed.
+* `-b` (Required): Dataset to benchmark (`mhc_ligands`, `milk`, `coronavirus`, `neoepitopes`)
+* `-m`: Include memory benchmarking
+* `-t`: Include text-shifting algorithms (Horspool, Boyer-Moore, KMP, Z-algorithm)

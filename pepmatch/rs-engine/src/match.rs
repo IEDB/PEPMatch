@@ -470,12 +470,11 @@ pub(crate) fn run_discontinuous(
 
 pub(crate) fn run(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, max_mismatches: usize) -> Vec<Vec<String>> {
     let index = PepIndex::open(pepidx_path);
-    let search_k = if k > 0 { k } else { index.k };
 
     let all_results: Vec<Vec<Vec<String>>> = peptides
         .par_iter()
         .map(|(query_id, peptide)| {
-            search_peptide(query_id, peptide, search_k, max_mismatches, &index)
+            search_peptide(query_id, peptide, k, max_mismatches, &index)
         })
         .collect();
 

@@ -30,4 +30,6 @@ class Preprocessor:
     output_path = os.path.join(
       self.preprocessed_files_path, f'{self.proteome_name}_{k}mers.pepidx'
     )
+    print(f"Preprocessing {self.proteome_name} with k={k}...")
     rs_preprocess(self.proteome_file, k, output_path)
+    print(f"Saved to {output_path}")

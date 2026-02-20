@@ -3,7 +3,6 @@ import polars as pl
 from pathlib import Path
 from Bio import SeqIO
 from ._rs import rs_preprocess, rs_match, rs_discontinuous
-from .helpers import output_matches
 
 VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'tsv', 'xlsx', 'json']
 FASTA_EXTENSIONS = {
@@ -115,10 +114,9 @@ class Matcher:
         linear_df = self._to_dataframe(results)
 
     if self.discontinuous_epitopes:
-      pepidx_path = self._pepidx_path(self.k if self.k_specified else 2)
+      pepidx_path = self._pepidx_path(2)
       if not os.path.isfile(pepidx_path):
-        rs_preprocess(self.proteome_file, self.k if self.k_specified else 2, pepidx_path)
-
+        rs_preprocess(self.proteome_file, 2, pepidx_path)
       epitopes = [
         (qid, residues) for qid, residues in self.discontinuous_epitopes.items()
       ]
@@ -131,7 +129,7 @@ class Matcher:
     if self.output_format == 'dataframe':
       return df
     else:
-      output_matches(df, self.output_format, self.output_name)
+      self.output_matches(df, self.output_format, self.output_name)
 
   def _pepidx_path(self, k):
     return os.path.join(
@@ -141,8 +139,11 @@ class Matcher:
   def _search(self, k, max_mismatches, peptides=None):
     pepidx_path = self._pepidx_path(k)
     if not os.path.isfile(pepidx_path):
+      print(f"Preprocessing {self.proteome_name} with k={k}...")
       rs_preprocess(self.proteome_file, k, pepidx_path)
-    return rs_match(pepidx_path, peptides or self.query, k, max_mismatches)
+    query = peptides or self.query
+    print(f"Searching {len(query)} peptides against {self.proteome_name} (k={k}, max_mismatches={max_mismatches})...")
+    return rs_match(pepidx_path, query, k, max_mismatches)
 
   def best_match_search(self):
     peptides_remaining = self.query.copy()
@@ -159,16 +160,12 @@ class Matcher:
       if not peptides_remaining:
         break
 
-      pepidx_path = self._pepidx_path(k)
-      if not os.path.isfile(pepidx_path):
-        rs_preprocess(self.proteome_file, k, pepidx_path)
-
       min_len = min(len(seq) for _, seq in peptides_remaining)
       max_mm = (min_len // k) - 1
       if max_mm < 0:
         max_mm = 0
 
-      results = rs_match(pepidx_path, peptides_remaining, k, max_mm)
+      results = self._search(k, max_mm, peptides_remaining)
 
       matched_ids = set()
       for row in results:
@@ -179,12 +176,9 @@ class Matcher:
       peptides_remaining = [
         (qid, seq) for qid, seq in peptides_remaining if qid not in matched_ids
       ]
+      print(f"  -> k={k}, mismatches<={max_mm}: {len(peptides_remaining)} remaining")
 
     if peptides_remaining:
-      pepidx_path = self._pepidx_path(2)
-      if not os.path.isfile(pepidx_path):
-        rs_preprocess(self.proteome_file, 2, pepidx_path)
-
       max_mm = min(len(seq) for _, seq in peptides_remaining) // 2
 
       while peptides_remaining:
@@ -193,7 +187,7 @@ class Matcher:
           break
 
         max_mm += 1
-        results = rs_match(pepidx_path, peptides_remaining, 2, max_mm)
+        results = self._search(2, max_mm, peptides_remaining)
 
         matched_ids = set()
         for row in results:
@@ -204,6 +198,7 @@ class Matcher:
         peptides_remaining = [
           (qid, seq) for qid, seq in peptides_remaining if qid not in matched_ids
         ]
+        print(f"  -> k=2, mismatches<={max_mm}: {len(peptides_remaining)} remaining")
 
     if peptides_remaining:
       for qid, seq in peptides_remaining:
@@ -316,3 +311,16 @@ class Matcher:
 
     df = df.drop('Sequence Version')
     return df
+
+  def output_matches(self, df: pl.DataFrame, output_format: str, output_name: str) -> None:
+    path = output_name.__str__()
+    if not path.lower().endswith(f".{output_format}"):
+      path += f".{output_format}"
+    if output_format == 'csv':
+      df.write_csv(path)
+    elif output_format == 'tsv':
+      df.write_csv(path, separator='\t')
+    elif output_format == 'xlsx':
+      df.write_excel(path)
+    elif output_format == 'json':
+      df.write_json(path)

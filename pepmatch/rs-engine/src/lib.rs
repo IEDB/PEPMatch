@@ -19,10 +19,16 @@ fn rs_match(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, max_mi
     matching::run(pepidx_path, peptides, k, max_mismatches)
 }
 
+#[pyfunction]
+fn rs_discontinuous(pepidx_path: &str, epitopes: Vec<(String, Vec<(char, usize)>)>, max_mismatches: usize) -> Vec<Vec<String>> {
+    matching::run_discontinuous(pepidx_path, epitopes, max_mismatches)
+}
+
 #[pymodule]
 fn _rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rs_version, m)?)?;
     m.add_function(wrap_pyfunction!(rs_preprocess, m)?)?;
     m.add_function(wrap_pyfunction!(rs_match, m)?)?;
+    m.add_function(wrap_pyfunction!(rs_discontinuous, m)?)?;
     Ok(())
 }

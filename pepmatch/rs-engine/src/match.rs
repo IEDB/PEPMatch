@@ -385,6 +385,89 @@ fn make_empty_row(query_id: &str, peptide: &str) -> Vec<String> {
     ]
 }
 
+pub(crate) fn run_discontinuous(
+    pepidx_path: &str,
+    epitopes: Vec<(String, Vec<(char, usize)>)>,
+    max_mismatches: usize,
+) -> Vec<Vec<String>> {
+    let index = PepIndex::open(pepidx_path);
+    let seq = &index.mmap[index.seq_offset..index.seq_offset + index.seq_len];
+
+    let mut all_results: Vec<Vec<String>> = Vec::new();
+
+    for (query_id, residues) in &epitopes {
+        let mut found = false;
+        let query_str: String = residues.iter()
+            .map(|(r, p)| format!("{}{}", r, p))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        for pn in 1..=index.num_proteins {
+            let base = index.protein_offset(pn) as usize;
+            let end = if pn < index.num_proteins {
+                index.protein_offset(pn + 1) as usize
+            } else {
+                index.seq_len
+            };
+            let protein_len = end - base;
+
+            let mut mismatches = 0;
+            let mut valid = true;
+
+            for &(residue, position) in residues {
+                if position == 0 || position > protein_len {
+                    valid = false;
+                    break;
+                }
+                if seq[base + position - 1] as char != residue {
+                    mismatches += 1;
+                    if mismatches > max_mismatches {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+
+            if valid {
+                found = true;
+                let meta = index.get_metadata(pn);
+                let matched_str: String = residues.iter()
+                    .map(|&(_, p)| format!("{}{}", seq[base + p - 1] as char, p))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let mutated: Vec<String> = residues.iter()
+                    .filter(|&&(r, p)| seq[base + p - 1] as char != r)
+                    .map(|&(_, p)| p.to_string())
+                    .collect();
+
+                all_results.push(vec![
+                    query_id.clone(),
+                    query_str.clone(),
+                    matched_str,
+                    meta[0].clone(), meta[1].clone(), meta[2].clone(),
+                    meta[3].clone(), meta[4].clone(),
+                    mismatches.to_string(),
+                    format!("[{}]", mutated.join(", ")),
+                    residues.first().map(|&(_, p)| p.to_string()).unwrap_or_default(),
+                    residues.last().map(|&(_, p)| p.to_string()).unwrap_or_default(),
+                    meta[5].clone(), meta[6].clone(), meta[7].clone(), meta[8].clone(),
+                ]);
+            }
+        }
+
+        if !found {
+            let mut row = vec![query_id.clone(), query_str.clone()];
+            row.extend(std::iter::repeat(String::new()).take(6));
+            row.push(String::new());
+            row.push(String::from("[]"));
+            row.extend(std::iter::repeat(String::new()).take(6));
+            all_results.push(row);
+        }
+    }
+
+    all_results
+}
+
 pub(crate) fn run(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, max_mismatches: usize) -> Vec<Vec<String>> {
     let index = PepIndex::open(pepidx_path);
     let search_k = if k > 0 { k } else { index.k };

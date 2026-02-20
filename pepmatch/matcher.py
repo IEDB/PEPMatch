@@ -2,7 +2,7 @@ import os
 import polars as pl
 from pathlib import Path
 from Bio import SeqIO
-from ._rs import rs_preprocess, rs_match
+from ._rs import rs_preprocess, rs_match, rs_discontinuous
 from .helpers import output_matches
 
 VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'tsv', 'xlsx', 'json']
@@ -55,7 +55,9 @@ class Matcher:
     self.output_name = output_name or 'PEPMatch_results'
 
     self.query = self._parse_query(query)
-    if not self.query:
+    self.discontinuous_epitopes = self._find_discontinuous_epitopes()
+    self.query = self._clean_query()
+    if not self.query and not self.discontinuous_epitopes:
       raise ValueError('Query is empty.')
 
   def _parse_query(self, query):
@@ -81,15 +83,50 @@ class Matcher:
       f'Use a Python list, .txt file, or FASTA file for the query.'
     )
 
-  def match(self):
-    pepidx_path = os.path.join(
-      self.preprocessed_files_path, f'{self.proteome_name}_{self.k}mers.pepidx'
-    )
-    if not os.path.isfile(pepidx_path):
-      rs_preprocess(self.proteome_file, self.k, pepidx_path)
+  def _find_discontinuous_epitopes(self):
+    discontinuous_epitopes = {}
+    for query_id, peptide in self.query:
+      try:
+        epitope = [(x[0], int(x[1:])) for x in peptide.split(', ')]
+        discontinuous_epitopes[query_id] = epitope
+      except (ValueError, IndexError):
+        continue
+    return discontinuous_epitopes
 
-    results = rs_match(pepidx_path, self.query, self.k, self.max_mismatches)
-    df = self._to_dataframe(results)
+  def _clean_query(self):
+    discontinuous_ids = set(self.discontinuous_epitopes.keys())
+    return [
+      (qid, seq) for qid, seq in self.query
+      if qid not in discontinuous_ids
+    ]
+
+  def match(self):
+    linear_df = pl.DataFrame()
+    discontinuous_df = pl.DataFrame()
+
+    if self.query:
+      if self.best_match and self.k_specified:
+        results = self._search(self.k, self.max_mismatches)
+        linear_df = self._best_match_filter(self._to_dataframe(results))
+      elif self.best_match:
+        linear_df = self.best_match_search()
+      else:
+        results = self._search(self.k, self.max_mismatches)
+        linear_df = self._to_dataframe(results)
+
+    if self.discontinuous_epitopes:
+      pepidx_path = self._pepidx_path(self.k if self.k_specified else 2)
+      if not os.path.isfile(pepidx_path):
+        rs_preprocess(self.proteome_file, self.k if self.k_specified else 2, pepidx_path)
+
+      epitopes = [
+        (qid, residues) for qid, residues in self.discontinuous_epitopes.items()
+      ]
+      results = rs_discontinuous(pepidx_path, epitopes, self.max_mismatches)
+      discontinuous_df = self._to_dataframe(results)
+
+    dfs = [d for d in [linear_df, discontinuous_df] if d.height > 0]
+    df = pl.concat(dfs, how="vertical") if dfs else linear_df
 
     if self.output_format == 'dataframe':
       return df
@@ -174,23 +211,6 @@ class Matcher:
 
     df = self._to_dataframe(all_results)
     return self._best_match_filter(df)
-
-  def match(self):
-    if self.best_match and self.k_specified:
-      results = self._search(self.k, self.max_mismatches)
-      df = self._best_match_filter(self._to_dataframe(results))
-
-    elif self.best_match:
-      df = self.best_match_search()
-
-    else:
-      results = self._search(self.k, self.max_mismatches)
-      df = self._to_dataframe(results)
-
-    if self.output_format == 'dataframe':
-      return df
-    else:
-      output_matches(df, self.output_format, self.output_name)
 
   def _best_match_filter(self, df):
     matched_df = df.filter(pl.col("Matched Sequence").is_not_null())

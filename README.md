@@ -8,222 +8,174 @@
 
 **Author:** Daniel Marrama
 
-`PEPMatch` is a high-performance Python tool designed to find short peptide sequences within a reference proteome or other large protein sets. It is optimized for speed and flexibility, supporting exact matches, searches with a defined number of residue substitutions (mismatches), and a "best match" mode to find the most likely hit.
-
-As a competition to improve tool performance, we created a benchmarking framework with instructions [here](./benchmarking).
+`PEPMatch` is a high-performance peptide search tool for finding short peptide sequences within a reference proteome. Powered by a Rust engine with Python bindings, it delivers sub-second search times across entire proteomes while maintaining a simple Python API.
 
 ### Key Features
 
-* **Versatile Searching**: Find exact matches, matches with a specified tolerance for mismatches, or the single best match for each query peptide.
-* **Discontinuous Epitope Support**: Search for non-contiguous residues in the format `"R377, Q408, Q432, ..."`.
-* **High Performance**: Utilizes an efficient k-mer indexing strategy for rapid searching. The backend is powered by a C-based Hamming distance calculation for optimized mismatch detection.
-* **Optimized Preprocessing**: Employs a two-step process. Proteomes are preprocessed once into a format optimized for the search type (SQLite for exact matching, Pickle for mismatching), making subsequent searches extremely fast.
-* **Parallel Processing**: Built-in support for multicore processing to handle large query sets efficiently.
-* **Flexible I/O**: Accepts queries from FASTA files or Python lists and can output results to multiple formats, including CSV, TSV, XLSX, JSON, or directly as a Polars DataFrame.
+* **Blazing Fast**: Rust-powered search engine with automatic multi-core parallelization via Rayon. Search thousands of peptides against the entire human proteome in seconds.
+* **Unified Index Format**: Single `.pepidx` binary format stores sequences, metadata, and k-mer index in one memory-mapped file. Preprocess once, search repeatedly.
+* **Versatile Searching**: Exact matches, mismatch-tolerant searches, best match mode, and discontinuous epitope support.
+* **Simple API**: Two classes — `Preprocessor` and `Matcher` — handle everything.
+* **Flexible I/O**: Accepts queries from FASTA files, text files, or Python lists. Outputs to CSV, TSV, XLSX, JSON, or Polars DataFrame.
 
 ### Requirements
 
-* Python 3.7+
+* Python 3.10+
 * [Polars](https://pola.rs/)
 * [Biopython](https://biopython.org/)
 
 ### Installation
-
 ```bash
 pip install pepmatch
 ```
 
-### Core Engine
-
-`PEPMatch` operates using a two-step workflow:
-
-1.  **Preprocessing**: First, the target proteome is processed into an indexed format. This step only needs to be performed once per proteome and k-mer size. `PEPMatch` uses SQLite databases for the speed of indexed lookups in exact matching and serialized Python objects (pickle) for the flexibility needed in mismatch searching.
-2.  **Matching**: The user's query peptides are then searched against the preprocessed proteome.
-
-This design ensures that the time-intensive task of parsing and indexing the proteome is separated from the search itself, allowing for rapid and repeated querying.
-
-### Command-Line Usage
-
-The tool provides two CLI commands: `pepmatch-preprocess` and `pepmatch-match`.
-
-#### 1. Preprocessing
-
-The `pepmatch-preprocess` command builds the necessary database from your proteome FASTA file.
-
-* For **exact matching** (0 mismatches), use the `sql` format.
-* For **mismatch matching**, use the `pickle` format.
-
-```bash
-# Preprocess for an exact match search using 5-mers
-pepmatch-preprocess -p human.fasta -k 5 -f sql
-
-# Preprocess for a mismatch search using 3-mers
-pepmatch-preprocess -p human.fasta -k 3 -f pickle
-```
-
-##### Flags
-* `-p`, `--proteome` (Required): Path to the proteome FASTA file.
-* `-k`, `--kmer_size` (Required): The k-mer size to use for indexing.
-* `-f`, `--preprocess_format` (Required): The format for the preprocessed database (`sql` or `pickle`).
-* `-n`: A custom name for the proteome.
-* `-P`: Path to the directory to save preprocessed files.
-* `-g`: Path to a gene priority proteome file (UniProt specific 1-1 protein per gene file to prioritize matches later)
-
-#### 2. Matching
-
-The `pepmatch-match` command runs the search against a preprocessed proteome.
-
-```bash
-# Find exact matches (-m 0) using the preprocessed 5-mer database
-pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
-
-# Find matches with up to 3 mismatches (-m 3) using the 3-mer database
-pepmatch-match -q neoepitopes.fasta -p human.fasta -m 3 -k 3
-```
-
-##### Flags
-
-* `-q`, `--query` (Required): Path to the query peptide FASTA file.
-* `-p`, `--proteome_file` (Required): Path to the original proteome FASTA file.
-* `-m`: Maximum number of mismatches allowed (e.g., `0` for exact).
-* `-k`: The k-mer size to use (must match the preprocessed file).
-* `-P`: Path to the directory containing preprocessed files.
-* `-b`: Enable "best match" mode.
-* `-f`: Output format (`csv`, `tsv`, `xlsx`, `json`). Defaults to `csv`.
-* `-o`: Name of the output file (do not include the file extension, i.e. `.csv`)
-* `-v`: Disable sequence versioning (e.g. for protein ID P05067.1, ".1" will be removed.)
-* `-n`: Number of parallel processing jobs (CPU cores) to use.
-
-### Python API Usage
-
-For more control and integration into other workflows, `PEPMatch` provides a simple Python API.
-
-#### 1. Exact Matching
-
+### Quick Start
 ```python
 from pepmatch import Preprocessor, Matcher
 
-# Preprocess the proteome into a SQLite DB for exact matching
-Preprocessor('proteomes/human.fasta').sql_proteome(k=5)
+# Preprocess a proteome (one-time step)
+Preprocessor('human.fasta').preprocess(k=5)
 
-# Initialize the Matcher for an exact search (0 mismatches)
-matcher = Matcher(
-  query='queries/mhc-ligands-test.fasta',
-  proteome_file='proteomes/human.fasta',
+# Search for exact matches
+df = Matcher(
+  query=['YLLDLHSYL', 'GLCTLVAML', 'FAKEPEPTIDE'],
+  proteome_file='human.fasta',
   max_mismatches=0,
   k=5
-)
+).match()
 
-# Run the search and get results
-results_df = matcher.match()
+print(df)
 ```
 
-#### 2. Mismatching
+### Preprocessing
 
+Preprocessing builds a `.pepidx` index from your proteome FASTA file. This only needs to be done once per proteome and k-mer size. If a `.pepidx` file doesn't exist when you search, `Matcher` will create it automatically.
 ```python
-from pepmatch import Preprocessor, Matcher
+from pepmatch import Preprocessor
 
-# Preprocess the proteome into pickle files for mismatching
-Preprocessor('proteomes/human.fasta').pickle_proteome(k=3)
+Preprocessor('human.fasta').preprocess(k=5)
+```
 
-# Initialize the Matcher to allow up to 3 mismatches
-matcher = Matcher(
-  query='queries/neoepitopes-test.fasta',
-  proteome_file='proteomes/human.fasta',
+**CLI:**
+```bash
+pepmatch-preprocess -p human.fasta -k 5
+```
+
+#### Flags
+
+* `-p`, `--proteome` (Required): Path to the proteome FASTA file.
+* `-k`, `--kmer_size` (Required): The k-mer size for indexing.
+* `-n`, `--proteome_name`: Custom name for the proteome.
+* `-P`, `--preprocessed_files_path`: Directory to save preprocessed files.
+
+### Matching
+
+#### Exact Matching
+```python
+from pepmatch import Matcher
+
+df = Matcher(
+  query='peptides.fasta',
+  proteome_file='human.fasta',
+  max_mismatches=0,
+  k=5
+).match()
+```
+
+#### Mismatch Searching
+```python
+df = Matcher(
+  query='neoepitopes.fasta',
+  proteome_file='human.fasta',
   max_mismatches=3,
   k=3
-)
-
-results_df = matcher.match()
+).match()
 ```
 
-#### 3. Best Match
+#### Best Match
 
-The `best_match` mode automatically finds the optimal match for each peptide, trying different k-mer sizes and mismatch thresholds. No manual preprocessing is required.
-
+Automatically finds the optimal match for each peptide by trying different k-mer sizes and mismatch thresholds. No manual preprocessing required.
 ```python
-from pepmatch import Matcher
-
-matcher = Matcher(
-  query='queries/milk-peptides-test.fasta',
-  proteome_file='proteomes/human.fasta',
+df = Matcher(
+  query='peptides.fasta',
+  proteome_file='human.fasta',
   best_match=True
-)
-
-results_df = matcher.match()
+).match()
 ```
 
-#### 4. Parallel Processing
+#### Discontinuous Epitope Searching
 
-Use the `ParallelMatcher` class to run searches on multiple CPU cores. The `n_jobs` parameter specifies the number of cores to use.
-
+Search for non-contiguous residues defined by their positions.
 ```python
-from pepmatch import Preprocessor, ParallelMatcher
-
-# Preprocessing is the same
-Preprocessor('proteomes/betacoronaviruses.fasta').pickle_proteome(k=3)
-
-# Use ParallelMatcher to search with 4 jobs
-parallel_matcher = ParallelMatcher(
-  query='queries/coronavirus-test.fasta',
-  proteome_file='proteomes/betacoronaviruses.fasta',
-  max_mismatches=3,
-  k=3,
-  n_jobs=4
-)
-
-results_df = parallel_matcher.match()
+df = Matcher(
+  query=[
+    "R377, Q408, Q432, H433, F436",
+    "S2760, V2763, E2773, D2805, T2819"
+  ],
+  proteome_file='sars-cov-2.fasta',
+  max_mismatches=1
+).match()
 ```
 
-#### 5. Discontinuous Epitope Searching
+#### Mixed Queries
 
-`PEPMatch` can search for epitopes defined by non-contiguous residues and their positions. Simply provide a query list where each item is a string in the format `"A1, B10, C15"`.
-
+Linear peptides and discontinuous epitopes can be searched together.
 ```python
-from pepmatch import Matcher
-
-# A list of discontinuous epitopes to find
-discontinuous_query = [
-  "R377, Q408, Q432, H433, F436",
-  "S2760, V2763, E2773, D2805, T2819"
-]
-
-matcher = Matcher(
-  query=discontinuous_query,
-  proteome_file='proteomes/sars-cov-2.fasta',
-  max_mismatches=1  # Allow 1 mismatch among the specified residues
-)
-
-results_df = matcher.match()
+df = Matcher(
+  query=[
+    'YLLDLHSYL',
+    'R377, Q408, Q432, H433, F436',
+    'GLCTLVAML',
+  ],
+  proteome_file='sars-cov-2.fasta',
+  max_mismatches=0
+).match()
 ```
+
+#### Query Input Formats
+
+* **Python list**: `['YLLDLHSYL', 'GLCTLVAML']`
+* **FASTA file**: `.fasta`, `.fas`, `.fa`, `.fna`, `.ffn`, `.faa`, `.mpfa`, `.frn`
+* **Text file**: `.txt` with one peptide per line
+
+**CLI:**
+```bash
+pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
+```
+
+#### Flags
+
+* `-q`, `--query` (Required): Path to the query file.
+* `-p`, `--proteome_file` (Required): Path to the proteome FASTA file.
+* `-m`, `--max_mismatches`: Maximum mismatches allowed (default: 0).
+* `-k`, `--kmer_size`: K-mer size (default: 5).
+* `-P`, `--preprocessed_files_path`: Directory containing preprocessed files.
+* `-b`, `--best_match`: Enable best match mode.
+* `-f`, `--output_format`: Output format — `csv`, `tsv`, `xlsx`, `json` (default: `csv`).
+* `-o`, `--output_name`: Output file name (without extension).
+* `-v`, `--sequence_version`: Disable sequence versioning on protein IDs.
 
 ### Output Formats
 
-You can specify the output format using the `output_format` parameter in the `Matcher` or `ParallelMatcher`.
+* **`dataframe`** (default for API): Returns a Polars DataFrame.
+* **`csv`** (default for CLI): CSV file.
+* **`tsv`**: Tab-separated file.
+* **`xlsx`**: Excel file.
+* **`json`**: JSON file.
 
-* **`dataframe` (default for API)**: Returns a Polars DataFrame.
-* **`csv` (default for CLI)**: Saves results to a CSV file.
-* **`tsv`**: Saves results to a TSV file.
-* **`xlsx`**: Saves results to an Excel file.
-* **`json`**: Saves results to a JSON file.
+### Performance
 
-To receive a DataFrame from the API, you can either omit the `output_format` parameter or set it explicitly:
+Benchmarked searching ~2,000 peptides against the human proteome (~200,000 proteins):
 
-```python
-# The match() method will return a Polars DataFrame
-df = Matcher(
-  'queries/neoepitopes-test.fasta',
-  'proteomes/human.fasta',
-  max_mismatches=3,
-  k=3,
-  output_format='dataframe' # Explicitly request a DataFrame
-).match()
-
-print(df.head())
-```
+| Mode | Time |
+|------|------|
+| Exact match (k=5) | ~0.06s |
+| 1 mismatch (k=3) | ~1.5s |
+| 2 mismatches (k=3) | ~1.9s |
+| 3 mismatches (k=3) | ~3.7s |
 
 ### Citation
 
-If you use PEPMatch in your research, please cite the following paper:
+If you use PEPMatch in your research, please cite:
 
 Marrama D, Chronister WD, Westernberg L, et al. PEPMatch: a tool to identify short peptide sequence matches in large sets of proteins. *BMC Bioinformatics*. 2023;24(1):485. Published 2023 Dec 18. doi:10.1186/s12859-023-05606-4

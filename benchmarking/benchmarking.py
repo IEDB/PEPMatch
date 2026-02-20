@@ -90,7 +90,7 @@ def run_benchmark(benchmark, include_memory=False, include_text_shifting=False):
     if preprocess_proteome_time is not None:
       print(f'  -> {preprocess_proteome_time:.3f}s')
     else:
-      print(f'  -> N/A')
+      print('  -> N/A')
 
     # preprocess query
     print('  Preprocessing query...')
@@ -98,7 +98,7 @@ def run_benchmark(benchmark, include_memory=False, include_text_shifting=False):
     if preprocess_query_time is not None:
       print(f'  -> {preprocess_query_time:.3f}s')
     else:
-      print(f'  -> N/A')
+      print('  -> N/A')
 
     # search
     print('  Searching...')

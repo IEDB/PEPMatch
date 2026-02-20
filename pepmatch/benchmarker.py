@@ -1,5 +1,3 @@
-import glob
-import os
 from .preprocessor import Preprocessor
 from .matcher import Matcher
 

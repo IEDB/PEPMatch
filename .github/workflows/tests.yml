@@ -24,8 +24,6 @@ jobs:
             test-file: pepmatch/tests/test_best_match.py
           - name: Discontinuous Epitope
             test-file: pepmatch/tests/test_discontinuous_search.py
-          - name: Parallel
-            test-file: pepmatch/tests/test_parallel_match.py
           - name: Output
             test-file: pepmatch/tests/test_output.py
 

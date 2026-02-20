@@ -16,6 +16,7 @@ notebooks/
 old_code/
 pepmatch.egg-info/
 pepmatch/__pycache__
+pepmatch/rs-engine/target/
 proteomes/*.pdb
 proteomes/*.phr
 proteomes/*.pin

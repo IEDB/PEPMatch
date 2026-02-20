@@ -2,7 +2,6 @@ import polars as pl
 import pytest
 from pathlib import Path
 from os import remove
-from pepmatch import Matcher
 from pepmatch.matcher import VALID_OUTPUT_FORMATS, output_matches
 
 @pytest.fixture

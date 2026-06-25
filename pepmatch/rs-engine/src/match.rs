@@ -543,10 +543,8 @@ fn minimal_coverage_seeds(query: &[u8], k: usize) -> Vec<(&[u8], usize)> {
     seeds
 }
 
-fn is_terminal_deletion(q_idx: isize, query_len: usize, p_idx: isize, protein_len: usize) -> bool {
-    if q_idx == 0 || q_idx == query_len as isize - 1 {
-        return true;
-    }
+fn is_terminal_deletion(p_idx: isize, protein_len: usize) -> bool {
+    // Protein boundary edge effect — no biological indel can be inferred here.
     if p_idx <= 0 || p_idx >= protein_len as isize - 1 {
         return true;
     }
@@ -568,7 +566,6 @@ fn dfs(
     }
 
     let mut all_paths: Vec<usize> = Vec::new();
-    let query_len = query.len();
     let protein_len = protein.len();
 
     // Match branch: both pointers advance, consumes 1 protein char.
@@ -583,7 +580,7 @@ fn dfs(
 
     if indels_left > 0 {
         // Deletion branch: query pointer advances, protein stays, 0 protein chars consumed.
-        if !is_terminal_deletion(q_idx, query_len, p_idx, protein_len) {
+        if !is_terminal_deletion(p_idx, protein_len) {
             all_paths.extend(dfs(
                 query, q_idx + direction, protein, p_idx, indels_left - 1, direction,
             ));

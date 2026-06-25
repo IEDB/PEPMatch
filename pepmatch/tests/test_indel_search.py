@@ -39,15 +39,16 @@ def test_indel_search(proteome_path, query_path, expected_path):
   )
 
 
-def test_terminal_deletion_blocked(proteome_path):
+def test_query_terminal_deletion_found(proteome_path):
+  # Deletion of Q at query position 0 hits NALVEATRFC at protein position 3
+  # in Q8V336 — not a protein boundary, so the match is valid.
   df = Matcher(
     query=['QNALVEATRFC'],
     proteome_file=proteome_path,
     max_indels=1,
     output_format='dataframe'
   ).match()
-  assert df['Matched Sequence'].is_null().all(), (
-    'Terminal deletion should be blocked but got match(es): '
-    + str(df.filter(pl.col('Matched Sequence').is_not_null())
-            .select(['Query Sequence', 'Matched Sequence']))
+  matches = df.filter(pl.col('Matched Sequence').is_not_null())
+  assert 'NALVEATRFC' in matches['Matched Sequence'].to_list(), (
+    'Expected query-terminal deletion match NALVEATRFC not found'
   )

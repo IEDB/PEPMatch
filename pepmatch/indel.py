@@ -1,13 +1,10 @@
-def _is_terminal_deletion(q_idx, query_len, p_idx, protein_len):
-  """Return True if a deletion at this position is at a query or protein boundary.
+def _is_terminal_deletion(p_idx, protein_len):
+  """Return True if a deletion at this protein position is at a sequence boundary.
 
-  Terminal deletions are forbidden because a deletion at the first or last
-  query position produces a match indistinguishable from a shorter peptide,
-  and a deletion at a protein boundary arises from an edge effect rather
-  than a true biological indel event.
+  Deletions at p_idx == 0 or p_idx == protein_len - 1 are forbidden because
+  they arise from a database boundary edge effect rather than a true biological
+  indel event.
   """
-  if q_idx == 0 or q_idx == query_len - 1:
-    return True
   if p_idx <= 0 or p_idx >= protein_len - 1:
     return True
   return False
@@ -42,7 +39,7 @@ def _dfs(query, q_idx, protein, p_idx, indels_left, direction):
       all_paths.append(consumed + 1)
 
   if indels_left > 0:
-    if not _is_terminal_deletion(q_idx, len(query), p_idx, len(protein)):
+    if not _is_terminal_deletion(p_idx, len(protein)):
       all_paths.extend(
         _dfs(query, q_idx + direction, protein, p_idx, indels_left - 1, direction)
       )

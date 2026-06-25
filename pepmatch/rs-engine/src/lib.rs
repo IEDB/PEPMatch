@@ -24,11 +24,17 @@ fn rs_discontinuous(pepidx_path: &str, epitopes: Vec<(String, Vec<(char, usize)>
     matching::run_discontinuous(pepidx_path, epitopes, max_mismatches)
 }
 
+#[pyfunction]
+fn rs_indel_match(pepidx_path: &str, peptides: Vec<(String, String)>, indels_allowed: usize) -> Vec<Vec<String>> {
+    matching::run_indel(pepidx_path, peptides, indels_allowed)
+}
+
 #[pymodule]
 fn _rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rs_version, m)?)?;
     m.add_function(wrap_pyfunction!(rs_preprocess, m)?)?;
     m.add_function(wrap_pyfunction!(rs_match, m)?)?;
     m.add_function(wrap_pyfunction!(rs_discontinuous, m)?)?;
+    m.add_function(wrap_pyfunction!(rs_indel_match, m)?)?;
     Ok(())
 }

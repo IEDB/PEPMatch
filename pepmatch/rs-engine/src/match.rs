@@ -468,6 +468,216 @@ pub(crate) fn run_discontinuous(
     all_results
 }
 
+fn minimal_coverage_seeds(query: &[u8], k: usize) -> Vec<(&[u8], usize)> {
+    let query_len = query.len();
+    let mut seeds: Vec<(&[u8], usize)> = Vec::new();
+    let mut j = 0;
+    while j + k <= query_len {
+        seeds.push((&query[j..j + k], j));
+        j += k;
+    }
+    if query_len >= k {
+        let last_start = query_len - k;
+        if seeds.last().map(|(_, s)| *s) != Some(last_start) {
+            seeds.push((&query[last_start..], last_start));
+        }
+    }
+    seeds
+}
+
+fn is_terminal_deletion(q_idx: isize, query_len: usize, p_idx: isize, protein_len: usize) -> bool {
+    if q_idx == 0 || q_idx == query_len as isize - 1 {
+        return true;
+    }
+    if p_idx <= 0 || p_idx >= protein_len as isize - 1 {
+        return true;
+    }
+    false
+}
+
+fn dfs(
+    query: &[u8],
+    q_idx: isize,
+    protein: &[u8],
+    p_idx: isize,
+    indels_left: usize,
+    direction: isize,
+) -> Vec<usize> {
+    if (direction == 1 && q_idx >= query.len() as isize)
+        || (direction == -1 && q_idx < 0)
+    {
+        return vec![0];
+    }
+
+    let mut all_paths: Vec<usize> = Vec::new();
+    let query_len = query.len();
+    let protein_len = protein.len();
+
+    // Match branch: both pointers advance, consumes 1 protein char.
+    if p_idx >= 0
+        && (p_idx as usize) < protein_len
+        && query[q_idx as usize] == protein[p_idx as usize]
+    {
+        for consumed in dfs(query, q_idx + direction, protein, p_idx + direction, indels_left, direction) {
+            all_paths.push(consumed + 1);
+        }
+    }
+
+    if indels_left > 0 {
+        // Deletion branch: query pointer advances, protein stays, 0 protein chars consumed.
+        if !is_terminal_deletion(q_idx, query_len, p_idx, protein_len) {
+            all_paths.extend(dfs(
+                query, q_idx + direction, protein, p_idx, indels_left - 1, direction,
+            ));
+        }
+        // Insertion branch: protein pointer advances, query stays, 1 protein char consumed.
+        if p_idx >= 0 && (p_idx as usize) < protein_len {
+            for consumed in dfs(
+                query, q_idx, protein, p_idx + direction, indels_left - 1, direction,
+            ) {
+                all_paths.push(consumed + 1);
+            }
+        }
+    }
+
+    all_paths
+}
+
+fn extend_bidirectional(
+    query: &[u8],
+    q_seed_start: usize,
+    p_hit_idx: usize,
+    protein: &[u8],
+    k: usize,
+    max_indels: usize,
+) -> Vec<(usize, Vec<u8>)> {
+    let mut seen: HashSet<(usize, Vec<u8>)> = HashSet::new();
+    let mut results: Vec<(usize, Vec<u8>)> = Vec::new();
+
+    for r_budget in 0..=max_indels {
+        let l_budget = max_indels - r_budget;
+
+        let r_paths = dfs(
+            query, (q_seed_start + k) as isize, protein, (p_hit_idx + k) as isize,
+            r_budget, 1,
+        );
+        let l_paths = dfs(
+            query, q_seed_start as isize - 1, protein, p_hit_idx as isize - 1,
+            l_budget, -1,
+        );
+
+        for &r_consumed in &r_paths {
+            for &l_consumed in &l_paths {
+                if l_consumed > p_hit_idx {
+                    continue;
+                }
+                let start = p_hit_idx - l_consumed;
+                let end = p_hit_idx + k + r_consumed;
+                if end > protein.len() {
+                    continue;
+                }
+                let matched = protein[start..end].to_vec();
+                let key = (start, matched.clone());
+                if !seen.contains(&key) {
+                    seen.insert(key);
+                    results.push((start, matched));
+                }
+            }
+        }
+    }
+
+    results
+}
+
+fn indel_search_peptide(
+    query_id: &str,
+    peptide: &str,
+    indels_allowed: usize,
+    index: &PepIndex,
+) -> Vec<Vec<String>> {
+    let pep_bytes = peptide.as_bytes();
+    let peptide_len = pep_bytes.len();
+    let k = index.k;
+
+    if peptide_len < k {
+        return vec![make_empty_row(query_id, peptide)];
+    }
+
+    let seeds = minimal_coverage_seeds(pep_bytes, k);
+    let mut seen: HashSet<(usize, usize, Vec<u8>)> = HashSet::new();
+    let mut matches: Vec<Vec<String>> = Vec::new();
+
+    for (seed_bytes, q_seed_start) in &seeds {
+        if let Some(hit_positions) = index.lookup(seed_bytes) {
+            for encoded_hit in hit_positions {
+                let prot_num = (encoded_hit / PROTEIN_INDEX_MULTIPLIER) as usize;
+                if prot_num == 0 || prot_num > index.num_proteins {
+                    continue;
+                }
+                let local_p_idx = (encoded_hit % PROTEIN_INDEX_MULTIPLIER) as usize;
+
+                let prot_base = index.protein_offset(prot_num) as usize;
+                let prot_end = if prot_num < index.num_proteins {
+                    index.protein_offset(prot_num + 1) as usize
+                } else {
+                    index.seq_len
+                };
+                let protein = &index.mmap[index.seq_offset + prot_base..index.seq_offset + prot_end];
+
+                for (true_start, matched) in
+                    extend_bidirectional(pep_bytes, *q_seed_start, local_p_idx, protein, k, indels_allowed)
+                {
+                    let dedup_key = (prot_num, true_start, matched.clone());
+                    if seen.contains(&dedup_key) {
+                        continue;
+                    }
+                    seen.insert(dedup_key);
+
+                    let matched_str = String::from_utf8_lossy(&matched).into_owned();
+                    let n_indels = matched.len().abs_diff(peptide_len);
+                    let meta = index.get_metadata(prot_num);
+
+                    matches.push(vec![
+                        query_id.to_string(),
+                        peptide.to_string(),
+                        matched_str,
+                        meta[0].clone(), meta[1].clone(), meta[2].clone(),
+                        meta[3].clone(), meta[4].clone(),
+                        n_indels.to_string(),
+                        String::from("[]"),
+                        (true_start + 1).to_string(),
+                        (true_start + matched.len()).to_string(),
+                        meta[5].clone(), meta[6].clone(), meta[7].clone(), meta[8].clone(),
+                    ]);
+                }
+            }
+        }
+    }
+
+    if matches.is_empty() {
+        vec![make_empty_row(query_id, peptide)]
+    } else {
+        matches
+    }
+}
+
+pub(crate) fn run_indel(
+    pepidx_path: &str,
+    peptides: Vec<(String, String)>,
+    indels_allowed: usize,
+) -> Vec<Vec<String>> {
+    let index = PepIndex::open(pepidx_path);
+
+    let all_results: Vec<Vec<Vec<String>>> = peptides
+        .par_iter()
+        .map(|(query_id, peptide)| {
+            indel_search_peptide(query_id, peptide, indels_allowed, &index)
+        })
+        .collect();
+
+    all_results.into_iter().flatten().collect()
+}
+
 pub(crate) fn run(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, max_mismatches: usize) -> Vec<Vec<String>> {
     let index = PepIndex::open(pepidx_path);
 

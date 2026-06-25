@@ -1,5 +1,6 @@
 .~*
 *.db
+*.pepidx
 *.pickle
 *.pkl
 *.pyc

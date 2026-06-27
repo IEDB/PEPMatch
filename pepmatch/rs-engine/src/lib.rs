@@ -29,6 +29,11 @@ fn rs_metadata(pepidx_path: &str) -> matching::MetaColumns {
     matching::run_metadata(pepidx_path)
 }
 
+#[pyfunction]
+fn rs_match_counts(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, max_mismatches: usize) -> matching::CountColumns {
+    matching::run_counts(pepidx_path, peptides, k, max_mismatches)
+}
+
 #[pymodule]
 fn _rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rs_version, m)?)?;
@@ -36,5 +41,6 @@ fn _rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rs_match, m)?)?;
     m.add_function(wrap_pyfunction!(rs_discontinuous, m)?)?;
     m.add_function(wrap_pyfunction!(rs_metadata, m)?)?;
+    m.add_function(wrap_pyfunction!(rs_match_counts, m)?)?;
     Ok(())
 }

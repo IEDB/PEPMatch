@@ -2,7 +2,7 @@ import os
 import polars as pl
 from pathlib import Path
 from Bio import SeqIO
-from ._rs import rs_preprocess, rs_match, rs_discontinuous, rs_metadata
+from ._rs import rs_preprocess, rs_match, rs_discontinuous, rs_metadata, rs_match_counts
 
 VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'tsv', 'xlsx', 'json']
 FASTA_EXTENSIONS = {
@@ -37,6 +37,7 @@ class Matcher:
     output_format='dataframe',
     output_name='',
     sequence_version=True,
+    counts_only=False,
   ):
 
     if best_match and k == 0:
@@ -57,6 +58,9 @@ class Matcher:
         f'Invalid output format. Choose from: {VALID_OUTPUT_FORMATS}'
       )
 
+    if counts_only and best_match:
+      raise ValueError('counts_only is not supported with best_match.')
+
     self.proteome_file = str(proteome_file)
     self.proteome_name = str(proteome_file).split('/')[-1].split('.')[0]
     self.max_mismatches = max_mismatches
@@ -64,6 +68,7 @@ class Matcher:
     self.best_match = best_match
     self.output_format = output_format
     self.sequence_version = sequence_version
+    self.counts_only = counts_only
     self.output_name = output_name or 'PEPMatch_results'
 
     self.query = self._parse_query(query)
@@ -116,6 +121,12 @@ class Matcher:
     linear_df = pl.DataFrame()
     discontinuous_df = pl.DataFrame()
 
+    if self.counts_only:
+      df = self._counts_to_dataframe(self._search_counts(self.k, self.max_mismatches))
+      if self.output_format == 'dataframe':
+        return df
+      return output_matches(df, self.output_format, self.output_name)
+
     if self.query:
       if self.best_match and self.k_specified:
         results = self._search(self.k, self.max_mismatches)
@@ -157,6 +168,30 @@ class Matcher:
     query = peptides or self.query
     print(f"Searching {len(query)} peptides against {self.proteome_name} (k={k}, max_mismatches={max_mismatches})...")
     return rs_match(pepidx_path, query, k, max_mismatches)
+
+  def _search_counts(self, k, max_mismatches):
+    pepidx_path = self._pepidx_path(k)
+    if not os.path.isfile(pepidx_path):
+      print(f"Preprocessing {self.proteome_name} with k={k}...")
+      rs_preprocess(self.proteome_file, k, pepidx_path)
+    print(f"Counting {len(self.query)} peptides against {self.proteome_name} (k={k}, max_mismatches={max_mismatches})...")
+    return rs_match_counts(pepidx_path, self.query, k, max_mismatches)
+
+  def _counts_to_dataframe(self, cols):
+    """Aggregate counts: one row per (query peptide, mismatch level) with a hit.
+    Memory is O(unique queries), independent of total hit count."""
+    qid, qseq, mm, count = cols
+    if not qid:
+      return pl.DataFrame(schema={
+        'Query ID': pl.Utf8, 'Query Sequence': pl.Utf8,
+        'Mismatches': pl.Int64, 'Count': pl.UInt64,
+      })
+    return pl.DataFrame({
+      'Query ID': qid,
+      'Query Sequence': qseq,
+      'Mismatches': pl.Series(mm, dtype=pl.Int64),
+      'Count': pl.Series(count, dtype=pl.UInt64),
+    })
 
   def best_match_search(self):
     peptides_remaining = self.query.copy()

@@ -541,3 +541,115 @@ pub(crate) fn run(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, 
         .collect();
     unzip_records(records)
 }
+
+// ── Counts-only path (aggregate; O(unique queries), no per-hit materialization) ──
+
+pub(crate) type CountColumns = (Vec<String>, Vec<String>, Vec<i64>, Vec<u64>);
+
+/// Tally accepted matches per mismatch level for one peptide, mirroring
+/// mismatch_match's dedup + validity walk exactly but without building the
+/// matched sequence, metadata, or any per-hit row.
+fn mismatch_count(peptide: &str, k: usize, max_mismatches: usize, index: &PepIndex, counts: &mut [u64]) {
+    let pep_bytes = peptide.as_bytes();
+    if pep_bytes.len() < k { return; }
+
+    let num_kmers = pep_bytes.len() - k + 1;
+    let peptide_len = pep_bytes.len();
+    let mut seen: HashSet<u64> = HashSet::new();
+
+    if peptide_len % k == 0 {
+        let mut idx = 0;
+        while idx < num_kmers {
+            let kmer = &pep_bytes[idx..idx + k];
+            if let Some(positions) = index.lookup(kmer) {
+                for kmer_hit in positions {
+                    let start = (kmer_hit as i64 - idx as i64) as u64;
+                    if seen.contains(&start) { continue; }
+                    let mismatches = check_left_neighbors(pep_bytes, idx, kmer_hit, index, k, max_mismatches, 0);
+                    let mismatches = check_right_neighbors(pep_bytes, idx, kmer_hit, index, k, max_mismatches, mismatches);
+                    if mismatches <= max_mismatches {
+                        let mut i = 0;
+                        let mut valid = true;
+                        while i < peptide_len {
+                            if index.resolve(start + i as u64).is_none() { valid = false; break; }
+                            i += k;
+                        }
+                        if valid {
+                            seen.insert(start);
+                            counts[mismatches] += 1;
+                        }
+                    }
+                }
+            }
+            idx += k;
+        }
+    } else {
+        for idx in 0..num_kmers {
+            let kmer = &pep_bytes[idx..idx + k];
+            if let Some(positions) = index.lookup(kmer) {
+                for kmer_hit in positions {
+                    let start = (kmer_hit as i64 - idx as i64) as u64;
+                    if seen.contains(&start) { continue; }
+                    let mismatches = check_left_residues(pep_bytes, idx, kmer_hit, index, max_mismatches, 0);
+                    let mismatches = check_right_residues(pep_bytes, idx, kmer_hit, index, k, max_mismatches, mismatches);
+                    if mismatches <= max_mismatches {
+                        let mut i = 0;
+                        let mut valid = true;
+                        while i < peptide_len {
+                            if i + k > peptide_len {
+                                let remaining = peptide_len - i;
+                                let back = k - remaining;
+                                if index.resolve(start + i as u64 - back as u64).is_none() { valid = false; break; }
+                            } else if index.resolve(start + i as u64).is_none() {
+                                valid = false; break;
+                            }
+                            i += k;
+                        }
+                        if valid {
+                            seen.insert(start);
+                            counts[mismatches] += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn count_peptide(query_id: &str, peptide: &str, k: usize, max_mismatches: usize, index: &PepIndex) -> Vec<(String, String, i64, u64)> {
+    let mut counts = vec![0u64; max_mismatches + 1];
+    if max_mismatches == 0 {
+        counts[0] = exact_match(peptide, k, index).len() as u64;
+    } else {
+        mismatch_count(peptide, k, max_mismatches, index, &mut counts);
+    }
+    let mut out = Vec::new();
+    for (mm, &c) in counts.iter().enumerate() {
+        if c > 0 {
+            out.push((query_id.to_string(), peptide.to_string(), mm as i64, c));
+        }
+    }
+    out
+}
+
+pub(crate) fn run_counts(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, max_mismatches: usize) -> CountColumns {
+    let index = PepIndex::open(pepidx_path);
+    let rows: Vec<(String, String, i64, u64)> = peptides
+        .par_iter()
+        .flat_map_iter(|(query_id, peptide)| {
+            count_peptide(query_id, peptide, k, max_mismatches, &index).into_iter()
+        })
+        .collect();
+    let n = rows.len();
+    let mut qid = Vec::with_capacity(n);
+    let mut qseq = Vec::with_capacity(n);
+    let mut mm = Vec::with_capacity(n);
+    let mut cnt = Vec::with_capacity(n);
+    for (a, b, c, d) in rows {
+        qid.push(a);
+        qseq.push(b);
+        mm.push(c);
+        cnt.push(d);
+    }
+    (qid, qseq, mm, cnt)
+}

@@ -15,6 +15,7 @@
 * **Blazing Fast**: Rust-powered search engine with automatic multi-core parallelization via Rayon. Search thousands of peptides against the entire human proteome in seconds.
 * **Unified Index Format**: Single `.pepidx` binary format stores sequences, metadata, and k-mer index in one memory-mapped file. Preprocess once, search repeatedly.
 * **Versatile Searching**: Exact matches, mismatch-tolerant searches, best match mode, and discontinuous epitope support.
+* **Counts-Only Mode**: Get aggregate hit counts per peptide with `O(unique queries)` memory instead of `O(hits)` — built for massive query sets and dense reference matching.
 * **Simple API**: Two classes — `Preprocessor` and `Matcher` — handle everything.
 * **Flexible I/O**: Accepts queries from FASTA files, text files, or Python lists. Outputs to CSV, TSV, XLSX, JSON, or Polars DataFrame.
 
@@ -131,6 +132,20 @@ df = Matcher(
   max_mismatches=0
 ).match()
 ```
+
+#### Counts-Only Mode
+
+For large query sets where you only need *how many* times each peptide matches — not the full per-hit table — set `counts_only=True`. PEPMatch tallies hits per `(peptide, mismatch level)` directly, without reconstructing matched sequences, pulling metadata, or building per-hit rows. Memory scales with the number of *unique queries*, not the number of hits, so it stays bounded even when matching is extremely dense (e.g. searching a proteome against itself).
+```python
+df = Matcher(
+  query='peptides.fasta',
+  proteome_file='human.fasta',
+  max_mismatches=2,
+  k=3,
+  counts_only=True
+).match()
+```
+Returns columns `Query ID`, `Query Sequence`, `Mismatches`, and `Count` — one row per peptide per mismatch level that has at least one hit. Honors `output_format`; not supported with `best_match`.
 
 #### Query Input Formats
 

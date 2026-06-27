@@ -2,7 +2,7 @@ import os
 import polars as pl
 from pathlib import Path
 from Bio import SeqIO
-from ._rs import rs_preprocess, rs_match, rs_discontinuous
+from ._rs import rs_preprocess, rs_match, rs_discontinuous, rs_metadata
 
 VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'tsv', 'xlsx', 'json']
 FASTA_EXTENSIONS = {
@@ -160,7 +160,17 @@ class Matcher:
 
   def best_match_search(self):
     peptides_remaining = self.query.copy()
-    all_results = []
+    acc = tuple([] for _ in range(8))   # 8 columnar accumulators
+
+    def collect_matched(cols):
+      matched_ids = set()
+      matched_col = cols[2]
+      for i in range(len(cols[0])):
+        if matched_col[i] is not None:
+          for j in range(8):
+            acc[j].append(cols[j][i])
+          matched_ids.add(cols[0][i])
+      return matched_ids
 
     initial_k = min(len(seq) for _, seq in peptides_remaining)
     ks = [initial_k]
@@ -172,20 +182,11 @@ class Matcher:
     for k in ks:
       if not peptides_remaining:
         break
-
       min_len = min(len(seq) for _, seq in peptides_remaining)
       max_mm = (min_len // k) - 1
       if max_mm < 0:
         max_mm = 0
-
-      results = self._search(k, max_mm, peptides_remaining)
-
-      matched_ids = set()
-      for row in results:
-        if row[2] != '':
-          all_results.append(row)
-          matched_ids.add(row[0])
-
+      matched_ids = collect_matched(self._search(k, max_mm, peptides_remaining))
       peptides_remaining = [
         (qid, seq) for qid, seq in peptides_remaining if qid not in matched_ids
       ]
@@ -193,31 +194,22 @@ class Matcher:
 
     if peptides_remaining:
       max_mm = min(len(seq) for _, seq in peptides_remaining) // 2
-
       while peptides_remaining:
         shortest_len = min(len(seq) for _, seq in peptides_remaining)
         if max_mm >= shortest_len:
           break
-
         max_mm += 1
-        results = self._search(2, max_mm, peptides_remaining)
-
-        matched_ids = set()
-        for row in results:
-          if row[2] != '':
-            all_results.append(row)
-            matched_ids.add(row[0])
-
+        matched_ids = collect_matched(self._search(2, max_mm, peptides_remaining))
         peptides_remaining = [
           (qid, seq) for qid, seq in peptides_remaining if qid not in matched_ids
         ]
         print(f"  -> k=2, mismatches<={max_mm}: {len(peptides_remaining)} remaining")
 
-    if peptides_remaining:
-      for qid, seq in peptides_remaining:
-        all_results.append([qid, seq] + [''] * 14)
+    for qid, seq in peptides_remaining:   # leftover unmatched
+      for j, val in enumerate((qid, seq, None, None, None, "[]", None, None)):
+        acc[j].append(val)
 
-    df = self._to_dataframe(all_results)
+    df = self._to_dataframe(acc)
     return self._best_match_filter(df)
 
   def _best_match_filter(self, df):
@@ -274,45 +266,62 @@ class Matcher:
 
     return pl.concat([matched_df, unmatched_df], how="vertical")
 
-  def _to_dataframe(self, results):
-    schema = {
-      'Query ID': pl.Utf8,
-      'Query Sequence': pl.Utf8,
-      'Matched Sequence': pl.Utf8,
-      'Protein ID': pl.Utf8,
-      'Protein Name': pl.Utf8,
-      'Species': pl.Utf8,
-      'Taxon ID': pl.Utf8,
-      'Gene': pl.Utf8,
-      'Mismatches': pl.Utf8,
-      'Mutated Positions': pl.Utf8,
-      'Index start': pl.Utf8,
-      'Index end': pl.Utf8,
-      'Protein Existence Level': pl.Utf8,
-      'Sequence Version': pl.Utf8,
-      'Gene Priority': pl.Utf8,
-      'SwissProt Reviewed': pl.Utf8,
-    }
-
-    if not results:
-      return pl.DataFrame(schema=schema)
-
-    df = pl.DataFrame(results, schema=schema, orient='row')
-
-    df = df.with_columns(
-      pl.when(pl.col(col) == '').then(None).otherwise(pl.col(col)).alias(col)
-      for col in df.columns
+  def _metadata_table(self) -> pl.DataFrame:
+    """Per-protein metadata (built once from this proteome's index) for the edge join."""
+    import glob
+    pattern = os.path.join(self.preprocessed_files_path, f'{self.proteome_name}_*mers.pepidx')
+    idx_files = glob.glob(pattern)
+    if not idx_files:
+      raise FileNotFoundError(f'No .pepidx for {self.proteome_name} in {self.preprocessed_files_path}')
+    pnum, pid, name, species, taxon, gene, exist, seqver, geneprio, swiss = rs_metadata(idx_files[0])
+    m = pl.DataFrame({
+      'protein_num': pl.Series(pnum, dtype=pl.UInt32),
+      'Protein ID': pid, 'Protein Name': name, 'Species': species, 'Taxon ID': taxon,
+      'Gene': gene, 'Protein Existence Level': exist, 'Sequence Version': seqver,
+      'Gene Priority': geneprio, 'SwissProt Reviewed': swiss,
+    })
+    str_cols = ['Protein ID','Protein Name','Species','Taxon ID','Gene',
+                'Protein Existence Level','Sequence Version','Gene Priority','SwissProt Reviewed']
+    m = m.with_columns(
+      pl.when(pl.col(c) == '').then(None).otherwise(pl.col(c)).alias(c) for c in str_cols
     )
-
-    df = df.with_columns([
-      pl.col('Mismatches').cast(pl.Int64),
-      pl.col('Index start').cast(pl.Int64),
-      pl.col('Index end').cast(pl.Int64),
+    return m.with_columns([
       pl.col('Protein Existence Level').cast(pl.Int64),
       pl.col('Sequence Version').cast(pl.Int64),
       pl.col('Gene Priority').cast(pl.Int64),
       pl.col('SwissProt Reviewed').cast(pl.Int64).cast(pl.Boolean),
     ])
+
+  FINAL_COLUMNS = [
+    'Query ID','Query Sequence','Matched Sequence','Protein ID','Protein Name','Species',
+    'Taxon ID','Gene','Mismatches','Mutated Positions','Index start','Index end',
+    'Protein Existence Level','Gene Priority','SwissProt Reviewed',
+  ]
+
+  def _to_dataframe(self, cols):
+    """Build the result DataFrame from columnar Rust output, reconstructing protein
+    metadata via a single join (instead of cloning it into every hit row)."""
+    qid, qseq, matched, pnum, mm, mutated, istart, iend = cols
+
+    if not qid:
+      schema = {c: pl.Utf8 for c in self.FINAL_COLUMNS}
+      for c in ('Mismatches','Index start','Index end','Protein Existence Level','Gene Priority'):
+        schema[c] = pl.Int64
+      schema['SwissProt Reviewed'] = pl.Boolean
+      return pl.DataFrame(schema=schema)
+
+    base = pl.DataFrame({
+      'Query ID': qid,
+      'Query Sequence': qseq,
+      'Matched Sequence': matched,
+      'protein_num': pl.Series(pnum, dtype=pl.UInt32),
+      'Mismatches': pl.Series(mm, dtype=pl.Int64),
+      'Mutated Positions': mutated,
+      'Index start': pl.Series(istart, dtype=pl.Int64),
+      'Index end': pl.Series(iend, dtype=pl.Int64),
+    })
+
+    df = base.join(self._metadata_table(), on='protein_num', how='left').drop('protein_num')
 
     if self.sequence_version:
       df = df.with_columns(
@@ -322,5 +331,4 @@ class Matcher:
           .alias('Protein ID')
       )
 
-    df = df.drop('Sequence Version')
-    return df
+    return df.drop('Sequence Version').select(self.FINAL_COLUMNS)

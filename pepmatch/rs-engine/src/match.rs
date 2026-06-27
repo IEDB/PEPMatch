@@ -326,74 +326,113 @@ fn mismatch_match(peptide: &str, k: usize, max_mismatches: usize, index: &PepInd
     matches
 }
 
-fn search_peptide(query_id: &str, peptide: &str, k: usize, max_mismatches: usize, index: &PepIndex) -> Vec<Vec<String>> {
-    if max_mismatches == 0 {
-        let hits = exact_match(peptide, k, index);
-        if hits.is_empty() {
-            return vec![make_empty_row(query_id, peptide)];
-        }
-        hits.iter().map(|&hit| make_hit_row(query_id, peptide, peptide, 0, hit, index)).collect()
-    } else {
-        let hits = mismatch_match(peptide, k, max_mismatches, index);
-        if hits.is_empty() {
-            return vec![make_empty_row(query_id, peptide)];
-        }
-        hits.iter().map(|(matched_seq, mm, start)| make_hit_row(query_id, peptide, matched_seq, *mm, *start, index)).collect()
-    }
+struct HitRecord {
+    query_id: String,
+    query_seq: String,
+    matched: Option<String>,
+    protein_num: Option<u32>,
+    mismatches: Option<i64>,
+    mutated: String,
+    idx_start: Option<i64>,
+    idx_end: Option<i64>,
 }
 
-fn make_hit_row(query_id: &str, peptide: &str, matched_seq: &str, mismatches: usize, encoded_start: u64, index: &PepIndex) -> Vec<String> {
-    let protein_number = (encoded_start / PROTEIN_INDEX_MULTIPLIER) as usize;
-    let position = (encoded_start % PROTEIN_INDEX_MULTIPLIER) as usize;
-    let meta = index.get_metadata(protein_number);
-
-    let mutated: Vec<String> = peptide.as_bytes().iter()
-        .zip(matched_seq.as_bytes())
+fn mutated_positions(peptide: &str, matched: &str) -> String {
+    let v: Vec<String> = peptide.as_bytes().iter()
+        .zip(matched.as_bytes())
         .enumerate()
         .filter(|(_, (a, b))| a != b)
         .map(|(i, _)| (i + 1).to_string())
         .collect();
-
-    vec![
-        query_id.to_string(),
-        peptide.to_string(),
-        matched_seq.to_string(),
-        meta[0].clone(),
-        meta[1].clone(),
-        meta[2].clone(),
-        meta[3].clone(),
-        meta[4].clone(),
-        mismatches.to_string(),
-        format!("[{}]", mutated.join(", ")),
-        (position + 1).to_string(),
-        (position + peptide.len()).to_string(),
-        meta[5].clone(),
-        meta[6].clone(),
-        meta[7].clone(),
-        meta[8].clone(),
-    ]
+    format!("[{}]", v.join(", "))
 }
 
-fn make_empty_row(query_id: &str, peptide: &str) -> Vec<String> {
-    vec![
-        query_id.to_string(),
-        peptide.to_string(),
-        String::new(), String::new(), String::new(), String::new(),
-        String::new(), String::new(), String::new(), String::from("[]"),
-        String::new(), String::new(), String::new(), String::new(),
-        String::new(), String::new(),
-    ]
+fn hit_record(query_id: &str, peptide: &str, matched_seq: &str, mismatches: usize, encoded_start: u64) -> HitRecord {
+    let protein_number = (encoded_start / PROTEIN_INDEX_MULTIPLIER) as u32;
+    let position = (encoded_start % PROTEIN_INDEX_MULTIPLIER) as usize;
+    HitRecord {
+        query_id: query_id.to_string(),
+        query_seq: peptide.to_string(),
+        matched: Some(matched_seq.to_string()),
+        protein_num: Some(protein_number),
+        mismatches: Some(mismatches as i64),
+        mutated: mutated_positions(peptide, matched_seq),
+        idx_start: Some((position + 1) as i64),
+        idx_end: Some((position + peptide.len()) as i64),
+    }
+}
+
+fn miss_record(query_id: &str, peptide: &str) -> HitRecord {
+    HitRecord {
+        query_id: query_id.to_string(),
+        query_seq: peptide.to_string(),
+        matched: None,
+        protein_num: None,
+        mismatches: None,
+        mutated: String::from("[]"),
+        idx_start: None,
+        idx_end: None,
+    }
+}
+
+fn search_peptide(query_id: &str, peptide: &str, k: usize, max_mismatches: usize, index: &PepIndex) -> Vec<HitRecord> {
+    if max_mismatches == 0 {
+        let hits = exact_match(peptide, k, index);
+        if hits.is_empty() {
+            return vec![miss_record(query_id, peptide)];
+        }
+        hits.iter().map(|&hit| hit_record(query_id, peptide, peptide, 0, hit)).collect()
+    } else {
+        let hits = mismatch_match(peptide, k, max_mismatches, index);
+        if hits.is_empty() {
+            return vec![miss_record(query_id, peptide)];
+        }
+        hits.iter().map(|(matched_seq, mm, start)| hit_record(query_id, peptide, matched_seq, *mm, *start)).collect()
+    }
+}
+
+pub(crate) type Columns = (
+    Vec<String>, Vec<String>, Vec<Option<String>>, Vec<Option<u32>>,
+    Vec<Option<i64>>, Vec<String>, Vec<Option<i64>>, Vec<Option<i64>>,
+);
+
+pub(crate) type MetaColumns = (
+    Vec<u32>, Vec<String>, Vec<String>, Vec<String>, Vec<String>,
+    Vec<String>, Vec<String>, Vec<String>, Vec<String>, Vec<String>,
+);
+
+fn unzip_records(records: Vec<HitRecord>) -> Columns {
+    let n = records.len();
+    let mut qid = Vec::with_capacity(n);
+    let mut qseq = Vec::with_capacity(n);
+    let mut matched = Vec::with_capacity(n);
+    let mut pnum = Vec::with_capacity(n);
+    let mut mm = Vec::with_capacity(n);
+    let mut mutated = Vec::with_capacity(n);
+    let mut s = Vec::with_capacity(n);
+    let mut e = Vec::with_capacity(n);
+    for r in records {
+        qid.push(r.query_id);
+        qseq.push(r.query_seq);
+        matched.push(r.matched);
+        pnum.push(r.protein_num);
+        mm.push(r.mismatches);
+        mutated.push(r.mutated);
+        s.push(r.idx_start);
+        e.push(r.idx_end);
+    }
+    (qid, qseq, matched, pnum, mm, mutated, s, e)
 }
 
 pub(crate) fn run_discontinuous(
     pepidx_path: &str,
     epitopes: Vec<(String, Vec<(char, usize)>)>,
     max_mismatches: usize,
-) -> Vec<Vec<String>> {
+) -> Columns {
     let index = PepIndex::open(pepidx_path);
     let seq = &index.mmap[index.seq_offset..index.seq_offset + index.seq_len];
 
-    let mut all_results: Vec<Vec<String>> = Vec::new();
+    let mut records: Vec<HitRecord> = Vec::new();
 
     for (query_id, residues) in &epitopes {
         let mut found = false;
@@ -430,7 +469,6 @@ pub(crate) fn run_discontinuous(
 
             if valid {
                 found = true;
-                let meta = index.get_metadata(pn);
                 let matched_str: String = residues.iter()
                     .map(|&(_, p)| format!("{}{}", seq[base + p - 1] as char, p))
                     .collect::<Vec<_>>()
@@ -440,43 +478,66 @@ pub(crate) fn run_discontinuous(
                     .map(|&(_, p)| p.to_string())
                     .collect();
 
-                all_results.push(vec![
-                    query_id.clone(),
-                    query_str.clone(),
-                    matched_str,
-                    meta[0].clone(), meta[1].clone(), meta[2].clone(),
-                    meta[3].clone(), meta[4].clone(),
-                    mismatches.to_string(),
-                    format!("[{}]", mutated.join(", ")),
-                    residues.first().map(|&(_, p)| p.to_string()).unwrap_or_default(),
-                    residues.last().map(|&(_, p)| p.to_string()).unwrap_or_default(),
-                    meta[5].clone(), meta[6].clone(), meta[7].clone(), meta[8].clone(),
-                ]);
+                records.push(HitRecord {
+                    query_id: query_id.clone(),
+                    query_seq: query_str.clone(),
+                    matched: Some(matched_str),
+                    protein_num: Some(pn as u32),
+                    mismatches: Some(mismatches as i64),
+                    mutated: format!("[{}]", mutated.join(", ")),
+                    idx_start: residues.first().map(|&(_, p)| p as i64),
+                    idx_end: residues.last().map(|&(_, p)| p as i64),
+                });
             }
         }
 
         if !found {
-            let mut row = vec![query_id.clone(), query_str.clone()];
-            row.extend(std::iter::repeat(String::new()).take(6));
-            row.push(String::new());
-            row.push(String::from("[]"));
-            row.extend(std::iter::repeat(String::new()).take(6));
-            all_results.push(row);
+            records.push(HitRecord {
+                query_id: query_id.clone(),
+                query_seq: query_str.clone(),
+                matched: None,
+                protein_num: None,
+                mismatches: None,
+                mutated: String::from("[]"),
+                idx_start: None,
+                idx_end: None,
+            });
         }
     }
 
-    all_results
+    unzip_records(records)
 }
 
-pub(crate) fn run(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, max_mismatches: usize) -> Vec<Vec<String>> {
-    let index = PepIndex::open(pepidx_path);
+fn metadata_columns(index: &PepIndex) -> MetaColumns {
+    let n = index.num_proteins;
+    let mut pnum = Vec::with_capacity(n);
+    let mut f: [Vec<String>; 9] = Default::default();
+    for v in f.iter_mut() {
+        v.reserve(n);
+    }
+    for pn in 1..=n {
+        pnum.push(pn as u32);
+        let m = index.get_metadata(pn);
+        for (i, field) in m.into_iter().enumerate() {
+            f[i].push(field);
+        }
+    }
+    let [a, b, c, d, e, g, h, i, j] = f;
+    (pnum, a, b, c, d, e, g, h, i, j)
+}
 
-    let all_results: Vec<Vec<Vec<String>>> = peptides
+pub(crate) fn run_metadata(pepidx_path: &str) -> MetaColumns {
+    let index = PepIndex::open(pepidx_path);
+    metadata_columns(&index)
+}
+
+pub(crate) fn run(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, max_mismatches: usize) -> Columns {
+    let index = PepIndex::open(pepidx_path);
+    let records: Vec<HitRecord> = peptides
         .par_iter()
-        .map(|(query_id, peptide)| {
-            search_peptide(query_id, peptide, k, max_mismatches, &index)
+        .flat_map_iter(|(query_id, peptide)| {
+            search_peptide(query_id, peptide, k, max_mismatches, &index).into_iter()
         })
         .collect();
-
-    all_results.into_iter().flatten().collect()
+    unzip_records(records)
 }

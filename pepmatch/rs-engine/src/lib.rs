@@ -15,13 +15,18 @@ fn rs_preprocess(fasta_path: &str, k: usize, output_path: &str) {
 }
 
 #[pyfunction]
-fn rs_match(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, max_mismatches: usize) -> Vec<Vec<String>> {
+fn rs_match(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, max_mismatches: usize) -> matching::Columns {
     matching::run(pepidx_path, peptides, k, max_mismatches)
 }
 
 #[pyfunction]
-fn rs_discontinuous(pepidx_path: &str, epitopes: Vec<(String, Vec<(char, usize)>)>, max_mismatches: usize) -> Vec<Vec<String>> {
+fn rs_discontinuous(pepidx_path: &str, epitopes: Vec<(String, Vec<(char, usize)>)>, max_mismatches: usize) -> matching::Columns {
     matching::run_discontinuous(pepidx_path, epitopes, max_mismatches)
+}
+
+#[pyfunction]
+fn rs_metadata(pepidx_path: &str) -> matching::MetaColumns {
+    matching::run_metadata(pepidx_path)
 }
 
 #[pymodule]
@@ -30,5 +35,6 @@ fn _rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rs_preprocess, m)?)?;
     m.add_function(wrap_pyfunction!(rs_match, m)?)?;
     m.add_function(wrap_pyfunction!(rs_discontinuous, m)?)?;
+    m.add_function(wrap_pyfunction!(rs_metadata, m)?)?;
     Ok(())
 }

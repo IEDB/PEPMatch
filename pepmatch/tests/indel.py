@@ -1,111 +1,46 @@
-def _is_terminal_deletion(p_idx, protein_len):
-  """Return True if a deletion at this protein position is at a sequence boundary.
-
-  Deletions at p_idx == 0 or p_idx == protein_len - 1 are forbidden because
-  they arise from a database boundary edge effect rather than a true biological
-  indel event.
+def _terminal_deletion_blocked(gap_left, gap_right, protein_len):
+  """A deletion at query position d found at protein offset `start` has its gap
+  sitting between protein indices (start+d-1) and (start+d). Both neighbors are
+  real, existing residues as long as they fall within [0, protein_len) — only
+  an out-of-bounds reference means the gap is indistinguishable from the
+  sequence simply ending there rather than a genuine biological indel.
   """
-  if p_idx <= 0 or p_idx >= protein_len - 1:
-    return True
-  return False
+  return gap_left < 0 or gap_right >= protein_len
 
 
-def _dfs(query, q_idx, protein, p_idx, indels_left, direction):
-  """Exhaustive depth-first search extending one direction from a seed hit.
+def brute_force_search(query, protein):
+  """Enumerate every (start, matched_sequence) pair where query aligns to a
+  window of protein using at most one single-residue insertion or deletion.
 
-  Explores three branches at each step: a match branch (both pointers
-  advance), a deletion branch (query pointer advances, protein stays,
-  consumes 0 protein chars), and an insertion branch (protein pointer
-  advances, query stays, consumes 1 protein char). Returns a list of
-  integers, each the number of protein characters consumed by one valid
-  complete alignment path.
-
-  Args:
-    query: the full query peptide string.
-    q_idx: current query position, advances by direction.
-    protein: the full protein sequence string.
-    p_idx: current protein position, advances by direction.
-    indels_left: remaining indel budget for this direction.
-    direction: +1 for right extension, -1 for left extension.
+  Checks each candidate directly against the definition of a valid 1-indel
+  match (no seeding, no recursive extension) so it can serve as an
+  independent oracle for the Rust/seed-based implementation.
   """
-  if (direction == 1 and q_idx >= len(query)) or \
-     (direction == -1 and q_idx < 0):
-    return [0]
+  query_len = len(query)
+  protein_len = len(protein)
+  results = set()
 
-  all_paths = []
+  for start in range(protein_len - query_len + 1):
+    if protein[start:start + query_len] == query:
+      results.add((start, protein[start:start + query_len]))
 
-  if 0 <= p_idx < len(protein) and query[q_idx] == protein[p_idx]:
-    for consumed in _dfs(query, q_idx + direction, protein, p_idx + direction, indels_left, direction):
-      all_paths.append(consumed + 1)
+  window_len = query_len - 1
+  for d in range(query_len):
+    shortened = query[:d] + query[d + 1:]
+    for start in range(protein_len - window_len + 1):
+      if protein[start:start + window_len] == shortened:
+        if _terminal_deletion_blocked(start + d - 1, start + d, protein_len):
+          continue
+        results.add((start, shortened))
 
-  if indels_left > 0:
-    if not _is_terminal_deletion(p_idx, len(protein)):
-      all_paths.extend(
-        _dfs(query, q_idx + direction, protein, p_idx, indels_left - 1, direction)
-      )
-
-    if 0 <= p_idx < len(protein):
-      for consumed in _dfs(query, q_idx, protein, p_idx + direction, indels_left - 1, direction):
-        all_paths.append(consumed + 1)
-
-  return all_paths
-
-
-def extend_bidirectional(query, q_seed_start, p_hit_idx, protein, k, max_indels=1):
-  """Verify and enumerate all indel-consistent matches from a seed hit.
-
-  For each allocation of the indel budget between left and right extensions,
-  runs _dfs in both directions and combines results. Returns all unique
-  (start_0based, matched_sequence) pairs found at this seed hit position.
-
-  Args:
-    query: the full query peptide string.
-    q_seed_start: 0-based start of the seed k-mer within the query.
-    p_hit_idx: 0-based start of the seed hit within protein.
-    protein: the full protein sequence string.
-    k: seed k-mer length.
-    max_indels: maximum total indels allowed across both extensions.
-  """
-  seen = set()
-  results = []
-
-  for r_budget in range(max_indels + 1):
-    l_budget = max_indels - r_budget
-
-    r_paths = _dfs(query, q_seed_start + k, protein, p_hit_idx + k, r_budget, direction=1)
-    l_paths = _dfs(query, q_seed_start - 1, protein, p_hit_idx - 1, l_budget, direction=-1)
-
-    for r_consumed in r_paths:
-      for l_consumed in l_paths:
-        start = p_hit_idx - l_consumed
-        end = p_hit_idx + k + r_consumed
-        matched_seq = protein[start:end]
-        key = (start, matched_seq)
-        if key not in seen:
-          seen.add(key)
-          results.append(key)
+  # i in [1, query_len) keeps the inserted residue interior to the alignment;
+  # an insertion at i=0 or i=query_len would just pad an exact match with an
+  # arbitrary flanking residue and isn't a real edit.
+  window_len = query_len + 1
+  for i in range(1, query_len):
+    for start in range(protein_len - window_len + 1):
+      window = protein[start:start + window_len]
+      if window[:i] == query[:i] and window[i + 1:] == query[i:]:
+        results.add((start, window))
 
   return results
-
-
-def minimal_coverage_seeds(query, k):
-  """Return non-overlapping k-mer seeds plus a final overlapping seed for
-  full query coverage.
-
-  The pigeonhole principle guarantees that for a query of length L with at
-  most d indels, at least one of floor(L / (d+1)) non-overlapping seeds
-  must hit exactly. Appends one final seed anchored at the query end if
-  the last strided seed does not reach it.
-
-  Args:
-    query: the query peptide string.
-    k: seed k-mer length.
-  """
-  seeds = []
-  query_len = len(query)
-  for j in range(0, query_len - k + 1, k):
-    seeds.append((query[j:j + k], j))
-  last_start = query_len - k
-  if seeds and seeds[-1][1] != last_start:
-    seeds.append((query[last_start:], last_start))
-  return seeds

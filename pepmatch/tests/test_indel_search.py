@@ -70,3 +70,50 @@ def test_query_terminal_deletion_found(proteome_path):
   assert 'NALVEATRFC' in matches['Matched Sequence'].to_list(), (
     'Expected query-terminal deletion match NALVEATRFC not found'
   )
+
+
+def test_max_indels_greater_than_one_raises():
+  with pytest.raises(ValueError, match='max_indels > 1 is not yet supported'):
+    Matcher(query=['NALVEATRFC'], proteome_file='unused.fasta', max_indels=2)
+
+
+def test_indels_and_mismatches_mutually_exclusive_raises():
+  with pytest.raises(ValueError, match='mutually exclusive'):
+    Matcher(
+      query=['NALVEATRFC'], proteome_file='unused.fasta',
+      max_indels=1, max_mismatches=1
+    )
+
+
+def test_indel_peptide_shorter_than_k(proteome_path):
+  # A single-residue query forces k = max(2, min_len // 2) = 2 while
+  # peptide_len=1 < k; must miss cleanly rather than erroring.
+  df = Matcher(
+    query=['A'],
+    proteome_file=proteome_path,
+    max_indels=1,
+    output_format='dataframe'
+  ).match()
+  assert df['Matched Sequence'].is_null().all()
+
+
+def test_indel_multi_hit_different_proteins(tmp_path):
+  # NALVEATRFC (10 residues) with 1 indel matches two DIFFERENT proteins:
+  # ProtDel is missing the second A (a deletion), ProtIns has an extra X
+  # inserted after E (an insertion). Both hand-verified against the DFS's
+  # seed ("NALVE") + bidirectional extension.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text(
+    '>ProtDel\nMKVNALVETRFCGHI\n'
+    '>ProtIns\nMKVNALVEXATRFCGHI\n'
+  )
+  df = Matcher(
+    query=['NALVEATRFC'],
+    proteome_file=str(proteome_path),
+    max_indels=1,
+    preprocessed_files_path=str(tmp_path),
+    output_format='dataframe'
+  ).match()
+  hits = set(zip(df['Protein ID'].to_list(), df['Matched Sequence'].to_list()))
+  assert ('ProtDel.1', 'NALVETRFC') in hits
+  assert ('ProtIns.1', 'NALVEXATRFC') in hits

@@ -171,7 +171,8 @@ class Matcher:
     k = max(2, min_len // (self.max_indels + 1))
     pepidx_path = self._pepidx_path(k)
     if not os.path.isfile(pepidx_path):
-      print(f"Preprocessing {self.proteome_name} with k={k}...")
+      print(f"No preprocessed file found for k={k}, building index now "
+            f"(this may take a moment)...")
       rs_preprocess(self.proteome_file, k, pepidx_path)
     print(f"Searching {len(self.query)} peptides against {self.proteome_name} "
           f"(k={k}, max_indels={self.max_indels})...")

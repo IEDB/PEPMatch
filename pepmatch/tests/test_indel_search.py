@@ -39,6 +39,24 @@ def test_indel_search(proteome_path, query_path, expected_path):
   )
 
 
+def test_terminal_deletion_allowed_with_single_residue_buffer(tmp_path):
+  # Regression test: p_idx == 0 and p_idx == protein_len - 1 are real,
+  # existing residues, not out-of-bounds — a deletion's gap only needs 1
+  # residue of protein context on either side to be a genuine indel, not 2.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>Front\nXBCDE\n>Back\nABCDX\n')
+  df = Matcher(
+    query=['ABCDE'],
+    proteome_file=str(proteome_path),
+    max_indels=1,
+    preprocessed_files_path=str(tmp_path),
+    output_format='dataframe'
+  ).match()
+  hits = set(zip(df['Protein ID'].to_list(), df['Matched Sequence'].to_list()))
+  assert ('Front.1', 'BCDE') in hits
+  assert ('Back.1', 'ABCD') in hits
+
+
 def test_query_terminal_deletion_found(proteome_path):
   # Deletion of Q at query position 0 hits NALVEATRFC at protein position 3
   # in Q8V336 — not a protein boundary, so the match is valid.

@@ -544,8 +544,9 @@ fn minimal_coverage_seeds(query: &[u8], k: usize) -> Vec<(&[u8], usize)> {
 }
 
 fn is_terminal_deletion(p_idx: isize, protein_len: usize) -> bool {
-    // Protein boundary edge effect — no biological indel can be inferred here.
-    if p_idx <= 0 || p_idx >= protein_len as isize - 1 {
+    // p_idx == 0 and p_idx == protein_len - 1 are real, existing residues — only
+    // an out-of-bounds reference is a genuine protein boundary edge effect.
+    if p_idx < 0 || p_idx >= protein_len as isize {
         return true;
     }
     false

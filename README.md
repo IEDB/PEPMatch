@@ -93,6 +93,17 @@ df = Matcher(
 ).match()
 ```
 
+#### Indel Searching
+
+Search allowing insertions and deletions (indels) instead of substitution mismatches. The k-mer size is chosen automatically from your query lengths — no need to preprocess or specify `k` yourself. Currently limited to `max_indels=1`, and mutually exclusive with `max_mismatches`.
+```python
+df = Matcher(
+  query='neoepitopes.fasta',
+  proteome_file='human.fasta',
+  max_indels=1
+).match()
+```
+
 #### Best Match
 
 Automatically finds the optimal match for each peptide by trying different k-mer sizes and mismatch thresholds. No manual preprocessing required.
@@ -163,6 +174,7 @@ pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
 * `-q`, `--query` (Required): Path to the query file.
 * `-p`, `--proteome_file` (Required): Path to the proteome FASTA file.
 * `-m`, `--max_mismatches`: Maximum mismatches allowed (default: 0).
+* `-i`, `--max_indels`: Maximum indels allowed (default: 0). Currently limited to 1, and mutually exclusive with `-m`.
 * `-k`, `--kmer_size`: K-mer size (default: 5).
 * `-P`, `--preprocessed_files_path`: Directory containing preprocessed files.
 * `-b`, `--best_match`: Enable best match mode.

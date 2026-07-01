@@ -2,7 +2,7 @@ import os
 import polars as pl
 from pathlib import Path
 from Bio import SeqIO
-from ._rs import rs_preprocess, rs_match, rs_discontinuous, rs_metadata, rs_match_counts
+from ._rs import rs_preprocess, rs_match, rs_discontinuous, rs_metadata, rs_match_counts, rs_indel_match
 
 VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'tsv', 'xlsx', 'json']
 FASTA_EXTENSIONS = {
@@ -31,6 +31,7 @@ class Matcher:
     query,
     proteome_file,
     max_mismatches=0,
+    max_indels=0,
     k=0,
     preprocessed_files_path='.',
     best_match=False,
@@ -52,6 +53,14 @@ class Matcher:
 
     if k != 0 and k < 2:
       raise ValueError('k must be >= 2.')
+
+    if max_indels > 1:
+      raise ValueError('max_indels > 1 is not yet supported. Only max_indels=1 has been validated.')
+
+    if max_indels > 0 and max_mismatches > 0:
+      raise ValueError('max_indels and max_mismatches are mutually exclusive.')
+
+    self.max_indels = max_indels
 
     if output_format not in VALID_OUTPUT_FORMATS:
       raise ValueError(
@@ -128,7 +137,9 @@ class Matcher:
       return output_matches(df, self.output_format, self.output_name)
 
     if self.query:
-      if self.best_match and self.k_specified:
+      if self.max_indels > 0:
+        linear_df = self.indel_search()
+      elif self.best_match and self.k_specified:
         results = self._search(self.k, self.max_mismatches)
         linear_df = self._best_match_filter(self._to_dataframe(results))
       elif self.best_match:
@@ -154,6 +165,18 @@ class Matcher:
       return df
     else:
       output_matches(df, self.output_format, self.output_name)
+
+  def indel_search(self):
+    min_len = min(len(seq) for _, seq in self.query)
+    k = max(2, min_len // (self.max_indels + 1))
+    pepidx_path = self._pepidx_path(k)
+    if not os.path.isfile(pepidx_path):
+      print(f"Preprocessing {self.proteome_name} with k={k}...")
+      rs_preprocess(self.proteome_file, k, pepidx_path)
+    print(f"Searching {len(self.query)} peptides against {self.proteome_name} "
+          f"(k={k}, max_indels={self.max_indels})...")
+    results = rs_indel_match(pepidx_path, self.query, self.max_indels)
+    return self._to_dataframe(results)
 
   def _pepidx_path(self, k):
     return os.path.join(

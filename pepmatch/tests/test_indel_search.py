@@ -85,6 +85,22 @@ def test_indels_and_mismatches_mutually_exclusive_raises():
     )
 
 
+def test_max_indels_and_best_match_raises():
+  with pytest.raises(ValueError, match='not yet supported together'):
+    Matcher(
+      query=['NALVEATRFC'], proteome_file='unused.fasta',
+      max_indels=1, best_match=True
+    )
+
+
+def test_max_indels_and_counts_only_raises():
+  with pytest.raises(ValueError, match='not yet supported together'):
+    Matcher(
+      query=['NALVEATRFC'], proteome_file='unused.fasta',
+      max_indels=1, counts_only=True
+    )
+
+
 def test_indel_peptide_shorter_than_k(proteome_path):
   # A single-residue query forces k = max(2, min_len // 2) = 2 while
   # peptide_len=1 < k; must miss cleanly rather than erroring.

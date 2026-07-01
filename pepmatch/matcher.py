@@ -60,6 +60,12 @@ class Matcher:
     if max_indels > 0 and max_mismatches > 0:
       raise ValueError('max_indels and max_mismatches are mutually exclusive.')
 
+    if max_indels > 0 and best_match:
+      raise ValueError('max_indels and best_match are not yet supported together.')
+
+    if max_indels > 0 and counts_only:
+      raise ValueError('max_indels and counts_only are not yet supported together.')
+
     self.max_indels = max_indels
 
     if output_format not in VALID_OUTPUT_FORMATS:

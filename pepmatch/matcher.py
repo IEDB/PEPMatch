@@ -176,7 +176,7 @@ class Matcher:
     print(f"Searching {len(self.query)} peptides against {self.proteome_name} "
           f"(k={k}, max_indels={self.max_indels})...")
     results = rs_indel_match(pepidx_path, self.query, self.max_indels)
-    return self._to_dataframe(results)
+    return self._to_dataframe(results, is_indels=True)
 
   def _pepidx_path(self, k):
     return os.path.join(
@@ -352,28 +352,36 @@ class Matcher:
 
   FINAL_COLUMNS = [
     'Query ID','Query Sequence','Matched Sequence','Protein ID','Protein Name','Species',
-    'Taxon ID','Gene','Mismatches','Mutated Positions','Index start','Index end',
+    'Taxon ID','Gene','Mismatches','Indels','Mutated Positions','Index start','Index end',
     'Protein Existence Level','Gene Priority','SwissProt Reviewed',
   ]
 
-  def _to_dataframe(self, cols):
+  def _to_dataframe(self, cols, is_indels=False):
     """Build the result DataFrame from columnar Rust output, reconstructing protein
     metadata via a single join (instead of cloning it into every hit row)."""
     qid, qseq, matched, pnum, mm, mutated, istart, iend = cols
 
     if not qid:
       schema = {c: pl.Utf8 for c in self.FINAL_COLUMNS}
-      for c in ('Mismatches','Index start','Index end','Protein Existence Level','Gene Priority'):
+      for c in ('Mismatches','Indels','Index start','Index end','Protein Existence Level','Gene Priority'):
         schema[c] = pl.Int64
       schema['SwissProt Reviewed'] = pl.Boolean
       return pl.DataFrame(schema=schema)
+
+    # rs_indel_match packs the indel count into the same slot rs_match/rs_discontinuous
+    # use for mismatches; split it out here so Mismatches and Indels are never both set.
+    if is_indels:
+      indels, mismatches = mm, [0 if v is not None else None for v in mm]
+    else:
+      mismatches, indels = mm, [0 if v is not None else None for v in mm]
 
     base = pl.DataFrame({
       'Query ID': qid,
       'Query Sequence': qseq,
       'Matched Sequence': matched,
       'protein_num': pl.Series(pnum, dtype=pl.UInt32),
-      'Mismatches': pl.Series(mm, dtype=pl.Int64),
+      'Mismatches': pl.Series(mismatches, dtype=pl.Int64),
+      'Indels': pl.Series(indels, dtype=pl.Int64),
       'Mutated Positions': mutated,
       'Index start': pl.Series(istart, dtype=pl.Int64),
       'Index end': pl.Series(iend, dtype=pl.Int64),

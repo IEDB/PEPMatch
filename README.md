@@ -95,7 +95,7 @@ df = Matcher(
 
 #### Indel Searching
 
-Search allowing insertions and deletions (indels) instead of substitution mismatches. The k-mer size is chosen automatically from your query lengths — no need to preprocess or specify `k` yourself. Currently limited to `max_indels=1`, and mutually exclusive with `max_mismatches`.
+Search allowing insertions and deletions (indels) instead of substitution mismatches. The k-mer size is chosen automatically from your query lengths — no manual preprocessing needed.
 ```python
 df = Matcher(
   query='neoepitopes.fasta',
@@ -103,6 +103,7 @@ df = Matcher(
   max_indels=1
 ).match()
 ```
+Currently limited to `max_indels=1`; mutually exclusive with `max_mismatches`.
 
 #### Best Match
 

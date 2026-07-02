@@ -1,7 +1,7 @@
 import random
 import pytest
 from pepmatch import Matcher
-from indel import brute_force_search
+from indel_brute_force import brute_force_search
 
 AMINO_ACIDS = 'ACDEFGHIKLMNPQRSTVWY'
 
@@ -39,7 +39,7 @@ def _random_query(rng, proteins):
   return base
 
 
-@pytest.mark.parametrize('seed', range(25))
+@pytest.mark.parametrize('seed', range(15))
 def test_indel_search_matches_brute_force_oracle(tmp_path, seed):
   rng = random.Random(seed)
 

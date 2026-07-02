@@ -1,10 +1,10 @@
-def _terminal_deletion_blocked(gap_left, gap_right, protein_len):
-  """A deletion at query position d found at protein offset `start` has its gap
-  sitting between protein indices (start+d-1) and (start+d). Both neighbors are
-  real, existing residues as long as they fall within [0, protein_len) — only
-  an out-of-bounds reference means the gap is indistinguishable from the
-  sequence simply ending there rather than a genuine biological indel.
+def _terminal_deletion_blocked(d, query_len, gap_left, gap_right, protein_len):
+  """Blocks a deletion at the query's own boundary (no query-side context to
+  confirm it's genuinely absent) or where its gap references an out-of-bounds
+  protein index (indistinguishable from the sequence simply ending there).
   """
+  if d == 0 or d == query_len - 1:
+    return True
   return gap_left < 0 or gap_right >= protein_len
 
 
@@ -29,7 +29,7 @@ def brute_force_search(query, protein):
     shortened = query[:d] + query[d + 1:]
     for start in range(protein_len - window_len + 1):
       if protein[start:start + window_len] == shortened:
-        if _terminal_deletion_blocked(start + d - 1, start + d, protein_len):
+        if _terminal_deletion_blocked(d, query_len, start + d - 1, start + d, protein_len):
           continue
         results.add((start, shortened))
 

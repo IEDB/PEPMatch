@@ -10,6 +10,9 @@ def _random_sequence(rng, length):
   return ''.join(rng.choice(AMINO_ACIDS) for _ in range(length))
 
 
+# Named for the edit applied to the query string, not the resulting Indels label —
+# e.g. _with_deletion removes a query residue, so the protein has "extra" content
+# there relative to the query, which the search reports as an insertion match.
 def _with_deletion(rng, seq):
   d = rng.randrange(len(seq))
   return seq[:d] + seq[d + 1:]

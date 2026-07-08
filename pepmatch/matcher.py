@@ -88,6 +88,8 @@ class Matcher:
 
     self.query = self._parse_query(query)
     self.discontinuous_epitopes = self._find_discontinuous_epitopes()
+    if self.max_indels > 0 and self.discontinuous_epitopes:
+      raise ValueError('max_indels and discontinuous epitopes are not supported together.')
     self.query = self._clean_query()
     if not self.query and not self.discontinuous_epitopes:
       raise ValueError('Query is empty.')
@@ -357,38 +359,41 @@ class Matcher:
       pl.col('SwissProt Reviewed').cast(pl.Int64).cast(pl.Boolean),
     ])
 
-  FINAL_COLUMNS = [
-    'Query ID','Query Sequence','Matched Sequence','Protein ID','Protein Name','Species',
-    'Taxon ID','Gene','Mismatches','Indels','Mutated Positions','Index start','Index end',
-    'Protein Existence Level','Gene Priority','SwissProt Reviewed',
-  ]
+  def _final_columns(self, is_indels):
+    # One edit-count column per mode, in a fixed position: Indels for indel search,
+    # Mismatches for every other mode. Never both — an all-zero twin column would
+    # imply a search that didn't run.
+    edit_col = 'Indels' if is_indels else 'Mismatches'
+    return [
+      'Query ID','Query Sequence','Matched Sequence','Protein ID','Protein Name','Species',
+      'Taxon ID','Gene', edit_col, 'Mutated Positions','Index start','Index end',
+      'Protein Existence Level','Gene Priority','SwissProt Reviewed',
+    ]
 
   def _to_dataframe(self, cols, is_indels=False):
     """Build the result DataFrame from columnar Rust output, reconstructing protein
     metadata via a single join (instead of cloning it into every hit row)."""
     qid, qseq, matched, pnum, mm, mutated, istart, iend = cols
 
+    # rs_indel_match packs the indel count into the same slot rs_match/rs_discontinuous
+    # use for mismatches, so the values are identical in shape — only the column name
+    # differs by mode (Indels vs Mismatches), and only one is ever emitted.
+    edit_col = 'Indels' if is_indels else 'Mismatches'
+    final_columns = self._final_columns(is_indels)
+
     if not qid:
-      schema = {c: pl.Utf8 for c in self.FINAL_COLUMNS}
-      for c in ('Mismatches','Indels','Index start','Index end','Protein Existence Level','Gene Priority'):
+      schema = {c: pl.Utf8 for c in final_columns}
+      for c in (edit_col, 'Index start', 'Index end', 'Protein Existence Level', 'Gene Priority'):
         schema[c] = pl.Int64
       schema['SwissProt Reviewed'] = pl.Boolean
       return pl.DataFrame(schema=schema)
-
-    # rs_indel_match packs the indel count into the same slot rs_match/rs_discontinuous
-    # use for mismatches; split it out here so Mismatches and Indels are never both set.
-    if is_indels:
-      indels, mismatches = mm, [0 if v is not None else None for v in mm]
-    else:
-      mismatches, indels = mm, [0 if v is not None else None for v in mm]
 
     base = pl.DataFrame({
       'Query ID': qid,
       'Query Sequence': qseq,
       'Matched Sequence': matched,
       'protein_num': pl.Series(pnum, dtype=pl.UInt32),
-      'Mismatches': pl.Series(mismatches, dtype=pl.Int64),
-      'Indels': pl.Series(indels, dtype=pl.Int64),
+      edit_col: pl.Series(mm, dtype=pl.Int64),
       'Mutated Positions': mutated,
       'Index start': pl.Series(istart, dtype=pl.Int64),
       'Index end': pl.Series(iend, dtype=pl.Int64),
@@ -404,4 +409,4 @@ class Matcher:
           .alias('Protein ID')
       )
 
-    return df.drop('Sequence Version').select(self.FINAL_COLUMNS)
+    return df.drop('Sequence Version').select(final_columns)

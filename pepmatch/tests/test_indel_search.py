@@ -138,6 +138,15 @@ def test_max_indels_and_counts_only_raises():
     )
 
 
+def test_max_indels_and_discontinuous_raises():
+  # A discontinuous (position-anchored) epitope has no contiguous window for the
+  # indel engine to seed/extend, so the combination is undefined — it must error
+  # up front rather than crash later when the indel and discontinuous result
+  # frames (now carrying different edit-count columns) fail to concat.
+  with pytest.raises(ValueError, match='discontinuous'):
+    Matcher(query=['N1, A3, L5'], proteome_file='unused.fasta', max_indels=1)
+
+
 def test_indel_peptide_shorter_than_k(proteome_path):
   # A single-residue query forces k = max(2, min_len // 2) = 2 while
   # peptide_len=1 < k; must miss cleanly rather than erroring.
@@ -170,3 +179,29 @@ def test_indel_multi_hit_different_proteins(tmp_path):
   hits = set(zip(df['Protein ID'].to_list(), df['Matched Sequence'].to_list()))
   assert ('ProtDel.1', 'NALVETRFC') in hits
   assert ('ProtIns.1', 'NALVEXATRFC') in hits
+
+
+def test_indel_mode_emits_indels_column_only(proteome_path):
+  # One edit-count column per mode: an indel search reports counts in an Indels
+  # column and must NOT carry a separate always-zero Mismatches column.
+  df = Matcher(
+    query=['NALVEATRFC'],
+    proteome_file=proteome_path,
+    max_indels=1,
+    output_format='dataframe'
+  ).match()
+  assert 'Indels' in df.columns
+  assert 'Mismatches' not in df.columns
+
+
+def test_mismatch_mode_emits_mismatches_column_only(proteome_path):
+  # The mirror: a non-indel search keeps its Mismatches column and must NOT gain
+  # an always-zero Indels column suggesting an indel search that never ran.
+  df = Matcher(
+    query=['NALVEATRFC'],
+    proteome_file=proteome_path,
+    max_mismatches=0,
+    output_format='dataframe'
+  ).match()
+  assert 'Mismatches' in df.columns
+  assert 'Indels' not in df.columns

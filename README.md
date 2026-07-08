@@ -8,13 +8,13 @@
 
 **Author:** Daniel Marrama
 
-`PEPMatch` is a high-performance peptide search tool for finding short peptide sequences within a reference proteome. Powered by a Rust engine with Python bindings, it delivers sub-second search times across entire proteomes while maintaining a simple Python API.
+`PEPMatch` is a high-performance peptide search tool for finding short peptide sequences within a reference proteome. It handles three kinds of search out of the box: **exact matches**, **mismatch (substitution)** searches, and **single-indel (insertion or deletion)** matching. Powered by a Rust engine with Python bindings, it delivers sub-second search times across entire proteomes while maintaining a simple Python API.
 
 ### Key Features
 
 * **Blazing Fast**: Rust-powered search engine with automatic multi-core parallelization via Rayon. Search thousands of peptides against the entire human proteome in seconds.
 * **Unified Index Format**: Single `.pepidx` binary format stores sequences, metadata, and k-mer index in one memory-mapped file. Preprocess once, search repeatedly.
-* **Versatile Searching**: Exact matches, mismatch-tolerant searches, best match mode, and discontinuous epitope support.
+* **Versatile Searching**: Exact matches, mismatch (substitution) searches, single-indel (insertion/deletion) matching, best match mode, and discontinuous epitope support.
 * **Counts-Only Mode**: Get aggregate hit counts per peptide with `O(unique queries)` memory instead of `O(hits)` — built for massive query sets and dense reference matching.
 * **Simple API**: Two classes — `Preprocessor` and `Matcher` — handle everything.
 * **Flexible I/O**: Accepts queries from FASTA files, text files, or Python lists. Outputs to CSV, TSV, XLSX, JSON, or Polars DataFrame.

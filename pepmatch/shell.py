@@ -21,6 +21,7 @@ def run_matcher():
   parser.add_argument('-q', '--query', required=True)
   parser.add_argument('-p', '--proteome_file', required=True)
   parser.add_argument('-m', '--max_mismatches', type=int, default=0)
+  parser.add_argument('-i', '--max_indels', type=int, default=0)
   parser.add_argument('-k', '--kmer_size', type=int, default=5)
   parser.add_argument('-P', '--preprocessed_files_path', default='.')
   parser.add_argument('-b', '--best_match', action='store_true', default=False)
@@ -33,6 +34,7 @@ def run_matcher():
     query=args.query,
     proteome_file=args.proteome_file,
     max_mismatches=args.max_mismatches,
+    max_indels=args.max_indels,
     k=args.kmer_size,
     preprocessed_files_path=args.preprocessed_files_path,
     best_match=args.best_match,

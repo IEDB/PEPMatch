@@ -34,6 +34,11 @@ fn rs_match_counts(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize,
     matching::run_counts(pepidx_path, peptides, k, max_mismatches)
 }
 
+#[pyfunction]
+fn rs_indel_match(pepidx_path: &str, peptides: Vec<(String, String)>, indels_allowed: usize) -> matching::Columns {
+    matching::run_indel(pepidx_path, peptides, indels_allowed)
+}
+
 #[pymodule]
 fn _rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rs_version, m)?)?;
@@ -42,5 +47,6 @@ fn _rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(rs_discontinuous, m)?)?;
     m.add_function(wrap_pyfunction!(rs_metadata, m)?)?;
     m.add_function(wrap_pyfunction!(rs_match_counts, m)?)?;
+    m.add_function(wrap_pyfunction!(rs_indel_match, m)?)?;
     Ok(())
 }

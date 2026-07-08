@@ -26,6 +26,10 @@ jobs:
             test-file: pepmatch/tests/test_discontinuous_search.py
           - name: Output
             test-file: pepmatch/tests/test_output.py
+          - name: Indel Search
+            test-file: pepmatch/tests/test_indel_search.py
+          - name: Indel Property
+            test-file: pepmatch/tests/test_indel_property.py
 
     steps:
     - name: Checkout Code

@@ -1,6 +1,6 @@
 [package]
 name = "pepmatch_rs_engine"
-version = "1.16.4"
+version = "1.17.0"
 edition = "2024"
 
 [lib]

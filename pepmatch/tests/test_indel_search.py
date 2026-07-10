@@ -3,6 +3,7 @@ import polars as pl
 import polars.testing as plt
 from pathlib import Path
 from pepmatch import Matcher
+from pepmatch.matcher import format_indel_positions
 
 @pytest.fixture
 def proteome_path() -> Path:
@@ -182,26 +183,74 @@ def test_indel_multi_hit_different_proteins(tmp_path):
 
 
 def test_indel_mode_emits_indels_column_only(proteome_path):
-  # One edit-count column per mode: an indel search reports counts in an Indels
-  # column and must NOT carry a separate always-zero Mismatches column.
+  # One edit-count and one edit-position column per mode: an indel search reports
+  # Indels + Indel Positions and must NOT carry the mismatch-mode twins.
   df = Matcher(
     query=['NALVEATRFC'],
     proteome_file=proteome_path,
     max_indels=1,
     output_format='dataframe'
   ).match()
-  assert 'Indels' in df.columns
-  assert 'Mismatches' not in df.columns
+  assert 'Indels' in df.columns and 'Indel Positions' in df.columns
+  assert 'Mismatches' not in df.columns and 'Mutated Positions' not in df.columns
 
 
 def test_mismatch_mode_emits_mismatches_column_only(proteome_path):
-  # The mirror: a non-indel search keeps its Mismatches column and must NOT gain
-  # an always-zero Indels column suggesting an indel search that never ran.
+  # The mirror: a non-indel search keeps Mismatches + Mutated Positions and must
+  # NOT gain the indel-mode twins suggesting an indel search that never ran.
   df = Matcher(
     query=['NALVEATRFC'],
     proteome_file=proteome_path,
     max_mismatches=0,
     output_format='dataframe'
   ).match()
-  assert 'Mismatches' in df.columns
-  assert 'Indels' not in df.columns
+  assert 'Mismatches' in df.columns and 'Mutated Positions' in df.columns
+  assert 'Indels' not in df.columns and 'Indel Positions' not in df.columns
+
+
+def test_indel_positions_annotation_unit():
+  # Hand-verified annotations, format `<d|i>: <residues>[<pos or range>]`, 1-based.
+  # Deletion residue comes from the query, insertion residue from the protein. In a
+  # repeat the exact position is ambiguous, so a range of all valid positions is
+  # reported (collapsing to a single number when unambiguous).
+  assert format_indel_positions('ABCDEF', 'ABCDEF') == '[]'           # exact
+  assert format_indel_positions('YYADGY', 'YADGY') == 'd: Y[2]'       # only pos 2 (1 is terminal)
+  assert format_indel_positions('NALVEATRFC', 'NALVETRFC') == 'd: A[6]'  # the 2nd A, unambiguous
+  assert format_indel_positions('ABCDEF', 'ABXCDEF') == 'i: X[3]'     # X inserted before C
+  assert format_indel_positions('AAAAA', 'AAAA') == 'd: A[2,4]'       # deletable at 2, 3 or 4
+  assert format_indel_positions('AAAAAA', 'AAAAA') == 'd: A[2,5]'
+  assert format_indel_positions('AAAAAA', 'AAAAAAA') == 'i: A[2,6]'   # insertable across the run
+
+
+def test_indel_positions_deletion_end_to_end(tmp_path):
+  # Query NALVEATRFC vs a protein missing the 2nd A -> matched NALVETRFC,
+  # annotated as a deletion of A at query position 6.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P\nMKVNALVETRFCGHI\n')
+  df = Matcher(
+    query=['NALVEATRFC'],
+    proteome_file=str(proteome_path),
+    max_indels=1,
+    preprocessed_files_path=str(tmp_path),
+    output_format='dataframe'
+  ).match()
+  row = df.filter(pl.col('Matched Sequence') == 'NALVETRFC')
+  assert row.height == 1
+  assert row['Indel Positions'].item() == 'd: A[6]'
+
+
+def test_indel_positions_insertion_end_to_end(tmp_path):
+  # Query NALVEATRFC vs a protein with an extra X after E -> matched NALVEXATRFC,
+  # annotated as an insertion of X before query position 6.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P\nMKVNALVEXATRFCGHI\n')
+  df = Matcher(
+    query=['NALVEATRFC'],
+    proteome_file=str(proteome_path),
+    max_indels=1,
+    preprocessed_files_path=str(tmp_path),
+    output_format='dataframe'
+  ).match()
+  row = df.filter(pl.col('Matched Sequence') == 'NALVEXATRFC')
+  assert row.height == 1
+  assert row['Indel Positions'].item() == 'i: X[6]'

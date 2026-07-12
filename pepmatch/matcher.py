@@ -1,5 +1,6 @@
 import os
 import polars as pl
+from itertools import combinations
 from pathlib import Path
 from Bio import SeqIO
 from ._rs import rs_preprocess, rs_match, rs_discontinuous, rs_metadata, rs_match_counts, rs_indel_match
@@ -23,41 +24,88 @@ def output_matches(df: pl.DataFrame, output_format: str, output_name: str) -> No
     df.write_json(path)
 
 
-def _indel_edit(query, matched):
-  """Return (kind, residues, low, high) for a single-indel match, or None for an
-  exact match: kind 'd'/'i', the deleted query or inserted protein residue(s), and
-  [low, high] the inclusive 1-based range of valid positions (a run of equivalent
-  positions in a repeat)."""
-  if matched == query:
-    return None
-  L = len(query)
-  if len(matched) < L:
-    # interior positions only — query-terminal deletions are barred
-    positions = [i for i in range(2, L) if query[:i - 1] + query[i:] == matched]
-    if not positions:
-      return None
-    return ('d', query[positions[0] - 1], positions[0], positions[-1])
-  # interior matched residues only — boundary insertions are barred
-  positions, residue = [], None
-  for k in range(1, len(matched) - 1):
-    if matched[:k] + matched[k + 1:] == query:
-      positions.append(k + 1)   # 1-based query position the inserted residue precedes
-      residue = matched[k]
-  if not positions:
-    return None
-  return ('i', residue, positions[0], positions[-1])
+def _indel_placements(query, matched):
+  """Every valid way the edits could be placed, as a tuple of (1-based query
+  position, residue) per edit. A repeat makes several placements equivalent."""
+  L, M = len(query), len(matched)
+  n = abs(M - L)
+  if n == 0:
+    return []
+  out = []
+  if M < L:
+    # deletions: interior query positions only — query-terminal deletions are barred
+    for combo in combinations(range(1, L - 1), n):
+      if ''.join(query[i] for i in range(L) if i not in combo) == matched:
+        out.append(tuple((i + 1, query[i]) for i in combo))
+  else:
+    # insertions: the residue comes from the protein; its query position is the
+    # number of query residues preceding it. Boundary insertions are barred.
+    for combo in combinations(range(M), n):
+      if ''.join(matched[i] for i in range(M) if i not in combo) != query:
+        continue
+      placement = []
+      for k in combo:
+        p = sum(1 for x in range(k) if x not in combo) + 1
+        if p == 1 or p == L + 1:
+          placement = None
+          break
+        placement.append((p, matched[k]))
+      if placement:
+        out.append(tuple(placement))
+  return out
+
+
+def _indel_edits(query, matched):
+  """Entries for the Indel Positions column as (kind, residues, low, high)."""
+  placements = _indel_placements(query, matched)
+  if not placements:
+    return []
+  kind = 'd' if len(matched) < len(query) else 'i'
+
+  if len(placements[0]) == 1:
+    positions = sorted(p for ((p, _),) in placements)
+    residue = placements[0][0][1]
+    return [(kind, residue, positions[0], positions[-1])]
+
+  # Two edits at one site form a chunk: adjacent query positions for a deletion,
+  # the same query gap for an insertion.
+  chunks = sorted({
+    (p1, r1 + r2) for (p1, r1), (p2, r2) in placements
+    if (p2 == p1 + 1 if kind == 'd' else p2 == p1)
+  })
+  if chunks:
+    entries = []
+    for start, residues in chunks:
+      # Only range contiguous starts that remove the SAME residues — in a periodic
+      # repeat (ABABAB) the removed pair changes along the range, and ranging them
+      # would misreport which residues went missing.
+      if entries and entries[-1][1] == residues and entries[-1][3] + 1 == start:
+        k, r, low, _ = entries[-1]
+        entries[-1] = (k, r, low, start)
+      else:
+        entries.append((kind, residues, start, start))
+    return entries
+
+  # No chunk: two independent edits. Their positions decouple, and each edit's own
+  # positions form a run of one repeated residue, so a per-edit range is exact.
+  entries = []
+  for slot in (0, 1):
+    positions = sorted({pl[slot][0] for pl in placements})
+    entries.append((kind, placements[0][slot][1], positions[0], positions[-1]))
+  return entries
 
 
 def format_indel_positions(query, matched):
-  """Render the Indel Positions column, e.g. 'd: A[6]', 'i: X[2,4]', or '[]' for
-  an exact match. Positions are 1-based; a range [low,high] collapses to [n] when
-  the position is unambiguous."""
-  edit = _indel_edit(query, matched)
-  if edit is None:
+  """Render the Indel Positions column, e.g. 'd: A[6]', 'd: AA[2,4]',
+  'd: C[3], d: E[5]', or '[]' for an exact match. Positions are 1-based; a range
+  collapses to a single number when the placement is unambiguous."""
+  edits = _indel_edits(query, matched)
+  if not edits:
     return '[]'
-  kind, residues, low, high = edit
-  span = f'[{low}]' if low == high else f'[{low},{high}]'
-  return f'{kind}: {residues}{span}'
+  return ', '.join(
+    f'{kind}: {residues}[{low}]' if low == high else f'{kind}: {residues}[{low},{high}]'
+    for kind, residues, low, high in edits
+  )
 
 
 class Matcher:
@@ -89,8 +137,10 @@ class Matcher:
     if k != 0 and k < 2:
       raise ValueError('k must be >= 2.')
 
-    if max_indels > 1:
-      raise ValueError('max_indels > 1 is not yet supported. Only max_indels=1 has been validated.')
+    # max_indels=2 searches homogeneous edits only: two insertions OR two deletions,
+    # never one of each (a mixed pair is a substitution, which mismatch search covers).
+    if max_indels > 2:
+      raise ValueError('max_indels > 2 is not yet supported. Only max_indels<=2 has been validated.')
 
     if max_indels > 0 and max_mismatches > 0:
       raise ValueError('max_indels and max_mismatches are mutually exclusive.')

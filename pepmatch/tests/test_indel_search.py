@@ -110,9 +110,9 @@ def test_insertion_at_second_to_last_position_found(tmp_path):
   assert ('P.1', 'LPDGVWEESS') in hits
 
 
-def test_max_indels_greater_than_one_raises():
-  with pytest.raises(ValueError, match='max_indels > 1 is not yet supported'):
-    Matcher(query=['NALVEATRFC'], proteome_file='unused.fasta', max_indels=2)
+def test_max_indels_greater_than_two_raises():
+  with pytest.raises(ValueError, match='max_indels > 2 is not yet supported'):
+    Matcher(query=['NALVEATRFC'], proteome_file='unused.fasta', max_indels=3)
 
 
 def test_indels_and_mismatches_mutually_exclusive_raises():
@@ -237,6 +237,75 @@ def test_indel_positions_deletion_end_to_end(tmp_path):
   row = df.filter(pl.col('Matched Sequence') == 'NALVETRFC')
   assert row.height == 1
   assert row['Indel Positions'].item() == 'd: A[6]'
+
+
+def test_two_consecutive_deletions_found(tmp_path):
+  # YYADGY loses the contiguous YA -> YDGY: one 2-residue deletion event.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P\nMKYDGYWW\n')
+  df = Matcher(
+    query=['YYADGY'], proteome_file=str(proteome_path), max_indels=2,
+    preprocessed_files_path=str(tmp_path), output_format='dataframe'
+  ).match()
+  row = df.filter(pl.col('Matched Sequence') == 'YDGY')
+  assert row.height == 1
+  assert row['Indels'].item() == 2
+  assert row['Indel Positions'].item() == 'd: YA[2]'
+
+
+def test_two_non_consecutive_deletions_found(tmp_path):
+  # ABCDEF loses C (3) and E (5) -> ABDF: two independent deletion events, so the
+  # annotation reports them separately rather than as one chunk.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P\nMKABDFWW\n')
+  df = Matcher(
+    query=['ABCDEF'], proteome_file=str(proteome_path), max_indels=2,
+    preprocessed_files_path=str(tmp_path), output_format='dataframe'
+  ).match()
+  row = df.filter(pl.col('Matched Sequence') == 'ABDF')
+  assert row.height == 1
+  assert row['Indels'].item() == 2
+  assert row['Indel Positions'].item() == 'd: C[3], d: E[5]'
+
+
+def test_two_insertions_found(tmp_path):
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P\nMKABXCDYEFWW\n')
+  df = Matcher(
+    query=['ABCDEF'], proteome_file=str(proteome_path), max_indels=2,
+    preprocessed_files_path=str(tmp_path), output_format='dataframe'
+  ).match()
+  row = df.filter(pl.col('Matched Sequence') == 'ABXCDYEF')
+  assert row.height == 1
+  assert row['Indels'].item() == 2
+  assert row['Indel Positions'].item() == 'i: X[3], i: Y[5]'
+
+
+def test_mixed_insertion_and_deletion_not_found(tmp_path):
+  # max_indels=2 is HOMOGENEOUS: two insertions or two deletions, never one of each.
+  # ABXCDF would need an inserted X plus a deleted E — that pair is a substitution,
+  # which mismatch search covers, so the indel engine must not report it.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P\nMKABXCDFWW\n')
+  df = Matcher(
+    query=['ABCDEF'], proteome_file=str(proteome_path), max_indels=2,
+    preprocessed_files_path=str(tmp_path), output_format='dataframe'
+  ).match()
+  matched = [m for m in df['Matched Sequence'].to_list() if m]
+  assert 'ABXCDF' not in matched
+
+
+def test_indel2_positions_annotation_unit():
+  # Two edits at one site collapse to a chunk; otherwise they report separately. In a
+  # repeat the position is a range — but only where the removed residues stay the same.
+  assert format_indel_positions('YYADGY', 'YDGY') == 'd: YA[2]'        # consecutive chunk
+  assert format_indel_positions('AAAAAA', 'AAAA') == 'd: AA[2,4]'      # homopolymer chunk
+  assert format_indel_positions('AAAA', 'AAAAAA') == 'i: AA[2,4]'      # insertion chunk
+  assert format_indel_positions('ABCDEF', 'ABDF') == 'd: C[3], d: E[5]'
+  assert format_indel_positions('AAABAA', 'AABA') == 'd: A[2,3], d: A[5]'
+  # Periodic repeat: the removed pair changes along the range (BA/AB/BA), so the range
+  # must NOT be collapsed or it would misreport which residues went missing.
+  assert format_indel_positions('ABABAB', 'ABAB') == 'd: BA[2], d: AB[3], d: BA[4]'
 
 
 def test_indel_positions_insertion_end_to_end(tmp_path):

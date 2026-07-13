@@ -22,6 +22,44 @@ def output_matches(df: pl.DataFrame, output_format: str, output_name: str) -> No
   elif output_format == 'json':
     df.write_json(path)
 
+
+def _indel_edit(query, matched):
+  """Return (kind, residues, low, high) for a single-indel match, or None for an
+  exact match: kind 'd'/'i', the deleted query or inserted protein residue(s), and
+  [low, high] the inclusive 1-based range of valid positions (a run of equivalent
+  positions in a repeat)."""
+  if matched == query:
+    return None
+  L = len(query)
+  if len(matched) < L:
+    # interior positions only — query-terminal deletions are barred
+    positions = [i for i in range(2, L) if query[:i - 1] + query[i:] == matched]
+    if not positions:
+      return None
+    return ('d', query[positions[0] - 1], positions[0], positions[-1])
+  # interior matched residues only — boundary insertions are barred
+  positions, residue = [], None
+  for k in range(1, len(matched) - 1):
+    if matched[:k] + matched[k + 1:] == query:
+      positions.append(k + 1)   # 1-based query position the inserted residue precedes
+      residue = matched[k]
+  if not positions:
+    return None
+  return ('i', residue, positions[0], positions[-1])
+
+
+def format_indel_positions(query, matched):
+  """Render the Indel Positions column, e.g. 'd: A[6]', 'i: X[2,4]', or '[]' for
+  an exact match. Positions are 1-based; a range [low,high] collapses to [n] when
+  the position is unambiguous."""
+  edit = _indel_edit(query, matched)
+  if edit is None:
+    return '[]'
+  kind, residues, low, high = edit
+  span = f'[{low}]' if low == high else f'[{low},{high}]'
+  return f'{kind}: {residues}{span}'
+
+
 class Matcher:
   """Searches query peptides against a preprocessed proteome index
   and returns matches as a Polars DataFrame or output file."""
@@ -360,13 +398,15 @@ class Matcher:
     ])
 
   def _final_columns(self, is_indels):
-    # One edit-count column per mode, in a fixed position: Indels for indel search,
-    # Mismatches for every other mode. Never both — an all-zero twin column would
-    # imply a search that didn't run.
+    # One edit-count column and one edit-position column per mode, in fixed
+    # positions: Indels / Indel Positions for indel search, Mismatches / Mutated
+    # Positions for every other mode. Never both — an all-zero/empty twin column
+    # would imply a search that didn't run.
     edit_col = 'Indels' if is_indels else 'Mismatches'
+    pos_col = 'Indel Positions' if is_indels else 'Mutated Positions'
     return [
       'Query ID','Query Sequence','Matched Sequence','Protein ID','Protein Name','Species',
-      'Taxon ID','Gene', edit_col, 'Mutated Positions','Index start','Index end',
+      'Taxon ID','Gene', edit_col, pos_col,'Index start','Index end',
       'Protein Existence Level','Gene Priority','SwissProt Reviewed',
     ]
 
@@ -379,6 +419,7 @@ class Matcher:
     # use for mismatches, so the values are identical in shape — only the column name
     # differs by mode (Indels vs Mismatches), and only one is ever emitted.
     edit_col = 'Indels' if is_indels else 'Mismatches'
+    pos_col = 'Indel Positions' if is_indels else 'Mutated Positions'
     final_columns = self._final_columns(is_indels)
 
     if not qid:
@@ -388,13 +429,21 @@ class Matcher:
       schema['SwissProt Reviewed'] = pl.Boolean
       return pl.DataFrame(schema=schema)
 
+    # In indel mode the edit position is derivable from (query, matched), so we
+    # compute Indel Positions here rather than in Rust; miss rows (no match) stay null.
+    if is_indels:
+      positions = [format_indel_positions(q, m) if m is not None else None
+                   for q, m in zip(qseq, matched)]
+    else:
+      positions = mutated
+
     base = pl.DataFrame({
       'Query ID': qid,
       'Query Sequence': qseq,
       'Matched Sequence': matched,
       'protein_num': pl.Series(pnum, dtype=pl.UInt32),
       edit_col: pl.Series(mm, dtype=pl.Int64),
-      'Mutated Positions': mutated,
+      pos_col: positions,
       'Index start': pl.Series(istart, dtype=pl.Int64),
       'Index end': pl.Series(iend, dtype=pl.Int64),
     })

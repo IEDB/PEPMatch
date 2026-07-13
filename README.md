@@ -103,6 +103,8 @@ df = Matcher(
   max_indels=1
 ).match()
 ```
+Each indel hit is annotated in an **`Indel Positions`** column with the edit type, residue, and 1-based query position — e.g. `d: A[6]` (deletion of `A` at query position 6) or `i: X[6]` (insertion of `X` before query position 6); an exact match reports `[]`. In a repeat the exact position is ambiguous, so the inclusive range of all valid positions is reported, e.g. `d: A[2,4]`.
+
 Currently limited to `max_indels=1`; mutually exclusive with `max_mismatches`.
 
 #### Best Match

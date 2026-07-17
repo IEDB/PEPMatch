@@ -79,11 +79,8 @@ class Matcher:
     counts_only=False,
   ):
 
-    if best_match and k == 0:
+    if k == 0:
       self.k = 0
-      self.k_specified = False
-    elif k == 0:
-      self.k = 5
       self.k_specified = False
     else:
       self.k = k
@@ -177,7 +174,8 @@ class Matcher:
     discontinuous_df = pl.DataFrame()
 
     if self.counts_only:
-      df = self._counts_to_dataframe(self._search_counts(self.k, self.max_mismatches))
+      k = self.k if self.k_specified else self._auto_k()
+      df = self._counts_to_dataframe(self._search_counts(k, self.max_mismatches))
       if self.output_format == 'dataframe':
         return df
       return output_matches(df, self.output_format, self.output_name)
@@ -191,7 +189,8 @@ class Matcher:
       elif self.best_match:
         linear_df = self.best_match_search()
       else:
-        results = self._search(self.k, self.max_mismatches)
+        k = self.k if self.k_specified else self._auto_k()
+        results = self._search(k, self.max_mismatches)
         linear_df = self._to_dataframe(results)
 
     if self.discontinuous_epitopes:
@@ -224,6 +223,15 @@ class Matcher:
           f"(k={k}, max_indels={self.max_indels})...")
     results = rs_indel_match(pepidx_path, self.query, self.max_indels)
     return self._to_dataframe(results, is_indels=True)
+
+  def _auto_k(self):
+    """Optimal k for a seed-based mismatch search (PEPMatch paper / pigeonhole):
+    a length-L peptide with m mismatches must split into at least m+1 disjoint
+    k-mers so one is guaranteed mismatch-free, i.e. k = floor(L / (m + 1)). Uses
+    the shortest query peptide so the guarantee holds for every peptide; floored
+    at 2 (the preprocessor minimum)."""
+    min_len = min(len(seq) for _, seq in self.query)
+    return max(2, min_len // (self.max_mismatches + 1))
 
   def _pepidx_path(self, k):
     return os.path.join(

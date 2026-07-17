@@ -22,7 +22,7 @@ def run_matcher():
   parser.add_argument('-p', '--proteome_file', required=True)
   parser.add_argument('-m', '--max_mismatches', type=int, default=0)
   parser.add_argument('-i', '--max_indels', type=int, default=0)
-  parser.add_argument('-k', '--kmer_size', type=int, default=5)
+  parser.add_argument('-k', '--kmer_size', type=int, default=0)
   parser.add_argument('-P', '--preprocessed_files_path', default='.')
   parser.add_argument('-b', '--best_match', action='store_true', default=False)
   parser.add_argument('-f', '--output_format', default='csv')

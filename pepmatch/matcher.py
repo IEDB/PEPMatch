@@ -129,6 +129,14 @@ class Matcher:
     if not self.query and not self.discontinuous_epitopes:
       raise ValueError('Query is empty.')
 
+    if self.k_specified and self.query:
+      shortest = min(len(seq) for _, seq in self.query)
+      if self.k > shortest:
+        raise ValueError(
+          f'k ({self.k}) cannot exceed the shortest query peptide length ({shortest}); '
+          f'shorter peptides would be silently skipped.'
+        )
+
   def _parse_query(self, query):
     if isinstance(query, list):
       return [(str(i + 1), seq.upper()) for i, seq in enumerate(query)]

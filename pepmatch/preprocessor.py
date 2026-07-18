@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from ._rs import rs_preprocess
 
 class Preprocessor:
@@ -20,7 +21,7 @@ class Preprocessor:
     self.proteome_file = str(proteome)
 
     if not proteome_name:
-      self.proteome_name = str(proteome).split('/')[-1].split('.')[0]
+      self.proteome_name = Path(proteome).stem
     else:
       self.proteome_name = proteome_name
 

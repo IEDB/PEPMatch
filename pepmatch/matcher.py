@@ -112,7 +112,7 @@ class Matcher:
       raise ValueError('counts_only is not supported with best_match.')
 
     self.proteome_file = str(proteome_file)
-    self.proteome_name = str(proteome_file).split('/')[-1].split('.')[0]
+    self.proteome_name = Path(proteome_file).stem
     self.max_mismatches = max_mismatches
     self.preprocessed_files_path = preprocessed_files_path
     self.best_match = best_match

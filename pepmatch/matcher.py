@@ -182,7 +182,7 @@ class Matcher:
     discontinuous_df = pl.DataFrame()
 
     if self.counts_only:
-      k = self.k if self.k_specified else self._auto_k()
+      k = self.k if self.k_specified else self._auto_k(self.max_mismatches)
       df = self._counts_to_dataframe(self._search_counts(k, self.max_mismatches))
       if self.output_format == 'dataframe':
         return df
@@ -197,7 +197,7 @@ class Matcher:
       elif self.best_match:
         linear_df = self.best_match_search()
       else:
-        k = self.k if self.k_specified else self._auto_k()
+        k = self.k if self.k_specified else self._auto_k(self.max_mismatches)
         results = self._search(k, self.max_mismatches)
         linear_df = self._to_dataframe(results)
 
@@ -220,8 +220,20 @@ class Matcher:
       output_matches(df, self.output_format, self.output_name)
 
   def indel_search(self):
-    min_len = min(len(seq) for _, seq in self.query)
-    k = max(2, min_len // (self.max_indels + 1))
+    # Honor an explicitly-passed k, but never above the pigeonhole ceiling: a k
+    # larger than the optimal drops below max_indels+1 disjoint seeds and forfeits
+    # complete recall, so clamp it down. (The constructor already rejects
+    # k > shortest query length, so an explicit k reaching here is always <= min_len.)
+    optimized_k = self._auto_k(self.max_indels)
+    if self.k_specified:
+      k = self.k
+      if k > optimized_k:
+        print(f"Requested k={k} exceeds k={optimized_k}, the largest k that "
+              f"guarantees complete recall for these queries (pigeonhole); "
+              f"using k={optimized_k}.")
+        k = optimized_k
+    else:
+      k = optimized_k
     pepidx_path = self._pepidx_path(k)
     if not os.path.isfile(pepidx_path):
       print(f"No preprocessed file found for k={k}, building index now "
@@ -232,14 +244,14 @@ class Matcher:
     results = rs_indel_match(pepidx_path, self.query, self.max_indels)
     return self._to_dataframe(results, is_indels=True)
 
-  def _auto_k(self):
-    """Optimal k for a seed-based mismatch search (PEPMatch paper / pigeonhole):
-    a length-L peptide with m mismatches must split into at least m+1 disjoint
-    k-mers so one is guaranteed mismatch-free, i.e. k = floor(L / (m + 1)). Uses
-    the shortest query peptide so the guarantee holds for every peptide; floored
-    at 2 (the preprocessor minimum)."""
+  def _auto_k(self, edits):
+    """Optimal k for a seed-based search (PEPMatch paper / pigeonhole): a length-L
+    peptide with `edits` allowed edits (mismatches or indels) must split into at
+    least edits+1 disjoint k-mers so one is guaranteed edit-free, i.e.
+    k = floor(L / (edits + 1)). Uses the shortest query peptide so the guarantee
+    holds for every peptide; floored at 2 (the preprocessor minimum)."""
     min_len = min(len(seq) for _, seq in self.query)
-    return max(2, min_len // (self.max_mismatches + 1))
+    return max(2, min_len // (edits + 1))
 
   def _pepidx_path(self, k):
     return os.path.join(

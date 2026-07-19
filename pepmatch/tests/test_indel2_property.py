@@ -29,7 +29,7 @@ def _with_insertions(rng, seq, n):
 
 def _random_query(rng, proteins):
   protein = proteins[rng.choice(list(proteins))]
-  qlen = rng.randint(9, 14)
+  qlen = rng.randint(8, 14)  # min 8 so a 2-deletion still yields length >= 6 (k=2 floor)
   start = rng.randrange(0, len(protein) - qlen + 1)
   base = protein[start:start + qlen]
   mode = rng.choice(['exact', 'del1', 'ins1', 'del2', 'ins2', 'random'])

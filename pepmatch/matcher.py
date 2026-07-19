@@ -187,6 +187,16 @@ class Matcher:
           f'shorter peptides would be silently skipped.'
         )
 
+    # 2 indels need >=3 disjoint seeds; the k=2 floor only yields that for length >=6.
+    # Shorter queries lose the pigeonhole guarantee (incomplete recall), so reject them.
+    if self.max_indels == 2 and self.query:
+      too_short = [seq for _, seq in self.query if len(seq) < 6]
+      if too_short:
+        raise ValueError(
+          f'max_indels=2 requires query peptides of length >= 6 (the pigeonhole '
+          f'guarantee needs three 2-mer seeds); too short: {too_short}'
+        )
+
   def _parse_query(self, query):
     if isinstance(query, list):
       return [(str(i + 1), seq.upper()) for i, seq in enumerate(query)]
@@ -270,29 +280,49 @@ class Matcher:
       output_matches(df, self.output_format, self.output_name)
 
   def indel_search(self):
-    # Honor an explicitly-passed k, but never above the pigeonhole ceiling: a k
-    # larger than the optimal drops below max_indels+1 disjoint seeds and forfeits
-    # complete recall, so clamp it down. (The constructor already rejects
-    # k > shortest query length, so an explicit k reaching here is always <= min_len.)
-    optimized_k = self._auto_k(self.max_indels)
-    if self.k_specified:
-      k = self.k
-      if k > optimized_k:
-        print(f"Requested k={k} exceeds k={optimized_k}, the largest k that "
-              f"guarantees complete recall for these queries (pigeonhole); "
-              f"using k={optimized_k}.")
-        k = optimized_k
-    else:
-      k = optimized_k
-    pepidx_path = self._pepidx_path(k)
-    if not os.path.isfile(pepidx_path):
-      print(f"No preprocessed file found for k={k}, building index now "
-            f"(this may take a moment)...")
-      rs_preprocess(self.proteome_file, k, pepidx_path)
-    print(f"Searching {len(self.query)} peptides against {self.proteome_name} "
-          f"(k={k}, max_indels={self.max_indels})...")
-    results = rs_indel_match(pepidx_path, self.query, self.max_indels)
-    return self._to_dataframe(results, is_indels=True)
+    # For 2 indels, queries of length 6-8 force k=2 (their pigeonhole optimal), where
+    # 2-mers are so common in a proteome that the DFS seed set explodes. Partition the
+    # batch by required k so those short queries run on a 2-mer table while longer
+    # queries run on their own larger-k table -- one short query no longer drags the
+    # whole batch down to k=2. Every query still runs at k <= its own optimal, so
+    # complete recall holds and the match set is identical to a single-k run.
+    n = self.max_indels
+    short = [(q, s) for q, s in self.query if len(s) // (n + 1) < 3]
+    rest = [(q, s) for q, s in self.query if len(s) // (n + 1) >= 3]
+
+    groups = {}  # resolved k -> the queries to run at that k
+    if short:
+      groups.setdefault(self._clamp_k(2), []).extend(short)
+    if rest:
+      rest_optimal = max(2, min(len(s) for _, s in rest) // (n + 1))
+      groups.setdefault(self._clamp_k(rest_optimal), []).extend(rest)
+
+    # Merge the partitions' columnar output and build ONE frame: separate frames each
+    # get independent schema inference, so an all-miss partition's null column would
+    # clash with a matched partition's String column on concat.
+    combined = [[] for _ in range(8)]
+    for k, queries in sorted(groups.items()):
+      pepidx_path = self._pepidx_path(k)
+      if not os.path.isfile(pepidx_path):
+        print(f"No preprocessed file found for k={k}, building index now "
+              f"(this may take a moment)...")
+        rs_preprocess(self.proteome_file, k, pepidx_path)
+      print(f"Searching {len(queries)} peptides against {self.proteome_name} "
+            f"(k={k}, max_indels={n})...")
+      for i, column in enumerate(rs_indel_match(pepidx_path, queries, n)):
+        combined[i].extend(column)
+    return self._to_dataframe(combined, is_indels=True)
+
+  def _clamp_k(self, optimal):
+    # Honor an explicitly-passed k up to the pigeonhole optimal for a query group; a
+    # larger k drops below max_indels+1 disjoint seeds and forfeits complete recall,
+    # so clamp it down with a warning. Unspecified k uses the optimal.
+    if self.k_specified and self.k > optimal:
+      print(f"Requested k={self.k} exceeds k={optimal}, the largest k that "
+            f"guarantees complete recall for these queries (pigeonhole); "
+            f"using k={optimal}.")
+      return optimal
+    return self.k if self.k_specified else optimal
 
   def _auto_k(self, edits):
     """Optimal k for a seed-based search (PEPMatch paper / pigeonhole): a length-L

@@ -379,3 +379,71 @@ def test_indel_k_exceeding_shortest_query_raises():
   # governs indel search -- an explicit k reaching indel_search is always <= min_len.
   with pytest.raises(ValueError, match='cannot exceed the shortest query peptide'):
     Matcher(query=['NALVEATRFC'], proteome_file='unused.fasta', max_indels=1, k=11)
+
+
+def test_indel2_partitions_short_and_long_onto_separate_tables(tmp_path, capsys):
+  # A mixed 2-indel batch: a length-6 query (forced to k=2) and a length-12 query
+  # (optimal k=4). The short one runs on a 2-mer table and the long one on a 4-mer
+  # table, so the short query no longer drags the whole batch to k=2 -- and both match.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P1\nZZYDGYZZ\n>P2\nZZABCDEFGHIKLMZZ\n')
+  df = Matcher(
+    query=['YYADGY', 'ABCDEFGHIKLM'],       # L6 (2-del -> YDGY), L12 (exact)
+    proteome_file=str(proteome_path), max_indels=2,
+    preprocessed_files_path=str(tmp_path), output_format='dataframe'
+  ).match()
+  out = capsys.readouterr().out
+  matched = set(df.filter(pl.col('Matched Sequence').is_not_null())['Matched Sequence'].to_list())
+  assert 'YDGY' in matched                              # short query, on its 2-mer table
+  assert 'ABCDEFGHIKLM' in matched                      # long query, on its own table
+  assert (tmp_path / 'proteome_2mers.pepidx').exists()  # short partition
+  assert (tmp_path / 'proteome_4mers.pepidx').exists()  # long partition (12 // 3 = 4)
+  assert '(k=2,' in out and '(k=4,' in out              # both partitions ran
+
+
+def test_indel2_partition_is_result_invariant(tmp_path):
+  # Partitioning must change speed, not results: the split batch must return exactly
+  # what it returns when everything is forced onto a single 2-mer table (k=2 is <=
+  # every query's optimal, so it stays valid for all of them).
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P1\nZZYDGYZZ\n>P2\nZZABCDEFGHIKLMZZ\n')
+  queries = ['YYADGY', 'ABCDEFGHIKLM']
+
+  def matched_rows(df):
+    m = df.filter(pl.col('Matched Sequence').is_not_null())
+    return set(zip(m['Query Sequence'].to_list(),
+                   m['Protein ID'].to_list(),
+                   m['Matched Sequence'].to_list()))
+
+  split = Matcher(query=queries, proteome_file=str(proteome_path), max_indels=2,
+                  preprocessed_files_path=str(tmp_path), output_format='dataframe').match()
+  single = Matcher(query=queries, proteome_file=str(proteome_path), max_indels=2, k=2,
+                   preprocessed_files_path=str(tmp_path), output_format='dataframe').match()
+  assert matched_rows(split) == matched_rows(single)
+
+
+def test_indel2_explicit_k2_uses_single_table(tmp_path, capsys):
+  # An explicit k=2 is the user's deliberate choice for the whole batch: no split,
+  # everything runs on one 2-mer table (one search call, no 4-mer table built).
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P1\nZZYDGYZZ\n>P2\nZZABCDEFGHIKLMZZ\n')
+  Matcher(query=['YYADGY', 'ABCDEFGHIKLM'], proteome_file=str(proteome_path),
+          max_indels=2, k=2, preprocessed_files_path=str(tmp_path),
+          output_format='dataframe').match()
+  out = capsys.readouterr().out
+  assert (tmp_path / 'proteome_2mers.pepidx').exists()
+  assert not (tmp_path / 'proteome_4mers.pepidx').exists()   # collapsed to one table
+  assert out.count('Searching') == 1                          # a single partition ran
+
+
+def test_indel2_rejects_query_shorter_than_6():
+  # 2 indels need 3 disjoint 2-mer seeds, which length < 6 cannot provide, so the
+  # guarantee is lost -- reject rather than silently under-report.
+  with pytest.raises(ValueError, match='length >= 6'):
+    Matcher(query=['ABCDE'], proteome_file='unused.fasta', max_indels=2)
+
+
+def test_indel2_rejects_batch_with_any_short_query():
+  # Hard reject: one too-short query blocks the whole batch.
+  with pytest.raises(ValueError, match='length >= 6'):
+    Matcher(query=['ABCDEFGHIKLM', 'ABCDE'], proteome_file='unused.fasta', max_indels=2)

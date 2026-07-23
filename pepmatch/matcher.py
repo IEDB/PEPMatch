@@ -212,7 +212,7 @@ class Matcher:
       discontinuous_df = self._to_dataframe(results)
 
     dfs = [d for d in [linear_df, discontinuous_df] if d.height > 0]
-    df = pl.concat(dfs, how="vertical") if dfs else linear_df
+    df = pl.concat(dfs, how="vertical_relaxed") if dfs else linear_df
 
     if self.output_format == 'dataframe':
       return df
@@ -397,7 +397,7 @@ class Matcher:
 
       matched_df = matched_df.unique(subset=["Query ID"], keep="first")
 
-    return pl.concat([matched_df, unmatched_df], how="vertical")
+    return pl.concat([matched_df, unmatched_df], how="vertical_relaxed")
 
   def _metadata_table(self) -> pl.DataFrame:
     """Per-protein metadata (built once from this proteome's index) for the edge join."""

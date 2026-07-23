@@ -31,3 +31,21 @@ def test_discontinuous_search(proteome_path, query, expected_path):
   df = df.sort('Query Sequence')
   expected_df = pl.read_csv(expected_path).sort('Query Sequence')
   plt.assert_series_equal(df['Protein ID'], expected_df['Protein ID'])
+
+def test_mixed_unmatched_linear_and_matched_discontinuous(proteome_path):
+  unmatched_linear = 'WWWWWWWWW'
+  matched_discontinuous = 'L354, V420, G461, Q468, E486, K499, D501, M503, G509'
+
+  df = Matcher(
+    query=[unmatched_linear, matched_discontinuous],
+    proteome_file=proteome_path,
+    max_mismatches=0,
+    output_format='dataframe'
+  ).match()
+
+  assert df.schema['Matched Sequence'] == pl.String
+  assert df.filter(pl.col('Query Sequence') == unmatched_linear)['Matched Sequence'].item() is None
+  assert (
+    df.filter(pl.col('Query Sequence') == matched_discontinuous)['Matched Sequence'].item()
+    == matched_discontinuous
+  )

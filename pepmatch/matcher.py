@@ -187,16 +187,6 @@ class Matcher:
           f'shorter peptides would be silently skipped.'
         )
 
-    # 2 indels need >=3 disjoint seeds; the k=2 floor only yields that for length >=6.
-    # Shorter queries lose the pigeonhole guarantee (incomplete recall), so reject them.
-    if self.max_indels == 2 and self.query:
-      too_short = [seq for _, seq in self.query if len(seq) < 6]
-      if too_short:
-        raise ValueError(
-          f'max_indels=2 requires query peptides of length >= 6 (the pigeonhole '
-          f'guarantee needs three 2-mer seeds); too short: {too_short}'
-        )
-
   def _parse_query(self, query):
     if isinstance(query, list):
       return [(str(i + 1), seq.upper()) for i, seq in enumerate(query)]
@@ -243,6 +233,7 @@ class Matcher:
 
     if self.counts_only:
       k = self.k if self.k_specified else self._auto_k(self.max_mismatches)
+      self._recall_warning(k, self.max_mismatches)
       df = self._counts_to_dataframe(self._search_counts(k, self.max_mismatches))
       if self.output_format == 'dataframe':
         return df
@@ -258,6 +249,7 @@ class Matcher:
         linear_df = self.best_match_search()
       else:
         k = self.k if self.k_specified else self._auto_k(self.max_mismatches)
+        self._recall_warning(k, self.max_mismatches)
         results = self._search(k, self.max_mismatches)
         linear_df = self._to_dataframe(results)
 
@@ -302,6 +294,7 @@ class Matcher:
     # clash with a matched partition's String column on concat.
     combined = [[] for _ in range(8)]
     for k, queries in sorted(groups.items()):
+      self._recall_warning(k, n, queries)
       pepidx_path = self._pepidx_path(k)
       if not os.path.isfile(pepidx_path):
         print(f"No preprocessed file found for k={k}, building index now "
@@ -323,6 +316,22 @@ class Matcher:
             f"using k={optimal}.")
       return optimal
     return self.k if self.k_specified else optimal
+
+  def _recall_warning(self, k, edits, queries=None):
+    """Warn (non-fatally) when the chosen k cannot guarantee complete recall for some
+    query lengths. The pigeonhole seed guarantee holds only for peptides with
+    len >= k * (edits + 1); a shorter peptide can have a real match that every seed
+    misses, so it may be silently dropped. Shared by the mismatch and indel search
+    paths (not best_match, which escalates k until every peptide is covered). This is
+    a known, documented limit -- identical for mismatch and indel -- not a bug, so we
+    warn and continue rather than reject. `queries` defaults to the full query set;
+    the indel path passes a per-k partition so the reported k matches the run."""
+    queries = self.query if queries is None else queries
+    unguaranteed = sorted({len(s) for _, s in queries if len(s) < k * (edits + 1)})
+    if unguaranteed:
+      print(f"k={k}, edits={edits}: complete recall is not guaranteed for query "
+            f"peptides shorter than {k * (edits + 1)} residues (lengths: {unguaranteed}); "
+            f"a match may exist but be missed.")
 
   def _auto_k(self, edits):
     """Optimal k for a seed-based search (PEPMatch paper / pigeonhole): a length-L

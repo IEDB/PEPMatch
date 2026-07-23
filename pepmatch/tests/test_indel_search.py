@@ -436,14 +436,30 @@ def test_indel2_explicit_k2_uses_single_table(tmp_path, capsys):
   assert out.count('Searching') == 1                          # a single partition ran
 
 
-def test_indel2_rejects_query_shorter_than_6():
-  # 2 indels need 3 disjoint 2-mer seeds, which length < 6 cannot provide, so the
-  # guarantee is lost -- reject rather than silently under-report.
-  with pytest.raises(ValueError, match='length >= 6'):
-    Matcher(query=['ABCDE'], proteome_file='unused.fasta', max_indels=2)
+def test_indel2_short_query_warns_but_does_not_reject(tmp_path, capsys):
+  # 2 indels need 3 disjoint 2-mer seeds, which length < 6 cannot provide, so complete
+  # recall is not guaranteed. This is the same documented limit the mismatch search has
+  # (len >= k*(edits+1)), NOT a bug -- so the search WARNS and runs best-effort rather
+  # than rejecting the query. (Reverses the old hard-reject behavior.)
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P1\nZZABCDEZZ\n')
+  df = Matcher(query=['ABCDE'], proteome_file=str(proteome_path), max_indels=2,
+               preprocessed_files_path=str(tmp_path), output_format='dataframe').match()
+  out = capsys.readouterr().out
+  assert 'complete recall is not guaranteed' in out
+  assert 'lengths: [5]' in out            # the length-5 query is flagged
+  assert df is not None                    # ran to completion instead of raising
 
 
-def test_indel2_rejects_batch_with_any_short_query():
-  # Hard reject: one too-short query blocks the whole batch.
-  with pytest.raises(ValueError, match='length >= 6'):
-    Matcher(query=['ABCDEFGHIKLM', 'ABCDE'], proteome_file='unused.fasta', max_indels=2)
+def test_indel2_batch_warns_only_for_the_short_query(tmp_path, capsys):
+  # One short query no longer blocks the whole batch: the batch runs, and the warning
+  # names only the sub-threshold length, not the length-12 query that is fully covered.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P1\nZZABCDEFGHIKLMZZ\n>P2\nZZABCDEZZ\n')
+  Matcher(query=['ABCDEFGHIKLM', 'ABCDE'], proteome_file=str(proteome_path),
+          max_indels=2, preprocessed_files_path=str(tmp_path),
+          output_format='dataframe').match()
+  out = capsys.readouterr().out
+  assert 'complete recall is not guaranteed' in out
+  assert 'lengths: [5]' in out            # only the length-5 query is unguaranteed
+  assert 'lengths: [12]' not in out

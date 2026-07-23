@@ -187,11 +187,20 @@ pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
 
 ### Output Formats
 
-* **`dataframe`** (default for API): Returns a Polars DataFrame.
+* **`dataframe`** / **`polars`** (default for API): Returns a Polars DataFrame. `dataframe` is kept as a backward-compatible alias for `polars`.
+* **`pandas`**: Returns a pandas DataFrame (converts the Polars result via `.to_pandas()`). Requires the optional extra: `pip install 'pepmatch[pandas]'`.
 * **`csv`** (default for CLI): CSV file.
 * **`tsv`**: Tab-separated file.
 * **`xlsx`**: Excel file.
 * **`json`**: JSON file.
+
+```python
+# Polars (default) — same as output_format='dataframe'
+df = Matcher(query='peptides.fasta', proteome_file='human.fasta', output_format='polars').match()
+
+# pandas
+df = Matcher(query='peptides.fasta', proteome_file='human.fasta', output_format='pandas').match()
+```
 
 ### Performance
 

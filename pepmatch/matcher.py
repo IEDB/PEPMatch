@@ -4,7 +4,8 @@ from pathlib import Path
 from Bio import SeqIO
 from ._rs import rs_preprocess, rs_match, rs_discontinuous, rs_metadata, rs_match_counts, rs_indel_match
 
-VALID_OUTPUT_FORMATS = ['dataframe', 'csv', 'tsv', 'xlsx', 'json']
+VALID_OUTPUT_FORMATS = ['dataframe', 'polars', 'pandas', 'csv', 'tsv', 'xlsx', 'json']
+DATAFRAME_OUTPUT_FORMATS = frozenset({'dataframe', 'polars', 'pandas'})
 FASTA_EXTENSIONS = {
   '.fasta', '.fas', '.fa', '.fna', '.ffn', '.faa', '.mpfa', '.frn'
 }
@@ -22,6 +23,27 @@ def output_matches(df: pl.DataFrame, output_format: str, output_name: str) -> No
   elif output_format == 'json':
     df.write_json(path)
 
+
+def _return_dataframe(df: pl.DataFrame, output_format: str):
+  """Return the in-memory frame in the requested backend.
+
+  `dataframe` is a backward-compatible alias for `polars`. Pandas is only a
+  conversion of the already-built Polars frame — not a second pipeline.
+  """
+  if output_format in ('dataframe', 'polars'):
+    return df
+  try:
+    import pandas as pd
+  except ImportError as e:
+    raise ImportError(
+      "output_format='pandas' requires pandas. "
+      "Install with: pip install 'pepmatch[pandas]'"
+    ) from e
+  # Polars' native path needs pyarrow; fall back so pandas-only envs still work.
+  try:
+    return df.to_pandas()
+  except ModuleNotFoundError:
+    return pd.DataFrame({col: df[col].to_list() for col in df.columns})
 
 def _indel_edit(query, matched):
   """Return (kind, residues, low, high) for a single-indel match, or None for an
@@ -62,7 +84,7 @@ def format_indel_positions(query, matched):
 
 class Matcher:
   """Searches query peptides against a preprocessed proteome index
-  and returns matches as a Polars DataFrame or output file."""
+  and returns matches as a DataFrame (Polars by default, or pandas) or output file."""
 
   def __init__(
     self,
@@ -184,8 +206,8 @@ class Matcher:
     if self.counts_only:
       k = self.k if self.k_specified else self._auto_k(self.max_mismatches)
       df = self._counts_to_dataframe(self._search_counts(k, self.max_mismatches))
-      if self.output_format == 'dataframe':
-        return df
+      if self.output_format in DATAFRAME_OUTPUT_FORMATS:
+        return _return_dataframe(df, self.output_format)
       return output_matches(df, self.output_format, self.output_name)
 
     if self.query:
@@ -214,10 +236,9 @@ class Matcher:
     dfs = [d for d in [linear_df, discontinuous_df] if d.height > 0]
     df = pl.concat(dfs, how="vertical_relaxed") if dfs else linear_df
 
-    if self.output_format == 'dataframe':
-      return df
-    else:
-      output_matches(df, self.output_format, self.output_name)
+    if self.output_format in DATAFRAME_OUTPUT_FORMATS:
+      return _return_dataframe(df, self.output_format)
+    output_matches(df, self.output_format, self.output_name)
 
   def indel_search(self):
     # Honor an explicitly-passed k, but never above the pigeonhole ceiling: a k

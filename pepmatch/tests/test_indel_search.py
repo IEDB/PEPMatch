@@ -110,9 +110,9 @@ def test_insertion_at_second_to_last_position_found(tmp_path):
   assert ('P.1', 'LPDGVWEESS') in hits
 
 
-def test_max_indels_greater_than_one_raises():
-  with pytest.raises(ValueError, match='max_indels > 1 is not yet supported'):
-    Matcher(query=['NALVEATRFC'], proteome_file='unused.fasta', max_indels=2)
+def test_max_indels_greater_than_two_raises():
+  with pytest.raises(ValueError, match='max_indels > 2 is not yet supported'):
+    Matcher(query=['NALVEATRFC'], proteome_file='unused.fasta', max_indels=3)
 
 
 def test_indels_and_mismatches_mutually_exclusive_raises():
@@ -239,6 +239,75 @@ def test_indel_positions_deletion_end_to_end(tmp_path):
   assert row['Indel Positions'].item() == 'd: A[6]'
 
 
+def test_two_consecutive_deletions_found(tmp_path):
+  # YYADGY loses the contiguous YA -> YDGY: one 2-residue deletion event.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P\nMKYDGYWW\n')
+  df = Matcher(
+    query=['YYADGY'], proteome_file=str(proteome_path), max_indels=2,
+    preprocessed_files_path=str(tmp_path), output_format='dataframe'
+  ).match()
+  row = df.filter(pl.col('Matched Sequence') == 'YDGY')
+  assert row.height == 1
+  assert row['Indels'].item() == 2
+  assert row['Indel Positions'].item() == 'd: YA[2]'
+
+
+def test_two_non_consecutive_deletions_found(tmp_path):
+  # ABCDEF loses C (3) and E (5) -> ABDF: two independent deletion events, so the
+  # annotation reports them separately rather than as one chunk.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P\nMKABDFWW\n')
+  df = Matcher(
+    query=['ABCDEF'], proteome_file=str(proteome_path), max_indels=2,
+    preprocessed_files_path=str(tmp_path), output_format='dataframe'
+  ).match()
+  row = df.filter(pl.col('Matched Sequence') == 'ABDF')
+  assert row.height == 1
+  assert row['Indels'].item() == 2
+  assert row['Indel Positions'].item() == 'd: C[3], d: E[5]'
+
+
+def test_two_insertions_found(tmp_path):
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P\nMKABXCDYEFWW\n')
+  df = Matcher(
+    query=['ABCDEF'], proteome_file=str(proteome_path), max_indels=2,
+    preprocessed_files_path=str(tmp_path), output_format='dataframe'
+  ).match()
+  row = df.filter(pl.col('Matched Sequence') == 'ABXCDYEF')
+  assert row.height == 1
+  assert row['Indels'].item() == 2
+  assert row['Indel Positions'].item() == 'i: X[3], i: Y[5]'
+
+
+def test_mixed_insertion_and_deletion_not_found(tmp_path):
+  # max_indels=2 is HOMOGENEOUS: two insertions or two deletions, never one of each.
+  # ABXCDF would need an inserted X plus a deleted E — that pair is a substitution,
+  # which mismatch search covers, so the indel engine must not report it.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P\nMKABXCDFWW\n')
+  df = Matcher(
+    query=['ABCDEF'], proteome_file=str(proteome_path), max_indels=2,
+    preprocessed_files_path=str(tmp_path), output_format='dataframe'
+  ).match()
+  matched = [m for m in df['Matched Sequence'].to_list() if m]
+  assert 'ABXCDF' not in matched
+
+
+def test_indel2_positions_annotation_unit():
+  # Two edits at one site collapse to a chunk; otherwise they report separately. In a
+  # repeat the position is a range — but only where the removed residues stay the same.
+  assert format_indel_positions('YYADGY', 'YDGY') == 'd: YA[2]'        # consecutive chunk
+  assert format_indel_positions('AAAAAA', 'AAAA') == 'd: AA[2,4]'      # homopolymer chunk
+  assert format_indel_positions('AAAA', 'AAAAAA') == 'i: AA[2,4]'      # insertion chunk
+  assert format_indel_positions('ABCDEF', 'ABDF') == 'd: C[3], d: E[5]'
+  assert format_indel_positions('AAABAA', 'AABA') == 'd: A[2,3], d: A[5]'
+  # Periodic repeat: the removed pair changes along the range (BA/AB/BA), so the range
+  # must NOT be collapsed or it would misreport which residues went missing.
+  assert format_indel_positions('ABABAB', 'ABAB') == 'd: BA[2], d: AB[3], d: BA[4]'
+
+
 def test_indel_positions_insertion_end_to_end(tmp_path):
   # Query NALVEATRFC vs a protein with an extra X after E -> matched NALVEXATRFC,
   # annotated as an insertion of X before query position 6.
@@ -310,3 +379,87 @@ def test_indel_k_exceeding_shortest_query_raises():
   # governs indel search -- an explicit k reaching indel_search is always <= min_len.
   with pytest.raises(ValueError, match='cannot exceed the shortest query peptide'):
     Matcher(query=['NALVEATRFC'], proteome_file='unused.fasta', max_indels=1, k=11)
+
+
+def test_indel2_partitions_short_and_long_onto_separate_tables(tmp_path, capsys):
+  # A mixed 2-indel batch: a length-6 query (forced to k=2) and a length-12 query
+  # (optimal k=4). The short one runs on a 2-mer table and the long one on a 4-mer
+  # table, so the short query no longer drags the whole batch to k=2 -- and both match.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P1\nZZYDGYZZ\n>P2\nZZABCDEFGHIKLMZZ\n')
+  df = Matcher(
+    query=['YYADGY', 'ABCDEFGHIKLM'],       # L6 (2-del -> YDGY), L12 (exact)
+    proteome_file=str(proteome_path), max_indels=2,
+    preprocessed_files_path=str(tmp_path), output_format='dataframe'
+  ).match()
+  out = capsys.readouterr().out
+  matched = set(df.filter(pl.col('Matched Sequence').is_not_null())['Matched Sequence'].to_list())
+  assert 'YDGY' in matched                              # short query, on its 2-mer table
+  assert 'ABCDEFGHIKLM' in matched                      # long query, on its own table
+  assert (tmp_path / 'proteome_2mers.pepidx').exists()  # short partition
+  assert (tmp_path / 'proteome_4mers.pepidx').exists()  # long partition (12 // 3 = 4)
+  assert '(k=2,' in out and '(k=4,' in out              # both partitions ran
+
+
+def test_indel2_partition_is_result_invariant(tmp_path):
+  # Partitioning must change speed, not results: the split batch must return exactly
+  # what it returns when everything is forced onto a single 2-mer table (k=2 is <=
+  # every query's optimal, so it stays valid for all of them).
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P1\nZZYDGYZZ\n>P2\nZZABCDEFGHIKLMZZ\n')
+  queries = ['YYADGY', 'ABCDEFGHIKLM']
+
+  def matched_rows(df):
+    m = df.filter(pl.col('Matched Sequence').is_not_null())
+    return set(zip(m['Query Sequence'].to_list(),
+                   m['Protein ID'].to_list(),
+                   m['Matched Sequence'].to_list()))
+
+  split = Matcher(query=queries, proteome_file=str(proteome_path), max_indels=2,
+                  preprocessed_files_path=str(tmp_path), output_format='dataframe').match()
+  single = Matcher(query=queries, proteome_file=str(proteome_path), max_indels=2, k=2,
+                   preprocessed_files_path=str(tmp_path), output_format='dataframe').match()
+  assert matched_rows(split) == matched_rows(single)
+
+
+def test_indel2_explicit_k2_uses_single_table(tmp_path, capsys):
+  # An explicit k=2 is the user's deliberate choice for the whole batch: no split,
+  # everything runs on one 2-mer table (one search call, no 4-mer table built).
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P1\nZZYDGYZZ\n>P2\nZZABCDEFGHIKLMZZ\n')
+  Matcher(query=['YYADGY', 'ABCDEFGHIKLM'], proteome_file=str(proteome_path),
+          max_indels=2, k=2, preprocessed_files_path=str(tmp_path),
+          output_format='dataframe').match()
+  out = capsys.readouterr().out
+  assert (tmp_path / 'proteome_2mers.pepidx').exists()
+  assert not (tmp_path / 'proteome_4mers.pepidx').exists()   # collapsed to one table
+  assert out.count('Searching') == 1                          # a single partition ran
+
+
+def test_indel2_short_query_warns_but_does_not_reject(tmp_path, capsys):
+  # 2 indels need 3 disjoint 2-mer seeds, which length < 6 cannot provide, so complete
+  # recall is not guaranteed. This is the same documented limit the mismatch search has
+  # (len >= k*(edits+1)), NOT a bug -- so the search WARNS and runs best-effort rather
+  # than rejecting the query. (Reverses the old hard-reject behavior.)
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P1\nZZABCDEZZ\n')
+  df = Matcher(query=['ABCDE'], proteome_file=str(proteome_path), max_indels=2,
+               preprocessed_files_path=str(tmp_path), output_format='dataframe').match()
+  out = capsys.readouterr().out
+  assert 'complete recall is not guaranteed' in out
+  assert 'lengths: [5]' in out            # the length-5 query is flagged
+  assert df is not None                    # ran to completion instead of raising
+
+
+def test_indel2_batch_warns_only_for_the_short_query(tmp_path, capsys):
+  # One short query no longer blocks the whole batch: the batch runs, and the warning
+  # names only the sub-threshold length, not the length-12 query that is fully covered.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P1\nZZABCDEFGHIKLMZZ\n>P2\nZZABCDEZZ\n')
+  Matcher(query=['ABCDEFGHIKLM', 'ABCDE'], proteome_file=str(proteome_path),
+          max_indels=2, preprocessed_files_path=str(tmp_path),
+          output_format='dataframe').match()
+  out = capsys.readouterr().out
+  assert 'complete recall is not guaranteed' in out
+  assert 'lengths: [5]' in out            # only the length-5 query is unguaranteed
+  assert 'lengths: [12]' not in out

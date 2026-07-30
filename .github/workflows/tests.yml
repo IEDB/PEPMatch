@@ -30,6 +30,8 @@ jobs:
             test-file: pepmatch/tests/test_indel_search.py
           - name: Indel Property
             test-file: pepmatch/tests/test_indel_property.py
+          - name: 2-Indel Property
+            test-file: pepmatch/tests/test_indel2_property.py
 
     steps:
     - name: Checkout Code

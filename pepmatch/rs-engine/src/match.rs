@@ -557,6 +557,9 @@ fn is_terminal_deletion(q_idx: isize, query_len: usize, p_idx: isize, protein_le
     false
 }
 
+// `allow_del` / `allow_ins` mask the edit branches so a single alignment uses deletions
+// OR insertions, never both. extend_bidirectional fixes the mask for a seed's two
+// extensions, which is what stops a left-deletion mixing with a right-insertion.
 fn dfs(
     query: &[u8],
     q_idx: isize,
@@ -564,6 +567,8 @@ fn dfs(
     p_idx: isize,
     indels_left: usize,
     direction: isize,
+    allow_del: bool,
+    allow_ins: bool,
 ) -> Vec<usize> {
     if (direction == 1 && q_idx >= query.len() as isize)
         || (direction == -1 && q_idx < 0)
@@ -580,22 +585,27 @@ fn dfs(
         && (p_idx as usize) < protein_len
         && query[q_idx as usize] == protein[p_idx as usize]
     {
-        for consumed in dfs(query, q_idx + direction, protein, p_idx + direction, indels_left, direction) {
+        for consumed in dfs(
+            query, q_idx + direction, protein, p_idx + direction, indels_left, direction,
+            allow_del, allow_ins,
+        ) {
             all_paths.push(consumed + 1);
         }
     }
 
     if indels_left > 0 {
         // Deletion branch: query pointer advances, protein stays, 0 protein chars consumed.
-        if !is_terminal_deletion(q_idx, query_len, p_idx, protein_len) {
+        if allow_del && !is_terminal_deletion(q_idx, query_len, p_idx, protein_len) {
             all_paths.extend(dfs(
                 query, q_idx + direction, protein, p_idx, indels_left - 1, direction,
+                allow_del, allow_ins,
             ));
         }
         // Insertion branch: protein pointer advances, query stays, 1 protein char consumed.
-        if p_idx >= 0 && (p_idx as usize) < protein_len {
+        if allow_ins && p_idx >= 0 && (p_idx as usize) < protein_len {
             for consumed in dfs(
                 query, q_idx, protein, p_idx + direction, indels_left - 1, direction,
+                allow_del, allow_ins,
             ) {
                 all_paths.push(consumed + 1);
             }
@@ -616,33 +626,39 @@ fn extend_bidirectional(
     let mut seen: HashSet<(usize, Vec<u8>)> = HashSet::new();
     let mut results: Vec<(usize, Vec<u8>)> = Vec::new();
 
-    for r_budget in 0..=max_indels {
-        let l_budget = max_indels - r_budget;
+    // Two homogeneous passes: deletions-only, then insertions-only. Fixing the edit type
+    // across BOTH extensions of the seed is what keeps an alignment homogeneous — masking
+    // per-side would still let a left-deletion pair with a right-insertion. `seen`
+    // collapses the exact match, which both passes find.
+    for &(allow_del, allow_ins) in &[(true, false), (false, true)] {
+        for r_budget in 0..=max_indels {
+            let l_budget = max_indels - r_budget;
 
-        let r_paths = dfs(
-            query, (q_seed_start + k) as isize, protein, (p_hit_idx + k) as isize,
-            r_budget, 1,
-        );
-        let l_paths = dfs(
-            query, q_seed_start as isize - 1, protein, p_hit_idx as isize - 1,
-            l_budget, -1,
-        );
+            let r_paths = dfs(
+                query, (q_seed_start + k) as isize, protein, (p_hit_idx + k) as isize,
+                r_budget, 1, allow_del, allow_ins,
+            );
+            let l_paths = dfs(
+                query, q_seed_start as isize - 1, protein, p_hit_idx as isize - 1,
+                l_budget, -1, allow_del, allow_ins,
+            );
 
-        for &r_consumed in &r_paths {
-            for &l_consumed in &l_paths {
-                if l_consumed > p_hit_idx {
-                    continue;
-                }
-                let start = p_hit_idx - l_consumed;
-                let end = p_hit_idx + k + r_consumed;
-                if end > protein.len() {
-                    continue;
-                }
-                let matched = protein[start..end].to_vec();
-                let key = (start, matched.clone());
-                if !seen.contains(&key) {
-                    seen.insert(key);
-                    results.push((start, matched));
+            for &r_consumed in &r_paths {
+                for &l_consumed in &l_paths {
+                    if l_consumed > p_hit_idx {
+                        continue;
+                    }
+                    let start = p_hit_idx - l_consumed;
+                    let end = p_hit_idx + k + r_consumed;
+                    if end > protein.len() {
+                        continue;
+                    }
+                    let matched = protein[start..end].to_vec();
+                    let key = (start, matched.clone());
+                    if !seen.contains(&key) {
+                        seen.insert(key);
+                        results.push((start, matched));
+                    }
                 }
             }
         }

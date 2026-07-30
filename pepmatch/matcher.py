@@ -1,5 +1,6 @@
 import os
 import polars as pl
+from itertools import combinations
 from pathlib import Path
 from Bio import SeqIO
 from ._rs import rs_preprocess, rs_match, rs_discontinuous, rs_metadata, rs_match_counts, rs_indel_match
@@ -45,41 +46,89 @@ def _return_dataframe(df: pl.DataFrame, output_format: str):
   except ModuleNotFoundError:
     return pd.DataFrame({col: df[col].to_list() for col in df.columns})
 
-def _indel_edit(query, matched):
-  """Return (kind, residues, low, high) for a single-indel match, or None for an
-  exact match: kind 'd'/'i', the deleted query or inserted protein residue(s), and
-  [low, high] the inclusive 1-based range of valid positions (a run of equivalent
-  positions in a repeat)."""
-  if matched == query:
-    return None
-  L = len(query)
-  if len(matched) < L:
-    # interior positions only — query-terminal deletions are barred
-    positions = [i for i in range(2, L) if query[:i - 1] + query[i:] == matched]
-    if not positions:
-      return None
-    return ('d', query[positions[0] - 1], positions[0], positions[-1])
-  # interior matched residues only — boundary insertions are barred
-  positions, residue = [], None
-  for k in range(1, len(matched) - 1):
-    if matched[:k] + matched[k + 1:] == query:
-      positions.append(k + 1)   # 1-based query position the inserted residue precedes
-      residue = matched[k]
-  if not positions:
-    return None
-  return ('i', residue, positions[0], positions[-1])
+
+def _indel_placements(query, matched):
+  """Every valid way the edits could be placed, as a tuple of (1-based query
+  position, residue) per edit. A repeat makes several placements equivalent."""
+  L, M = len(query), len(matched)
+  n = abs(M - L)
+  if n == 0:
+    return []
+  out = []
+  if M < L:
+    # deletions: interior query positions only — query-terminal deletions are barred
+    for combo in combinations(range(1, L - 1), n):
+      if ''.join(query[i] for i in range(L) if i not in combo) == matched:
+        out.append(tuple((i + 1, query[i]) for i in combo))
+  else:
+    # insertions: the residue comes from the protein; its query position is the
+    # number of query residues preceding it. Boundary insertions are barred.
+    for combo in combinations(range(M), n):
+      if ''.join(matched[i] for i in range(M) if i not in combo) != query:
+        continue
+      placement = []
+      for k in combo:
+        p = sum(1 for x in range(k) if x not in combo) + 1
+        if p == 1 or p == L + 1:
+          placement = None
+          break
+        placement.append((p, matched[k]))
+      if placement:
+        out.append(tuple(placement))
+  return out
+
+
+def _indel_edits(query, matched):
+  """Entries for the Indel Positions column as (kind, residues, low, high)."""
+  placements = _indel_placements(query, matched)
+  if not placements:
+    return []
+  kind = 'd' if len(matched) < len(query) else 'i'
+
+  if len(placements[0]) == 1:
+    positions = sorted(p for ((p, _),) in placements)
+    residue = placements[0][0][1]
+    return [(kind, residue, positions[0], positions[-1])]
+
+  # Two edits at one site form a chunk: adjacent query positions for a deletion,
+  # the same query gap for an insertion.
+  chunks = sorted({
+    (p1, r1 + r2) for (p1, r1), (p2, r2) in placements
+    if (p2 == p1 + 1 if kind == 'd' else p2 == p1)
+  })
+  if chunks:
+    entries = []
+    for start, residues in chunks:
+      # Only range contiguous starts that remove the SAME residues — in a periodic
+      # repeat (ABABAB) the removed pair changes along the range, and ranging them
+      # would misreport which residues went missing.
+      if entries and entries[-1][1] == residues and entries[-1][3] + 1 == start:
+        k, r, low, _ = entries[-1]
+        entries[-1] = (k, r, low, start)
+      else:
+        entries.append((kind, residues, start, start))
+    return entries
+
+  # No chunk: two independent edits. Their positions decouple, and each edit's own
+  # positions form a run of one repeated residue, so a per-edit range is exact.
+  entries = []
+  for slot in (0, 1):
+    positions = sorted({pl[slot][0] for pl in placements})
+    entries.append((kind, placements[0][slot][1], positions[0], positions[-1]))
+  return entries
 
 
 def format_indel_positions(query, matched):
-  """Render the Indel Positions column, e.g. 'd: A[6]', 'i: X[2,4]', or '[]' for
-  an exact match. Positions are 1-based; a range [low,high] collapses to [n] when
-  the position is unambiguous."""
-  edit = _indel_edit(query, matched)
-  if edit is None:
+  """Render the Indel Positions column, e.g. 'd: A[6]', 'd: AA[2,4]',
+  'd: C[3], d: E[5]', or '[]' for an exact match. Positions are 1-based; a range
+  collapses to a single number when the placement is unambiguous."""
+  edits = _indel_edits(query, matched)
+  if not edits:
     return '[]'
-  kind, residues, low, high = edit
-  span = f'[{low}]' if low == high else f'[{low},{high}]'
-  return f'{kind}: {residues}{span}'
+  return ', '.join(
+    f'{kind}: {residues}[{low}]' if low == high else f'{kind}: {residues}[{low},{high}]'
+    for kind, residues, low, high in edits
+  )
 
 
 class Matcher:
@@ -111,8 +160,10 @@ class Matcher:
     if k != 0 and k < 2:
       raise ValueError('k must be >= 2.')
 
-    if max_indels > 1:
-      raise ValueError('max_indels > 1 is not yet supported. Only max_indels=1 has been validated.')
+    # max_indels=2 searches homogeneous edits only: two insertions OR two deletions,
+    # never one of each (a mixed pair is a substitution, which mismatch search covers).
+    if max_indels > 2:
+      raise ValueError('max_indels > 2 is not yet supported. Only max_indels<=2 has been validated.')
 
     if max_indels > 0 and max_mismatches > 0:
       raise ValueError('max_indels and max_mismatches are mutually exclusive.')
@@ -205,6 +256,7 @@ class Matcher:
 
     if self.counts_only:
       k = self.k if self.k_specified else self._auto_k(self.max_mismatches)
+      self._recall_warning(k, self.max_mismatches)
       df = self._counts_to_dataframe(self._search_counts(k, self.max_mismatches))
       if self.output_format in DATAFRAME_OUTPUT_FORMATS:
         return _return_dataframe(df, self.output_format)
@@ -220,6 +272,7 @@ class Matcher:
         linear_df = self.best_match_search()
       else:
         k = self.k if self.k_specified else self._auto_k(self.max_mismatches)
+        self._recall_warning(k, self.max_mismatches)
         results = self._search(k, self.max_mismatches)
         linear_df = self._to_dataframe(results)
 
@@ -241,29 +294,66 @@ class Matcher:
     output_matches(df, self.output_format, self.output_name)
 
   def indel_search(self):
-    # Honor an explicitly-passed k, but never above the pigeonhole ceiling: a k
-    # larger than the optimal drops below max_indels+1 disjoint seeds and forfeits
-    # complete recall, so clamp it down. (The constructor already rejects
-    # k > shortest query length, so an explicit k reaching here is always <= min_len.)
-    optimized_k = self._auto_k(self.max_indels)
-    if self.k_specified:
-      k = self.k
-      if k > optimized_k:
-        print(f"Requested k={k} exceeds k={optimized_k}, the largest k that "
-              f"guarantees complete recall for these queries (pigeonhole); "
-              f"using k={optimized_k}.")
-        k = optimized_k
-    else:
-      k = optimized_k
-    pepidx_path = self._pepidx_path(k)
-    if not os.path.isfile(pepidx_path):
-      print(f"No preprocessed file found for k={k}, building index now "
-            f"(this may take a moment)...")
-      rs_preprocess(self.proteome_file, k, pepidx_path)
-    print(f"Searching {len(self.query)} peptides against {self.proteome_name} "
-          f"(k={k}, max_indels={self.max_indels})...")
-    results = rs_indel_match(pepidx_path, self.query, self.max_indels)
-    return self._to_dataframe(results, is_indels=True)
+    # For 2 indels, queries of length 6-8 force k=2 (their pigeonhole optimal), where
+    # 2-mers are so common in a proteome that the DFS seed set explodes. Partition the
+    # batch by required k so those short queries run on a 2-mer table while longer
+    # queries run on their own larger-k table -- one short query no longer drags the
+    # whole batch down to k=2. Every query still runs at k <= its own optimal, so
+    # complete recall holds and the match set is identical to a single-k run.
+    n = self.max_indels
+    short = [(q, s) for q, s in self.query if len(s) // (n + 1) < 3]
+    rest = [(q, s) for q, s in self.query if len(s) // (n + 1) >= 3]
+
+    groups = {}  # resolved k -> the queries to run at that k
+    if short:
+      groups.setdefault(self._clamp_k(2), []).extend(short)
+    if rest:
+      rest_optimal = max(2, min(len(s) for _, s in rest) // (n + 1))
+      groups.setdefault(self._clamp_k(rest_optimal), []).extend(rest)
+
+    # Merge the partitions' columnar output and build ONE frame: separate frames each
+    # get independent schema inference, so an all-miss partition's null column would
+    # clash with a matched partition's String column on concat.
+    combined = [[] for _ in range(8)]
+    for k, queries in sorted(groups.items()):
+      self._recall_warning(k, n, queries)
+      pepidx_path = self._pepidx_path(k)
+      if not os.path.isfile(pepidx_path):
+        print(f"No preprocessed file found for k={k}, building index now "
+              f"(this may take a moment)...")
+        rs_preprocess(self.proteome_file, k, pepidx_path)
+      print(f"Searching {len(queries)} peptides against {self.proteome_name} "
+            f"(k={k}, max_indels={n})...")
+      for i, column in enumerate(rs_indel_match(pepidx_path, queries, n)):
+        combined[i].extend(column)
+    return self._to_dataframe(combined, is_indels=True)
+
+  def _clamp_k(self, optimal):
+    # Honor an explicitly-passed k up to the pigeonhole optimal for a query group; a
+    # larger k drops below max_indels+1 disjoint seeds and forfeits complete recall,
+    # so clamp it down with a warning. Unspecified k uses the optimal.
+    if self.k_specified and self.k > optimal:
+      print(f"Requested k={self.k} exceeds k={optimal}, the largest k that "
+            f"guarantees complete recall for these queries (pigeonhole); "
+            f"using k={optimal}.")
+      return optimal
+    return self.k if self.k_specified else optimal
+
+  def _recall_warning(self, k, edits, queries=None):
+    """Warn (non-fatally) when the chosen k cannot guarantee complete recall for some
+    query lengths. The pigeonhole seed guarantee holds only for peptides with
+    len >= k * (edits + 1); a shorter peptide can have a real match that every seed
+    misses, so it may be silently dropped. Shared by the mismatch and indel search
+    paths (not best_match, which escalates k until every peptide is covered). This is
+    a known, documented limit -- identical for mismatch and indel -- not a bug, so we
+    warn and continue rather than reject. `queries` defaults to the full query set;
+    the indel path passes a per-k partition so the reported k matches the run."""
+    queries = self.query if queries is None else queries
+    unguaranteed = sorted({len(s) for _, s in queries if len(s) < k * (edits + 1)})
+    if unguaranteed:
+      print(f"k={k}, edits={edits}: complete recall is not guaranteed for query "
+            f"peptides shorter than {k * (edits + 1)} residues (lengths: {unguaranteed}); "
+            f"a match may exist but be missed.")
 
   def _auto_k(self, edits):
     """Optimal k for a seed-based search (PEPMatch paper / pigeonhole): a length-L

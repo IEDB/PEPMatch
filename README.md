@@ -8,13 +8,13 @@
 
 **Author:** Daniel Marrama
 
-`PEPMatch` is a high-performance peptide search tool for finding short peptide sequences within a reference proteome. It handles three kinds of search out of the box: **exact matches**, **mismatch (substitution)** searches, and **single-indel (insertion or deletion)** matching. Powered by a Rust engine with Python bindings, it delivers sub-second search times across entire proteomes while maintaining a simple Python API.
+`PEPMatch` is a high-performance peptide search tool for finding short peptide sequences within a reference proteome. It handles three kinds of search out of the box: **exact matches**, **mismatch (substitution)** searches, and **indel (insertion or deletion)** matching. Powered by a Rust engine with Python bindings, it delivers sub-second search times across entire proteomes while maintaining a simple Python API.
 
 ### Key Features
 
 * **Blazing Fast**: Rust-powered search engine with automatic multi-core parallelization via Rayon. Search thousands of peptides against the entire human proteome in seconds.
 * **Unified Index Format**: Single `.pepidx` binary format stores sequences, metadata, and k-mer index in one memory-mapped file. Preprocess once, search repeatedly.
-* **Versatile Searching**: Exact matches, mismatch (substitution) searches, single-indel (insertion/deletion) matching, best match mode, and discontinuous epitope support.
+* **Versatile Searching**: Exact matches, mismatch (substitution) searches, indel (insertion/deletion) matching, best match mode, and discontinuous epitope support.
 * **Counts-Only Mode**: Get aggregate hit counts per peptide with `O(unique queries)` memory instead of `O(hits)` — built for massive query sets and dense reference matching.
 * **Simple API**: Two classes — `Preprocessor` and `Matcher` — handle everything.
 * **Flexible I/O**: Accepts queries from FASTA files, text files, or Python lists. Outputs to CSV, TSV, XLSX, JSON, or Polars DataFrame.
@@ -103,9 +103,9 @@ df = Matcher(
   max_indels=1
 ).match()
 ```
-Each indel hit is annotated in an **`Indel Positions`** column with the edit type, residue, and 1-based query position — e.g. `d: A[6]` (deletion of `A` at query position 6) or `i: X[6]` (insertion of `X` before query position 6); an exact match reports `[]`. In a repeat the exact position is ambiguous, so the inclusive range of all valid positions is reported, e.g. `d: A[2,4]`.
+Each indel hit is annotated in an **`Indel Positions`** column with the edit type, residue, and 1-based query position — e.g. `d: A[6]` (deletion of `A` at query position 6) or `i: X[6]` (insertion of `X` before query position 6); an exact match reports `[]`. In a repeat the exact position is ambiguous, so the inclusive range of all valid positions is reported, e.g. `d: A[2,4]`. When two edits fall at one site they are reported as a single chunk (`d: YA[2]`); when they fall apart they are reported separately (`d: C[3], d: E[5]`).
 
-Currently limited to `max_indels=1`; mutually exclusive with `max_mismatches`.
+Supports `max_indels=1` and `max_indels=2`; mutually exclusive with `max_mismatches`. At `max_indels=2` the search is **homogeneous** — a match may use two insertions or two deletions, but never one of each (a mixed pair is a substitution, which mismatch search already covers). The two edits need not be adjacent.
 
 #### Best Match
 
@@ -177,7 +177,7 @@ pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
 * `-q`, `--query` (Required): Path to the query file.
 * `-p`, `--proteome_file` (Required): Path to the proteome FASTA file.
 * `-m`, `--max_mismatches`: Maximum mismatches allowed (default: 0).
-* `-i`, `--max_indels`: Maximum indels allowed (default: 0). Currently limited to 1, and mutually exclusive with `-m`.
+* `-i`, `--max_indels`: Maximum indels allowed (default: 0). Supports 1 or 2, and mutually exclusive with `-m`. At 2, a match uses two insertions or two deletions, never one of each.
 * `-k`, `--kmer_size`: K-mer size (default: 5).
 * `-P`, `--preprocessed_files_path`: Directory containing preprocessed files.
 * `-b`, `--best_match`: Enable best match mode.

@@ -66,11 +66,19 @@ impl PepIndex {
             return None;
         }
         let base = self.protein_offset(protein_number) as usize;
-        let start = self.seq_offset + base + position;
-        let end = start + self.k;
-        if end > self.seq_offset + self.seq_len {
+        // Bound the k-mer by THIS protein, not by the whole concatenated buffer: proteins
+        // are stored end to end, so a position past this one's last residue would silently
+        // read the next protein's sequence and report it as a hit here.
+        let protein_end = if protein_number < self.num_proteins {
+            self.protein_offset(protein_number + 1) as usize
+        } else {
+            self.seq_len
+        };
+        if position + self.k > protein_end - base {
             return None;
         }
+        let start = self.seq_offset + base + position;
+        let end = start + self.k;
         Some(&self.mmap[start..end])
     }
 

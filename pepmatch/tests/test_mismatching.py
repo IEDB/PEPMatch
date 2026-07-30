@@ -300,12 +300,11 @@ def test_counts_only_with_best_match_raises():
     Matcher(query=['ACDEFGHIK'], proteome_file='unused.fasta', counts_only=True, best_match=True)
 
 
-@pytest.mark.xfail(reason="engine walks past protein boundary into the next record", strict=False)
 def test_mismatch_does_not_cross_protein_boundary(tmp_path):
-  # DEFGHI exists only in the CONCATENATION of P1 (ABCDEF) and P2 (GHIKLM); neither
-  # protein contains it, nor anything within 1 mismatch of it. The mismatch path resolves
-  # k-mer positions against the flat sequence with no per-protein end guard, so it reports
-  # a bogus 0-mismatch hit in P1 at 4..9 -- past P1's 6 residues.
+  # DEFGHI exists only in the CONCATENATION of P1 (ABCDEF) and P2 (GHIKLM); neither protein
+  # contains it, nor anything within 1 mismatch of it. Proteins are stored end to end, so a
+  # walk that resolved positions against the flat buffer would report a bogus 0-mismatch hit
+  # in P1 at 4..9, past P1's 6 residues. resolve() bounds each k-mer by its own protein.
   proteome_path = tmp_path / 'proteome.fasta'
   proteins = {'P1': 'ABCDEF', 'P2': 'GHIKLM'}
   write_fasta(proteome_path, proteins)

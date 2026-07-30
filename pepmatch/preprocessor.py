@@ -26,6 +26,7 @@ class Preprocessor:
       self.proteome_name = proteome_name
 
   def preprocess(self, k: int) -> None:
+    """Build the k-mer index and write it to <proteome_name>_<k>mers.pepidx."""
     if k < 2:
       raise ValueError('k must be >= 2.')
     output_path = os.path.join(

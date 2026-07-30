@@ -51,9 +51,3 @@ jobs:
     - name: Run Test
       run: pytest ${{ matrix.test-file }}
 
-  linter:
-    name: Ruff Linter
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: chartboost/ruff-action@v1

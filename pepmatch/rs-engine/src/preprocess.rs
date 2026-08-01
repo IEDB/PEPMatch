@@ -1,7 +1,12 @@
+//! Builds the `.pepidx` that all searching reads. Layout is documented at `write_pepidx`;
+//! match.rs mirrors it byte for byte, so a change here needs the same change there.
+
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write, BufWriter, Read, Seek, SeekFrom};
 
+// Every k-mer occurrence is stored as ONE u64: protein_number * MULTIPLIER + offset, so the
+// multiplier is also the hard cap on protein length.
 const PROTEIN_INDEX_MULTIPLIER: u64 = 100_000_000;
 
 struct Protein {
@@ -99,6 +104,7 @@ fn is_swissprot(header: &str) -> bool {
     header.starts_with("sp|")
 }
 
+/// UniProt marks isoforms with a dash suffix (`P12345-2`).
 fn has_isoform_dash(protein_id: &str) -> bool {
     protein_id.contains('-')
 }
@@ -114,6 +120,8 @@ fn base_accession(protein_id: &str) -> &str {
 fn extract_all_metadata(proteins: &[Protein]) -> Vec<Metadata> {
     let mut canonical_pe: HashMap<String, String> = HashMap::new();
 
+    // Pass 1: isoform records often omit PE (protein existence) level and inherit their
+    // canonical entry's, which may appear later in the file.
     for protein in proteins {
         let pid = extract_protein_id(&protein.header);
         if !has_isoform_dash(&pid) {
@@ -127,6 +135,7 @@ fn extract_all_metadata(proteins: &[Protein]) -> Vec<Metadata> {
     let mut seen_genes: HashSet<String> = HashSet::new();
     let mut metadata_list: Vec<Metadata> = Vec::with_capacity(proteins.len());
 
+    // `seen_genes` makes gene_priority "first entry wins": one preferred protein per gene.
     for protein in proteins {
         let h = &protein.header;
         let protein_id = extract_protein_id(h);
@@ -182,8 +191,11 @@ fn write_length_prefixed(buf: &mut Vec<u8>, s: &str) {
     buf.extend_from_slice(bytes);
 }
 
+/// Records are `[k bytes of k-mer][u32 count][count * u64 position]`.
 fn write_kmer_chunk(kmer_map: HashMap<u128, Vec<u64>>, chunk_path: &str, k: usize) -> u64 {
     let mut sorted: Vec<(u128, Vec<u64>)> = kmer_map.into_iter().collect();
+    // Sorting the u128 sorts the k-mers lexicographically: the k-mer is packed big-endian,
+    // one residue byte per byte, so numeric order and byte order agree. (Requires k <= 16.)
     sorted.sort_unstable_by_key(|a| a.0);
 
     let file = File::create(chunk_path).expect("Cannot create chunk file");
@@ -252,10 +264,17 @@ impl ChunkReader {
     }
 }
 
+/// Layout, in order: 8-byte magic, k (u8), protein count (u32), sequence length (u64),
+/// unique k-mer count (u64), total positions (u64), metadata length (u64); then the
+/// concatenated sequences, protein offsets, metadata offsets, metadata blob, k-mer offsets,
+/// k-mer data. Every section start is derivable from the fixed-size header, which is what
+/// lets the query side mmap the file and binary-search it without parsing.
 fn write_pepidx(path: &str, k: usize, proteins: &[Protein], metadata_list: &[Metadata]) {
     let file = File::create(path).expect("Cannot create output file");
     let mut writer = BufWriter::new(file);
 
+    // Sequences live end to end in one buffer; `protein_offsets` is the only record of where
+    // each protein begins, so query-side bounds checks all go through it.
     let mut concat_seq = Vec::new();
     let mut protein_offsets: Vec<u64> = Vec::with_capacity(proteins.len());
     for protein in proteins {
@@ -263,6 +282,8 @@ fn write_pepidx(path: &str, k: usize, proteins: &[Protein], metadata_list: &[Met
         concat_seq.extend_from_slice(protein.sequence.as_bytes());
     }
 
+    // External sort, to bound peak memory on proteome-scale input: 50k proteins at a time,
+    // each batch sorted and spilled to its own chunk file, then k-way merged below.
     let chunk_size = 50_000;
     let mut chunk_paths: Vec<String> = Vec::new();
     let mut total_positions: u64 = 0;
@@ -310,6 +331,8 @@ fn write_pepidx(path: &str, k: usize, proteins: &[Protein], metadata_list: &[Met
         write_length_prefixed(&mut metadata_buf, &meta.swissprot);
     }
 
+    // K-way merge: take the smallest k-mer at any cursor and concatenate the position lists
+    // of every chunk holding it, giving one sorted run with each k-mer appearing once.
     let mut readers: Vec<ChunkReader> = chunk_paths.iter()
         .map(|p| ChunkReader::new(p, k))
         .collect();
@@ -358,6 +381,8 @@ fn write_pepidx(path: &str, k: usize, proteins: &[Protein], metadata_list: &[Met
         std::fs::remove_file(chunk_path).ok();
     }
 
+    // Final pass records where each k-mer's record starts — the table the query-side binary
+    // search indexes into.
     let mut merged_reader = ChunkReader::new(&merged_path, k);
     let mut kmer_offsets: Vec<u64> = Vec::with_capacity(num_unique_kmers as usize);
     let mut kmer_data: Vec<u8> = Vec::new();

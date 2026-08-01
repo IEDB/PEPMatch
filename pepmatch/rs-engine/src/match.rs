@@ -1,8 +1,14 @@
+//! Query side: reads a `.pepidx` and reports where peptides occur. The index is mmapped and
+//! never copied, so searching is slicing into that mapping. Search modes: exact, mismatch
+//! (Hamming), indel, discontinuous, plus a counts-only variant of the mismatch path.
+
 use memmap2::Mmap;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 
+// Both must match preprocess.rs. HEADER_SIZE is the byte width of the header fields:
+// magic, k, protein count, sequence length, k-mer count, positions, metadata length.
 const PROTEIN_INDEX_MULTIPLIER: u64 = 100_000_000;
 const HEADER_SIZE: usize = 8 + 1 + 4 + 8 + 8 + 8 + 8;
 
@@ -20,6 +26,8 @@ struct PepIndex {
     num_kmers: usize,
 }
 
+// Sound because the mapping is opened read-only and never mutated; the rayon workers in
+// `run*` only read it.
 unsafe impl Sync for PepIndex {}
 
 impl PepIndex {
@@ -82,6 +90,8 @@ impl PepIndex {
         Some(&self.mmap[start..end])
     }
 
+    /// The offset table entry for k-mer `i` points at
+    /// `[k bytes of k-mer][u32 count][count * u64 encoded position]` in the k-mer data.
     fn kmer_offset(&self, kmer_index: usize) -> usize {
         let pos = self.kmer_offsets_offset + kmer_index * 8;
         u64::from_le_bytes(self.mmap[pos..pos + 8].try_into().unwrap()) as usize
@@ -99,6 +109,8 @@ impl PepIndex {
         &self.mmap[data_start..data_start + count * 8]
     }
 
+    /// Binary search on raw bytes, which works because preprocess wrote the k-mers sorted and
+    /// all exactly k long.
     fn lookup(&self, kmer: &[u8]) -> Option<Vec<u64>> {
         let mut lo = 0usize;
         let mut hi = self.num_kmers;
@@ -132,6 +144,8 @@ impl PepIndex {
         (s, pos + 2 + len)
     }
 
+    /// In preprocess's write order: id, name, species, taxon, gene, PE level, sequence
+    /// version, gene priority, swissprot.
     fn get_metadata(&self, protein_number: usize) -> [String; 9] {
         let offset_pos = self.metadata_offsets_offset + (protein_number - 1) * 8;
         let meta_rel = u64::from_le_bytes(
@@ -159,6 +173,8 @@ fn exact_match(peptide: &str, k: usize, index: &PepIndex) -> Vec<u64> {
         return vec![];
     }
 
+    // Seeds: non-overlapping k-mer tiles plus the final k-mer, which together span every
+    // residue — so seeds agreeing on a start is equivalent to a full-length exact match.
     let num_kmers = pep_bytes.len() - k + 1;
     let mut target_indices: Vec<usize> = (0..num_kmers).step_by(k).collect();
     let last = num_kmers - 1;
@@ -170,6 +186,8 @@ fn exact_match(peptide: &str, k: usize, index: &PepIndex) -> Vec<u64> {
 
     let mut hit_counts: HashMap<u64, usize> = HashMap::new();
 
+    // Each hit votes for the start it implies (hit position minus the seed's offset in the
+    // peptide); only starts every seed voted for span the whole peptide.
     for &idx in &target_indices {
         let kmer = &pep_bytes[idx..idx + k];
         if let Some(positions) = index.lookup(kmer) {
@@ -188,6 +206,13 @@ fn exact_match(peptide: &str, k: usize, index: &PepIndex) -> Vec<u64> {
         .collect()
 }
 
+/// Verification helpers for the mismatch search: walk outward from a confirmed seed hit and
+/// accumulate mismatches, returning the sentinel 100 for "reject" (budget blown, or the
+/// alignment ran off a protein edge).
+///
+/// The `_neighbors` pair compares whole k-mer tiles, usable only when k divides the peptide
+/// length; the `_residues` pair walks overlapping k-mers comparing the single residue each
+/// contributes, which is what handles the lengths tiles cannot partition.
 fn check_left_neighbors(
     pep_bytes: &[u8], idx: usize, kmer_hit: u64, index: &PepIndex,
     k: usize, max_mismatches: usize, mut mismatches: usize,
@@ -253,6 +278,10 @@ fn check_right_residues(
     mismatches
 }
 
+/// Mismatch search -> (matched sequence, mismatch count, encoded start) per hit.
+///
+/// Seeding relies on the pigeonhole principle: within the mismatch budget at least one of the
+/// peptide's k-mers is exact, so every index hit is a candidate start, verified by extension.
 fn mismatch_match(peptide: &str, k: usize, max_mismatches: usize, index: &PepIndex) -> Vec<(String, usize, u64)> {
     let pep_bytes = peptide.as_bytes();
     if pep_bytes.len() < k { return vec![]; }
@@ -262,6 +291,8 @@ fn mismatch_match(peptide: &str, k: usize, max_mismatches: usize, index: &PepInd
     let mut matches: Vec<(String, usize, u64)> = Vec::new();
     let mut seen: HashSet<u64> = HashSet::new();
 
+    // k divides the length: disjoint tiles cover the peptide, so seeds step by k and
+    // verification compares whole tiles.
     if peptide_len % k == 0 {
         let mut idx = 0;
         while idx < num_kmers {
@@ -269,10 +300,13 @@ fn mismatch_match(peptide: &str, k: usize, max_mismatches: usize, index: &PepInd
             if let Some(positions) = index.lookup(kmer) {
                 for kmer_hit in positions {
                     let start = (kmer_hit as i64 - idx as i64) as u64;
+                    // Several seeds in one peptide imply the same start; keep one row each.
                     if seen.contains(&start) { continue; }
                     let mismatches = check_left_neighbors(pep_bytes, idx, kmer_hit, index, k, max_mismatches, 0);
                     let mismatches = check_right_neighbors(pep_bytes, idx, kmer_hit, index, k, max_mismatches, mismatches);
                     if mismatches <= max_mismatches {
+                        // Rebuild the database sequence tile by tile; a tile that fails to
+                        // resolve means the match would cross a protein boundary.
                         let mut matched = Vec::with_capacity(peptide_len);
                         let mut i = 0;
                         let mut valid = true;
@@ -293,6 +327,8 @@ fn mismatch_match(peptide: &str, k: usize, max_mismatches: usize, index: &PepInd
             idx += k;
         }
     } else {
+        // k does not divide the length, so tiles cannot partition the peptide: every offset
+        // is a seed and verification walks residue by residue.
         for idx in 0..num_kmers {
             let kmer = &pep_bytes[idx..idx + k];
             if let Some(positions) = index.lookup(kmer) {
@@ -306,6 +342,8 @@ fn mismatch_match(peptide: &str, k: usize, max_mismatches: usize, index: &PepInd
                         let mut i = 0;
                         let mut valid = true;
                         while i < peptide_len {
+                            // Final tile would overrun the peptide, so step `back` residues
+                            // earlier and keep only the tail we still need.
                             if i + k > peptide_len {
                                 let remaining = peptide_len - i;
                                 let back = k - remaining;
@@ -355,6 +393,7 @@ fn mutated_positions(peptide: &str, matched: &str) -> String {
     format!("[{}]", v.join(", "))
 }
 
+/// Reported coordinates are 1-based and inclusive.
 fn hit_record(query_id: &str, peptide: &str, matched_seq: &str, mismatches: usize, encoded_start: u64) -> HitRecord {
     let protein_number = (encoded_start / PROTEIN_INDEX_MULTIPLIER) as u32;
     let position = (encoded_start % PROTEIN_INDEX_MULTIPLIER) as usize;
@@ -432,6 +471,9 @@ fn unzip_records(records: Vec<HitRecord>) -> Columns {
     (qid, qseq, matched, pnum, mm, mutated, s, e)
 }
 
+/// Discontinuous search: queries are (residue, 1-based position) constraints with no
+/// contiguous k-mer to look up, so this scans every protein, touching only the requested
+/// positions in each.
 pub(crate) fn run_discontinuous(
     pepidx_path: &str,
     epitopes: Vec<(String, Vec<(char, usize)>)>,
@@ -565,9 +607,13 @@ fn is_terminal_deletion(q_idx: isize, query_len: usize, p_idx: isize, protein_le
     false
 }
 
-// `allow_del` / `allow_ins` mask the edit branches so a single alignment uses deletions
-// OR insertions, never both. extend_bidirectional fixes the mask for a seed's two
-// extensions, which is what stops a left-deletion mixing with a right-insertion.
+/// Depth-first extension from a seed. Walks `direction` (+1 right, -1 left) consuming query
+/// and protein characters, and returns how many PROTEIN characters each surviving path
+/// consumed — that count is what turns into the matched substring's bounds.
+///
+/// `allow_del` / `allow_ins` mask the edit branches so a single alignment uses deletions
+/// OR insertions, never both. extend_bidirectional fixes the mask for a seed's two
+/// extensions, which is what stops a left-deletion mixing with a right-insertion.
 fn dfs(
     query: &[u8],
     q_idx: isize,
@@ -675,6 +721,8 @@ fn extend_bidirectional(
     results
 }
 
+/// Dedup is by (protein, start, matched) because different seeds reach the same alignment.
+/// The `mismatches` field carries the indel count here, reusing the column.
 fn indel_search_peptide(
     query_id: &str,
     peptide: &str,
@@ -744,6 +792,8 @@ fn indel_search_peptide(
     }
 }
 
+// Entry points called from lib.rs. Each opens the index once and fans queries out over rayon;
+// the index is shared immutably, so no synchronization is needed.
 pub(crate) fn run_indel(
     pepidx_path: &str,
     peptides: Vec<(String, String)>,
@@ -777,8 +827,8 @@ pub(crate) fn run(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, 
     unzip_records(records)
 }
 
-// ── Counts-only path (aggregate; O(unique queries), no per-hit materialization) ──
-
+// ── Counts-only path: same matching, tallies per mismatch level instead of materializing
+// hits, so memory scales with queries rather than hits. ──
 pub(crate) type CountColumns = (Vec<String>, Vec<String>, Vec<i64>, Vec<u64>);
 
 /// Tally accepted matches per mismatch level for one peptide, mirroring

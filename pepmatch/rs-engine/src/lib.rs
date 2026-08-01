@@ -1,6 +1,11 @@
+//! PyO3 boundary: thin wrappers over `preprocess` (build a .pepidx) and `matching` (query
+//! one). Results are returned as tuples of parallel Vecs so matcher.py can feed each one
+//! straight into a polars Series instead of building per-row objects.
+
 use pyo3::prelude::*;
 
 mod preprocess;
+// `match` is a Rust keyword, so the file cannot be a module name; import it under an alias.
 #[path = "match.rs"]
 mod matching;
 

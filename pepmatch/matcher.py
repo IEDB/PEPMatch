@@ -1,6 +1,5 @@
 import os
 import polars as pl
-from itertools import combinations
 from pathlib import Path
 from Bio import SeqIO
 from ._rs import rs_preprocess, rs_match, rs_discontinuous, rs_metadata, rs_match_counts, rs_indel_match
@@ -50,30 +49,44 @@ def _indel_placements(query, matched):
   """Every valid placement of the edits between `query` and `matched`, each a tuple of
   (1-based query position, residue) per edit; a repeat makes placements equivalent.
   Query-terminal deletions and boundary insertions are barred, and an inserted
-  residue's position counts the query residues preceding it."""
+  residue's position counts the query residues preceding it.
+
+  Removing n positions from the longer string splits it into n + 1 stretches, and
+  stretch t must equal the shorter string shifted by t residues. Placements are read
+  off precomputed agreement runs for each shift, left to right so they come out in
+  lexicographic order (_indel_edits reads placements[0]), instead of rebuilding the
+  string for every combination of positions."""
   L, M = len(query), len(matched)
   n = abs(M - L)
   if n == 0:
     return []
-  out = []
+  longer, shorter = (query, matched) if M < L else (matched, query)
+  N = len(longer)
+  # runs[s][x]: consecutive positions from x where longer[y + s] == shorter[y].
+  runs = []
+  for s in range(n + 1):
+    run = [0] * (N + 1)
+    for x in range(len(shorter) - 1, -1, -1):
+      if x + s < N and longer[x + s] == shorter[x]:
+        run[x] = run[x + 1] + 1
+    runs.append(run)
+
+  combos = []
+
+  def place(t, start, combo):
+    if t == n:
+      if runs[n][start - n] >= N - start:
+        combos.append(combo)
+      return
+    for c in range(max(start, 1), N - 1):   # never an end residue: the terminal rule
+      if c - start > runs[t][start - t]:
+        break
+      place(t + 1, c + 1, combo + (c,))
+
+  place(0, 0, ())
   if M < L:
-    for combo in combinations(range(1, L - 1), n):
-      if ''.join(query[i] for i in range(L) if i not in combo) == matched:
-        out.append(tuple((i + 1, query[i]) for i in combo))
-  else:
-    for combo in combinations(range(M), n):
-      if ''.join(matched[i] for i in range(M) if i not in combo) != query:
-        continue
-      placement = []
-      for k in combo:
-        p = sum(1 for x in range(k) if x not in combo) + 1
-        if p == 1 or p == L + 1:
-          placement = None
-          break
-        placement.append((p, matched[k]))
-      if placement:
-        out.append(tuple(placement))
-  return out
+    return [tuple((i + 1, query[i]) for i in combo) for combo in combos]
+  return [tuple((k - u + 1, matched[k]) for u, k in enumerate(combo)) for combo in combos]
 
 
 def _indel_edits(query, matched):

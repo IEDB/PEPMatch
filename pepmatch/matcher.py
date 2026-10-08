@@ -551,7 +551,8 @@ class Matcher:
     from `pepidx_path` once instead of cloning it into every hit row. rs_indel_match
     reuses the mismatch slot for its edit count, so only the column name differs by
     mode; indel positions are derived here from (query, matched) rather than in Rust,
-    and miss rows stay null."""
+    once per distinct pair since a matched peptide often recurs across proteins, and
+    miss rows stay null."""
     qid, qseq, matched, pnum, mm, mutated, istart, iend = cols
 
     edit_col = 'Indels' if is_indels else 'Mismatches'
@@ -566,8 +567,12 @@ class Matcher:
       return pl.DataFrame(schema=schema)
 
     if is_indels:
-      positions = [format_indel_positions(q, m) if m is not None else None
-                   for q, m in zip(qseq, matched)]
+      annotations = {}
+      positions = []
+      for q, m in zip(qseq, matched):
+        if m is not None and (q, m) not in annotations:
+          annotations[(q, m)] = format_indel_positions(q, m)
+        positions.append(annotations[(q, m)] if m is not None else None)
     else:
       positions = mutated
 

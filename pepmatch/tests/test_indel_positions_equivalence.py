@@ -3,7 +3,7 @@ import random
 
 import pytest
 
-from pepmatch import matcher
+from pepmatch import Matcher, matcher
 from pepmatch.matcher import _indel_placements, format_indel_positions
 
 AMINO_ACIDS = 'ACDEFGHIKLMNPQRSTVWY'
@@ -110,3 +110,24 @@ def test_unrelated_and_short_pairs(monkeypatch):
 ])
 def test_documented_examples(query, matched, expected):
   assert format_indel_positions(query, matched) == expected
+
+
+def test_annotation_follows_the_query_not_just_the_matched_peptide(tmp_path):
+  """_to_dataframe annotates each distinct (query, matched) pair once. Rows sharing a pair
+  (the same peptide in two proteins) must share the annotation, two queries matching the
+  same peptide must not, and a query with no hit stays null."""
+  fasta = tmp_path / 'p.fasta'
+  fasta.write_text(
+    '>sp|P1|A_X OS=Homo sapiens OX=9606 GN=A PE=1 SV=1\nMKLAAAGHTWCDEFPQRSTVYN\n'
+    '>sp|P2|B_X OS=Homo sapiens OX=9606 GN=B PE=1 SV=1\nGGAAAGHTWCDEFPQRSAAMKL\n')
+  df = Matcher(query=['AAAAGHTWCDEFPQ', 'AAAGGHTWCDEFPQ', 'WWWWWWWWWWWW'], proteome_file=fasta,
+               max_indels=1, preprocessed_files_path=tmp_path).match()
+  rows = {(q, p): pos for q, p, pos in
+          df.select('Query Sequence', 'Protein ID', 'Indel Positions').iter_rows()}
+  assert rows == {
+    ('AAAAGHTWCDEFPQ', 'P1.1'): 'd: A[2,4]',
+    ('AAAAGHTWCDEFPQ', 'P2.1'): 'd: A[2,4]',
+    ('AAAGGHTWCDEFPQ', 'P1.1'): 'd: G[4,5]',
+    ('AAAGGHTWCDEFPQ', 'P2.1'): 'd: G[4,5]',
+    ('WWWWWWWWWWWW', None): None,
+  }

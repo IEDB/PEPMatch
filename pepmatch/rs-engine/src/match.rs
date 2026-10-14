@@ -673,17 +673,21 @@ struct Walk<'a> {
 }
 
 impl Walk<'_> {
-    /// Depth-first extension consuming query and protein characters. For every path that uses
-    /// up the query it appends (PROTEIN characters consumed, edits used), in match, deletion,
-    /// insertion order; the consumed count is what turns into the matched substring's bounds.
-    /// The budget only decides whether an edit branch is open, so one walk at the full budget
-    /// lists, for any smaller budget b, exactly what a walk at b would, in the same order: the
-    /// entries with at most b edits.
+    /// Depth-first extension consuming query and protein characters. Each path that uses up
+    /// the query ends in (PROTEIN characters consumed, edits used); they are appended in match,
+    /// deletion, insertion order, each pair once. The consumed count is what turns into the
+    /// matched substring's bounds. The budget only decides whether an edit branch is open, so
+    /// one walk at the full budget lists, for any smaller budget b, exactly what a walk at b
+    /// would, in the same order: the entries with at most b edits.
     fn dfs(&self, q_idx: isize, p_idx: isize, edits: usize, consumed: usize, paths: &mut Vec<(usize, usize)>) {
         let query_len = self.query.len();
         let protein_len = self.protein.len();
         if (self.direction == 1 && q_idx >= query_len as isize) || (self.direction == -1 && q_idx < 0) {
-            paths.push((consumed, edits));
+            // Within a pass the protein consumed follows from the edits (one fewer per deletion,
+            // one more per insertion), so a repeat could only re-emit its first copy's windows.
+            if !paths.contains(&(consumed, edits)) {
+                paths.push((consumed, edits));
+            }
             return;
         }
         let in_protein = p_idx >= 0 && (p_idx as usize) < protein_len;
@@ -736,6 +740,10 @@ fn extend_bidirectional<'b>(
         let walk = |direction: isize| Walk { query, protein, direction, allow_del, allow_ins, max_edits: max_indels };
         buf.right.clear();
         walk(1).dfs((q_seed_start + k) as isize, (p_hit_idx + k) as isize, 0, 0, &mut buf.right);
+        // Most candidate positions fail here; with no right path there is nothing to pair.
+        if buf.right.is_empty() {
+            continue;
+        }
         buf.left.clear();
         walk(-1).dfs(q_seed_start as isize - 1, p_hit_idx as isize - 1, 0, 0, &mut buf.left);
 

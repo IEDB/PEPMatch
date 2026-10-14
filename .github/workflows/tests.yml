@@ -36,6 +36,8 @@ jobs:
             test-file: pepmatch/tests/test_indel_seed_reduction.py
           - name: Indel Positions Equivalence
             test-file: pepmatch/tests/test_indel_positions_equivalence.py
+          - name: Indel Golden Output
+            test-file: pepmatch/tests/test_indel_golden.py
 
     steps:
     - name: Checkout Code

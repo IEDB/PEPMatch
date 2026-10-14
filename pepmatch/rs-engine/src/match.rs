@@ -658,122 +658,116 @@ fn is_terminal_deletion(q_idx: isize, query_len: usize, p_idx: isize, protein_le
     false
 }
 
-/// Depth-first extension from a seed. Walks `direction` (+1 right, -1 left) consuming query
-/// and protein characters, and returns how many PROTEIN characters each surviving path
-/// consumed — that count is what turns into the matched substring's bounds.
-///
-/// `allow_del` / `allow_ins` mask the edit branches so a single alignment uses deletions
-/// OR insertions, never both. extend_bidirectional fixes the mask for a seed's two
-/// extensions, which is what stops a left-deletion mixing with a right-insertion.
-fn dfs(
-    query: &[u8],
-    q_idx: isize,
-    protein: &[u8],
-    p_idx: isize,
-    indels_left: usize,
+/// One extension walk from a seed: the query and protein, the direction (+1 right of the
+/// seed, -1 left), and the edit budget. `allow_del` / `allow_ins` mask the edit branches so
+/// a single alignment uses deletions OR insertions, never both. extend_bidirectional fixes
+/// the mask for a seed's two extensions, which is what stops a left-deletion mixing with a
+/// right-insertion.
+struct Walk<'a> {
+    query: &'a [u8],
+    protein: &'a [u8],
     direction: isize,
     allow_del: bool,
     allow_ins: bool,
-) -> Vec<usize> {
-    if (direction == 1 && q_idx >= query.len() as isize)
-        || (direction == -1 && q_idx < 0)
-    {
-        return vec![0];
-    }
+    max_edits: usize,
+}
 
-    let mut all_paths: Vec<usize> = Vec::new();
-    let query_len = query.len();
-    let protein_len = protein.len();
-
-    // Match branch: both pointers advance, consumes 1 protein char.
-    if p_idx >= 0
-        && (p_idx as usize) < protein_len
-        && query[q_idx as usize] == protein[p_idx as usize]
-    {
-        for consumed in dfs(
-            query, q_idx + direction, protein, p_idx + direction, indels_left, direction,
-            allow_del, allow_ins,
-        ) {
-            all_paths.push(consumed + 1);
+impl Walk<'_> {
+    /// Depth-first extension consuming query and protein characters. For every path that uses
+    /// up the query it appends (PROTEIN characters consumed, edits used), in match, deletion,
+    /// insertion order; the consumed count is what turns into the matched substring's bounds.
+    /// The budget only decides whether an edit branch is open, so one walk at the full budget
+    /// lists, for any smaller budget b, exactly what a walk at b would, in the same order: the
+    /// entries with at most b edits.
+    fn dfs(&self, q_idx: isize, p_idx: isize, edits: usize, consumed: usize, paths: &mut Vec<(usize, usize)>) {
+        let query_len = self.query.len();
+        let protein_len = self.protein.len();
+        if (self.direction == 1 && q_idx >= query_len as isize) || (self.direction == -1 && q_idx < 0) {
+            paths.push((consumed, edits));
+            return;
         }
-    }
+        let in_protein = p_idx >= 0 && (p_idx as usize) < protein_len;
 
-    if indels_left > 0 {
-        // Deletion branch: query pointer advances, protein stays, 0 protein chars consumed.
-        if allow_del && !is_terminal_deletion(q_idx, query_len, p_idx, protein_len) {
-            all_paths.extend(dfs(
-                query, q_idx + direction, protein, p_idx, indels_left - 1, direction,
-                allow_del, allow_ins,
-            ));
+        // Match branch: both pointers advance, consumes 1 protein char.
+        if in_protein && self.query[q_idx as usize] == self.protein[p_idx as usize] {
+            self.dfs(q_idx + self.direction, p_idx + self.direction, edits, consumed + 1, paths);
         }
-        // Insertion branch: protein pointer advances, query stays, 1 protein char consumed.
-        if allow_ins && p_idx >= 0 && (p_idx as usize) < protein_len {
-            for consumed in dfs(
-                query, q_idx, protein, p_idx + direction, indels_left - 1, direction,
-                allow_del, allow_ins,
-            ) {
-                all_paths.push(consumed + 1);
+
+        if edits < self.max_edits {
+            // Deletion branch: query pointer advances, protein stays, 0 protein chars consumed.
+            if self.allow_del && !is_terminal_deletion(q_idx, query_len, p_idx, protein_len) {
+                self.dfs(q_idx + self.direction, p_idx, edits + 1, consumed, paths);
+            }
+            // Insertion branch: protein pointer advances, query stays, 1 protein char consumed.
+            if self.allow_ins && in_protein {
+                self.dfs(q_idx, p_idx + self.direction, edits + 1, consumed + 1, paths);
             }
         }
     }
-
-    all_paths
 }
 
-fn extend_bidirectional(
+/// Lists one query's extensions reuse, so a candidate position allocates nothing.
+#[derive(Default)]
+struct ExtendBuffers {
+    right: Vec<(usize, usize)>,
+    left: Vec<(usize, usize)>,
+    windows: Vec<(usize, usize)>,
+}
+
+/// The protein windows (start, end) the seed at `p_hit_idx` extends to with at most
+/// `max_indels` edits, in discovery order and without repeats. They live in `buf`, so they
+/// are valid until the next call.
+fn extend_bidirectional<'b>(
     query: &[u8],
     q_seed_start: usize,
     p_hit_idx: usize,
     protein: &[u8],
     k: usize,
     max_indels: usize,
-) -> Vec<(usize, Vec<u8>)> {
-    let mut seen: HashSet<(usize, Vec<u8>)> = HashSet::new();
-    let mut results: Vec<(usize, Vec<u8>)> = Vec::new();
+    buf: &'b mut ExtendBuffers,
+) -> &'b [(usize, usize)] {
+    buf.windows.clear();
 
     // Two homogeneous passes: deletions-only, then insertions-only. Fixing the edit type
     // across BOTH extensions of the seed is what keeps an alignment homogeneous — masking
-    // per-side would still let a left-deletion pair with a right-insertion. `seen`
+    // per-side would still let a left-deletion pair with a right-insertion. The window list
     // collapses the exact match, which both passes find.
     for &(allow_del, allow_ins) in &[(true, false), (false, true)] {
+        let walk = |direction: isize| Walk { query, protein, direction, allow_del, allow_ins, max_edits: max_indels };
+        buf.right.clear();
+        walk(1).dfs((q_seed_start + k) as isize, (p_hit_idx + k) as isize, 0, 0, &mut buf.right);
+        buf.left.clear();
+        walk(-1).dfs(q_seed_start as isize - 1, p_hit_idx as isize - 1, 0, 0, &mut buf.left);
+
+        // Every split of the budget: right paths with at most r_budget edits against left
+        // paths with at most the rest.
         for r_budget in 0..=max_indels {
             let l_budget = max_indels - r_budget;
-
-            let r_paths = dfs(
-                query, (q_seed_start + k) as isize, protein, (p_hit_idx + k) as isize,
-                r_budget, 1, allow_del, allow_ins,
-            );
-            let l_paths = dfs(
-                query, q_seed_start as isize - 1, protein, p_hit_idx as isize - 1,
-                l_budget, -1, allow_del, allow_ins,
-            );
-
-            for &r_consumed in &r_paths {
-                for &l_consumed in &l_paths {
-                    if l_consumed > p_hit_idx {
+            for &(r_consumed, r_edits) in &buf.right {
+                if r_edits > r_budget {
+                    continue;
+                }
+                for &(l_consumed, l_edits) in &buf.left {
+                    if l_edits > l_budget || l_consumed > p_hit_idx {
                         continue;
                     }
                     let start = p_hit_idx - l_consumed;
                     let end = p_hit_idx + k + r_consumed;
-                    if end > protein.len() {
+                    if end > protein.len() || buf.windows.contains(&(start, end)) {
                         continue;
                     }
-                    let matched = protein[start..end].to_vec();
-                    let key = (start, matched.clone());
-                    if !seen.contains(&key) {
-                        seen.insert(key);
-                        results.push((start, matched));
-                    }
+                    buf.windows.push((start, end));
                 }
             }
         }
     }
 
-    results
+    &buf.windows
 }
 
-/// Dedup is by (protein, start, matched) because different seeds reach the same alignment.
-/// The `mismatches` field carries the indel count here, reusing the column.
+/// Dedup is by (protein, start, end), i.e. (protein, start, matched), because different seeds
+/// reach the same alignment. The `mismatches` field carries the indel count here, reusing
+/// the column.
 fn indel_search_peptide(
     query_id: &str,
     peptide: &str,
@@ -789,8 +783,9 @@ fn indel_search_peptide(
     }
 
     let seeds = rarest_pigeonhole_seeds(pep_bytes, k, indels_allowed, index);
-    let mut seen: HashSet<(usize, usize, Vec<u8>)> = HashSet::new();
+    let mut seen: HashSet<(usize, usize, usize)> = HashSet::new();
     let mut records: Vec<HitRecord> = Vec::new();
+    let mut buf = ExtendBuffers::default();
 
     for (seed_bytes, q_seed_start) in &seeds {
         if let Some(hit_positions) = index.lookup(seed_bytes) {
@@ -809,27 +804,22 @@ fn indel_search_peptide(
                 };
                 let protein = &index.mmap[index.seq_offset + prot_base..index.seq_offset + prot_end];
 
-                for (true_start, matched) in
-                    extend_bidirectional(pep_bytes, *q_seed_start, local_p_idx, protein, k, indels_allowed)
+                for &(true_start, end) in
+                    extend_bidirectional(pep_bytes, *q_seed_start, local_p_idx, protein, k, indels_allowed, &mut buf)
                 {
-                    let dedup_key = (prot_num, true_start, matched.clone());
-                    if seen.contains(&dedup_key) {
+                    if !seen.insert((prot_num, true_start, end)) {
                         continue;
                     }
-                    seen.insert(dedup_key);
-
-                    let matched_str = String::from_utf8_lossy(&matched).into_owned();
-                    let n_indels = matched.len().abs_diff(peptide_len);
-
+                    let matched = &protein[true_start..end];
                     records.push(HitRecord {
                         query_id: query_id.to_string(),
                         query_seq: peptide.to_string(),
-                        matched: Some(matched_str),
+                        matched: Some(String::from_utf8_lossy(matched).into_owned()),
                         protein_num: Some(prot_num as u32),
-                        mismatches: Some(n_indels as i64),
+                        mismatches: Some(matched.len().abs_diff(peptide_len) as i64),
                         mutated: String::from("[]"),
                         idx_start: Some((true_start + 1) as i64),
-                        idx_end: Some((true_start + matched.len()) as i64),
+                        idx_end: Some(end as i64),
                     });
                 }
             }

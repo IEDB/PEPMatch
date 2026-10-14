@@ -29,9 +29,12 @@ fn rs_discontinuous(pepidx_path: &str, epitopes: Vec<(String, Vec<(char, usize)>
     matching::run_discontinuous(pepidx_path, epitopes, max_mismatches)
 }
 
+/// Metadata for `protein_nums` (1-based FASTA ordinals in this index), or for every protein
+/// when it is omitted. A number outside the index raises `ValueError`.
 #[pyfunction]
-fn rs_metadata(pepidx_path: &str) -> matching::MetaColumns {
-    matching::run_metadata(pepidx_path)
+#[pyo3(signature = (pepidx_path, protein_nums=None))]
+fn rs_metadata(pepidx_path: &str, protein_nums: Option<Vec<u32>>) -> PyResult<matching::MetaColumns> {
+    matching::run_metadata(pepidx_path, protein_nums).map_err(pyo3::exceptions::PyValueError::new_err)
 }
 
 #[pyfunction]

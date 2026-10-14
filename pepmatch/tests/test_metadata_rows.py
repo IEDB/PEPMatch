@@ -139,22 +139,10 @@ def test_reading_only_the_hit_proteins_gives_the_frame_reading_every_protein_giv
   assert (hits > 0) == (scenario != 'nothing hit')   # the comparison covered real hits
 
 
-def test_a_hit_from_a_stale_index_raises_instead_of_losing_its_metadata(tmp_path):
-  # .pepidx files are reused by name, so editing a FASTA in place can leave its 5-mer index
-  # three proteins long while a rebuilt 2-mer index has four. An indel batch of short and long
-  # queries searches both and reads metadata from the 5-mer index, so a hit on the fourth
-  # protein has no metadata row: it must fail loudly, not come back with blank metadata.
-  fasta = tmp_path / 'three.fasta'
-  fasta.write_text(PROTEOME_FASTA)
-  Preprocessor(str(fasta), preprocessed_files_path=str(tmp_path)).preprocess(5)
-  fasta.write_text(PROTEOME_FASTA + '>sp|P44444|DDDD_HUMAN Delta protein OS=Homo sapiens OX=9606 GN=DDD PE=1 SV=1\nWWYYWWCCHH\n')
-  Preprocessor(str(fasta), preprocessed_files_path=str(tmp_path)).preprocess(2)
-  matcher = Matcher(
-    query=['YYWWC', 'MKVLATGGWQ'],
-    proteome_file=str(fasta),
-    max_indels=1,
-    preprocessed_files_path=str(tmp_path),
-    output_format='dataframe',
-  )
+def test_a_protein_the_index_lacks_raises_with_a_rebuild_hint(proteome):
+  # Protein numbers are the index's own FASTA ordinals, so a number this index lacks means the
+  # hits came from an index built from a different version of the FASTA (best match without k
+  # searches several indexes and reads metadata from the last). Fail loudly and say why.
+  matcher = Matcher(query=['MKVLAT'], proteome_file=str(proteome), k=5, preprocessed_files_path=str(proteome.parent))
   with pytest.raises(ValueError, match='protein number 4 .* different versions'):
-    matcher.match()
+    matcher._metadata_table(index_of(proteome), [1, 4])

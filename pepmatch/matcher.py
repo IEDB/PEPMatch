@@ -309,8 +309,12 @@ class Matcher:
     Queries too short for k=3 run against a 2-mer table on their own rather than
     dragging the whole batch down to k=2, where 2-mer seeds explode. Every group still
     runs at k <= its own pigeonhole optimum, so the match set equals a single-k run.
-    Groups are merged as columns, not frames, so an all-miss group's null column cannot
-    clash with another group's String column."""
+    Each group's hits are labeled from the index that found them: protein numbers are
+    that index's own FASTA ordinals, so labeling them from another group's index would
+    name the wrong protein whenever the two were built from different versions of the
+    proteome. vertical_relaxed lets an all-miss group's null column stack under another
+    group's String column, and the text columns are cast to String at the end so a batch
+    that hits nothing has the same schema as one that does."""
     n = self.max_indels
     short = [(q, s) for q, s in self.query if len(s) // (n + 1) < 3]
     rest = [(q, s) for q, s in self.query if len(s) // (n + 1) >= 3]
@@ -322,8 +326,7 @@ class Matcher:
       rest_optimal = max(2, min(len(s) for _, s in rest) // (n + 1))
       groups.setdefault(self._clamp_k(rest_optimal), []).extend(rest)
 
-    combined = [[] for _ in range(8)]
-    metadata_path = None
+    frames = []
     for k, queries in sorted(groups.items()):
       self._recall_warning(k, n, queries)
       pepidx_path = self._pepidx_path(k)
@@ -333,10 +336,10 @@ class Matcher:
         rs_preprocess(self.proteome_file, k, pepidx_path)
       print(f"Searching {len(queries)} peptides against {self.proteome_name} "
             f"(k={k}, max_indels={n})...")
-      for i, column in enumerate(rs_indel_match(pepidx_path, queries, n)):
-        combined[i].extend(column)
-      metadata_path = pepidx_path
-    return self._to_dataframe(combined, metadata_path, is_indels=True)
+      results = rs_indel_match(pepidx_path, queries, n)
+      frames.append(self._to_dataframe(results, pepidx_path, is_indels=True))
+    df = pl.concat(frames, how='vertical_relaxed')
+    return df.with_columns(pl.col('Matched Sequence', 'Indel Positions').cast(pl.Utf8))
 
   def _clamp_k(self, optimal):
     """Resolve k for one query group: an explicit k is honored up to `optimal`, above

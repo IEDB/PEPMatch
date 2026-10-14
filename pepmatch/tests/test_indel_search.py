@@ -2,7 +2,7 @@ import pytest
 import polars as pl
 import polars.testing as plt
 from pathlib import Path
-from pepmatch import Matcher
+from pepmatch import Matcher, Preprocessor
 from pepmatch.matcher import format_indel_positions
 
 @pytest.fixture
@@ -463,3 +463,64 @@ def test_indel2_batch_warns_only_for_the_short_query(tmp_path, capsys):
   assert 'complete recall is not guaranteed' in out
   assert 'lengths: [5]' in out            # only the length-5 query is unguaranteed
   assert 'lengths: [12]' not in out
+
+
+def test_indel_batch_labels_each_hit_from_the_index_that_found_it(tmp_path):
+  # .pepidx files are reused by name, so a FASTA edited in place can leave its 5-mer
+  # table built from the old version and its 2-mer table from the new one. Protein
+  # numbers are each table's own FASTA ordinals: the short query's hit is protein 1 on
+  # the 2-mer table (Delta), but protein 1 on the 5-mer table is Alpha. Each hit has to
+  # be labeled from the table that found it.
+  alpha = '>sp|P11111|A_HUMAN Alpha OS=Homo sapiens OX=9606 GN=AAA PE=1 SV=1\nMKVLATGGWQMKRRDEYH\n'
+  delta = '>sp|P44444|D_HUMAN Delta OS=Homo sapiens OX=9606 GN=DDD PE=1 SV=1\nWWYYWWCCHH\n'
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text(alpha)
+  Preprocessor(str(proteome_path), preprocessed_files_path=str(tmp_path)).preprocess(5)
+  proteome_path.write_text(delta + alpha)
+  Preprocessor(str(proteome_path), preprocessed_files_path=str(tmp_path)).preprocess(2)
+
+  df = Matcher(query=['YYWWC', 'MKVLATGGWQ'], proteome_file=str(proteome_path), max_indels=1,
+               preprocessed_files_path=str(tmp_path), output_format='dataframe').match()
+  hits = df.filter(pl.col('Matched Sequence').is_not_null())
+  assert set(zip(hits['Query Sequence'].to_list(), hits['Protein ID'].to_list())) == {
+    ('YYWWC', 'P44444.1'),        # found on the 2-mer table
+    ('MKVLATGGWQ', 'P11111.1'),   # found on the 5-mer table
+  }
+
+
+@pytest.mark.parametrize('max_indels, short', [
+  (1, ['YYWWC', 'ABDEF']),
+  (2, ['YYADGY', 'ZZYDGYZ']),
+  (1, ['WWWWW', 'YYYYY']),   # every short query misses: a null-typed group stacked on hits
+])
+def test_indel_batch_returns_what_its_short_and_long_queries_return_separately(tmp_path, max_indels, short):
+  # Short queries run on a 2-mer table and the rest on their own k (see indel_search).
+  # Splitting the batch must not change a single row: the batch's frame is the short
+  # queries' frame stacked on the long queries' frame, each searched on its own.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P1\nZZYDGYZZ\n>P2\nZZABCDEFGHIKLMZZ\n>P3\nQQWWYYWWCCHHKLMNPQ\n')
+  long = ['ABCDEFGHIKLM', 'WWYYWWCCHHKLM', 'WWWWWWWWWWWW']
+
+  def search(queries, name):
+    query_path = tmp_path / f'{name}.fasta'
+    query_path.write_text(''.join(f'>{q}\n{q}\n' for q in queries))   # IDs survive the split
+    return Matcher(query=str(query_path), proteome_file=str(proteome_path), max_indels=max_indels,
+                   preprocessed_files_path=str(tmp_path), output_format='dataframe').match()
+
+  batch = search([short[0], long[0], short[1], long[1], long[2]], 'batch')
+  separately = pl.concat([search(short, 'short'), search(long, 'long')], how='vertical_relaxed')
+  plt.assert_frame_equal(batch, separately)
+  assert batch['Matched Sequence'].is_not_null().sum() > 0   # the comparison covered real hits
+
+
+def test_indel_search_that_hits_nothing_keeps_the_text_column_types(tmp_path):
+  # With no hit anywhere, the text columns would otherwise come back null-typed, a
+  # different schema from any search that matches something.
+  proteome_path = tmp_path / 'proteome.fasta'
+  proteome_path.write_text('>P1\nZZYDGYZZ\n>P2\nZZABCDEFGHIKLMZZ\n')
+  for queries in (['WWWWWWWWWWWW'], ['WWWWW', 'WWWWWWWWWWWW']):   # one table, then two
+    df = Matcher(query=queries, proteome_file=str(proteome_path), max_indels=1,
+                 preprocessed_files_path=str(tmp_path), output_format='dataframe').match()
+    assert df['Matched Sequence'].is_null().all()
+    assert df.schema['Matched Sequence'] == pl.Utf8
+    assert df.schema['Indel Positions'] == pl.Utf8

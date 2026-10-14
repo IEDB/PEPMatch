@@ -55,35 +55,46 @@ def _indel_placements(query, matched):
   stretch t must equal the shorter string shifted by t residues. Placements are read
   off precomputed agreement runs for each shift, left to right so they come out in
   lexicographic order (_indel_edits reads placements[0]), instead of rebuilding the
-  string for every combination of positions."""
+  string for every combination of positions. With one edit that reduces to two numbers:
+  position c is valid when the strings agree before it (common prefix) and after it
+  (common suffix), so the valid positions are one run, read off those two lengths."""
   L, M = len(query), len(matched)
   n = abs(M - L)
   if n == 0:
     return []
   longer, shorter = (query, matched) if M < L else (matched, query)
   N = len(longer)
-  # runs[s][x]: consecutive positions from x where longer[y + s] == shorter[y].
-  runs = []
-  for s in range(n + 1):
-    run = [0] * (N + 1)
-    for x in range(len(shorter) - 1, -1, -1):
-      if x + s < N and longer[x + s] == shorter[x]:
-        run[x] = run[x + 1] + 1
-    runs.append(run)
+  if n == 1:
+    prefix = 0
+    while prefix < N - 1 and longer[prefix] == shorter[prefix]:
+      prefix += 1
+    suffix = 0
+    while suffix < N - 1 and longer[N - 1 - suffix] == shorter[N - 2 - suffix]:
+      suffix += 1
+    combos = [(c,) for c in range(max(1, N - 1 - suffix), min(prefix, N - 2) + 1)]
+  else:
+    # runs[s][x]: consecutive positions from x where longer[y + s] == shorter[y].
+    runs = []
+    for s in range(n + 1):
+      run = [0] * (N + 1)
+      for x in range(len(shorter) - 1, -1, -1):
+        if x + s < N and longer[x + s] == shorter[x]:
+          run[x] = run[x + 1] + 1
+      runs.append(run)
 
-  combos = []
+    combos = []
 
-  def place(t, start, combo):
-    if t == n:
-      if runs[n][start - n] >= N - start:
-        combos.append(combo)
-      return
-    for c in range(max(start, 1), N - 1):   # never an end residue: the terminal rule
-      if c - start > runs[t][start - t]:
-        break
-      place(t + 1, c + 1, combo + (c,))
+    def place(t, start, combo):
+      if t == n:
+        if runs[n][start - n] >= N - start:
+          combos.append(combo)
+        return
+      for c in range(max(start, 1), N - 1):   # never an end residue: the terminal rule
+        if c - start > runs[t][start - t]:
+          break
+        place(t + 1, c + 1, combo + (c,))
 
-  place(0, 0, ())
+    place(0, 0, ())
   if M < L:
     return [tuple((i + 1, query[i]) for i in combo) for combo in combos]
   return [tuple((k - u + 1, matched[k]) for u, k in enumerate(combo)) for combo in combos]

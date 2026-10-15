@@ -576,22 +576,38 @@ pub(crate) fn run_discontinuous(
     unzip_records(records)
 }
 
-fn metadata_columns(index: &PepIndex) -> MetaColumns {
+/// One row per protein in `wanted` (ascending, duplicates collapsed), or per protein in the
+/// index when `wanted` is None. A search passes only the proteins it hit, so the cost follows
+/// the hits rather than the proteome (82k proteins for human, most of which a search never
+/// touches). Duplicates are collapsed here because a repeated row would double every hit
+/// joined to it.
+fn metadata_columns(index: &PepIndex, wanted: Option<Vec<u32>>) -> Result<MetaColumns, String> {
     let n = index.num_proteins;
-    let mut pnum = Vec::with_capacity(n);
+    let proteins: Vec<u32> = match wanted {
+        Some(mut nums) => {
+            nums.sort_unstable();
+            nums.dedup();
+            if let Some(&bad) = nums.iter().find(|&&pn| pn == 0 || pn as usize > n) {
+                return Err(format!("protein number {bad} is not in this index (1..={n})"));
+            }
+            nums
+        }
+        None => (1..=n as u32).collect(),
+    };
+    let mut pnum = Vec::with_capacity(proteins.len());
     let mut f: [Vec<String>; 9] = Default::default();
     for v in f.iter_mut() {
-        v.reserve(n);
+        v.reserve(proteins.len());
     }
-    for pn in 1..=n {
-        pnum.push(pn as u32);
-        let m = index.get_metadata(pn);
+    for pn in proteins {
+        pnum.push(pn);
+        let m = index.get_metadata(pn as usize);
         for (i, field) in m.into_iter().enumerate() {
             f[i].push(field);
         }
     }
     let [a, b, c, d, e, g, h, i, j] = f;
-    (pnum, a, b, c, d, e, g, h, i, j)
+    Ok((pnum, a, b, c, d, e, g, h, i, j))
 }
 
 /// Seeds for indel search: the n+1 disjoint query tiles with the FEWEST proteome
@@ -862,9 +878,9 @@ pub(crate) fn run_indel(
     unzip_records(records)
 }
 
-pub(crate) fn run_metadata(pepidx_path: &str) -> MetaColumns {
+pub(crate) fn run_metadata(pepidx_path: &str, protein_nums: Option<Vec<u32>>) -> Result<MetaColumns, String> {
     let index = PepIndex::open(pepidx_path);
-    metadata_columns(&index)
+    metadata_columns(&index, protein_nums)
 }
 
 pub(crate) fn run(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, max_mismatches: usize) -> Columns {

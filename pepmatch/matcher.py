@@ -524,19 +524,28 @@ class Matcher:
 
     return pl.concat([matched_df, unmatched_df], how="vertical_relaxed")
 
-  def _metadata_table(self, pepidx_path: str) -> pl.DataFrame:
-    """Per-protein metadata read from `pepidx_path`, the index the search just used.
-    Protein numbers are that index's own FASTA ordinals, so any other file -- including
-    one whose name merely shares this proteome's prefix -- would misattribute every hit."""
-    pnum, pid, name, species, taxon, gene, exist, seqver, geneprio, swiss = rs_metadata(pepidx_path)
+  def _metadata_table(self, pepidx_path: str, protein_nums=None) -> pl.DataFrame:
+    """Metadata for `protein_nums` (every protein when None), read from `pepidx_path`, the
+    index the search just used. Protein numbers are that index's own FASTA ordinals, so any
+    other file -- including one whose name merely shares this proteome's prefix -- would
+    misattribute every hit. Searches pass only the proteins they hit: building the whole
+    proteome's table (82k rows for human) cost more than the search itself on small queries.
+    A hit on a protein this index lacks means the search's indexes disagree, which raises."""
+    try:
+      pnum, pid, name, species, taxon, gene, exist, seqver, geneprio, swiss = rs_metadata(pepidx_path, protein_nums)
+    except ValueError as e:   # .pepidx files are reused by name, so a FASTA edited in place leaves stale ones
+      raise ValueError(
+        f"{e}. This proteome's .pepidx files in {self.preprocessed_files_path} were most likely built "
+        f"from different versions of {self.proteome_file}; delete them to rebuild."
+      ) from e
+    str_cols = ['Protein ID','Protein Name','Species','Taxon ID','Gene',
+                'Protein Existence Level','Sequence Version','Gene Priority','SwissProt Reviewed']
     m = pl.DataFrame({
       'protein_num': pl.Series(pnum, dtype=pl.UInt32),
       'Protein ID': pid, 'Protein Name': name, 'Species': species, 'Taxon ID': taxon,
       'Gene': gene, 'Protein Existence Level': exist, 'Sequence Version': seqver,
       'Gene Priority': geneprio, 'SwissProt Reviewed': swiss,
-    })
-    str_cols = ['Protein ID','Protein Name','Species','Taxon ID','Gene',
-                'Protein Existence Level','Sequence Version','Gene Priority','SwissProt Reviewed']
+    }, schema_overrides={c: pl.Utf8 for c in str_cols})   # String even when nothing was hit
     m = m.with_columns(
       pl.when(pl.col(c) == '').then(None).otherwise(pl.col(c)).alias(c) for c in str_cols
     )
@@ -561,7 +570,8 @@ class Matcher:
 
   def _to_dataframe(self, cols, pepidx_path, is_indels=False):
     """Build the results frame from the columnar Rust output, joining protein metadata
-    from `pepidx_path` once instead of cloning it into every hit row. rs_indel_match
+    from `pepidx_path` once instead of cloning it into every hit row. Only the proteins
+    the search hit are read, and the join keeps the hits' row order. rs_indel_match
     reuses the mismatch slot for its edit count, so only the column name differs by
     mode; indel positions are derived here from (query, matched) rather than in Rust,
     once per distinct pair since a matched peptide often recurs across proteins, and
@@ -600,7 +610,9 @@ class Matcher:
       'Index end': pl.Series(iend, dtype=pl.Int64),
     })
 
-    df = base.join(self._metadata_table(pepidx_path), on='protein_num', how='left').drop('protein_num')
+    hit_proteins = base.get_column('protein_num').drop_nulls().unique().to_list()
+    metadata = self._metadata_table(pepidx_path, hit_proteins)
+    df = base.join(metadata, on='protein_num', how='left', maintain_order='left').drop('protein_num')
 
     if self.sequence_version:
       df = df.with_columns(

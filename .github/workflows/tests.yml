@@ -38,6 +38,8 @@ jobs:
             test-file: pepmatch/tests/test_indel_positions_equivalence.py
           - name: Metadata Rows
             test-file: pepmatch/tests/test_metadata_rows.py
+          - name: Indel Golden Output
+            test-file: pepmatch/tests/test_indel_golden.py
 
     steps:
     - name: Checkout Code

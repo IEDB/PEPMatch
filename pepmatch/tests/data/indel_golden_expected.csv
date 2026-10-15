@@ -1,0 +1,563 @@
+Run,Query ID,Query Sequence,Matched Sequence,Protein ID,Protein Name,Species,Taxon ID,Gene,Indels,Indel Positions,Index start,Index end,Protein Existence Level,Gene Priority,SwissProt Reviewed
+1 indel,g38,SAVK,SAVK,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],34,37,2,1,true
+1 indel,g38,SAVK,SAVK,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],34,37,1,1,true
+1 indel,g42,EHVT,EHVT,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],50,53,2,1,true
+1 indel,g42,EHVT,EHVT,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,0,[],76,79,2,1,true
+1 indel,g1,CNRCKLNCTLSNIPMTTVPE,CNRCKLNCTLSNIPMTTVPE,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,0,[],5,24,3,1,true
+1 indel,g2,EAVNIMLW,EAVNIMLW,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],90,97,4,1,true
+1 indel,g3,LRPWGSWCDECPEPEPEPEP,LRPWGSWCDECPEPEPEPEP,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,0,[],20,39,4,1,true
+1 indel,g4,KMYYQQQQ,KMYYQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],37,44,2,1,true
+1 indel,g4,KMYYQQQQ,KMYYQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[5,7]",37,43,2,1,true
+1 indel,g4,KMYYQQQQ,KMYYQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[5,8]",37,45,2,1,true
+1 indel,g4,KMYYQQQQ,KMYYQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],37,44,1,1,true
+1 indel,g4,KMYYQQQQ,KMYYQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[5,7]",37,43,1,1,true
+1 indel,g4,KMYYQQQQ,KMYYQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[5,8]",37,45,1,1,true
+1 indel,g5,AHISICRVSRRRNDW,AHISICRVSRRRNDW,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,0,[],26,40,3,1,true
+1 indel,g6,RIFQHSTMM,RIFQHSTMM,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,0,[],47,55,4,1,true
+1 indel,g6,RIFQHSTMM,RIFQHSTM,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,1,d: M[8],47,54,4,1,true
+1 indel,g7,YTKANIGICKRSNTQ,YTKANIGICKRSNTQ,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,0,[],51,65,2,1,true
+1 indel,g8,KQPFQQVRYPPWYCS,KQPFQQVRYPPWYCS,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,0,[],94,108,2,1,true
+1 indel,g8,KQPFQQVRYPPWYCS,KKQPFQQVRYPPWYCS,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,i: K[2],93,108,2,1,true
+1 indel,g9,APTMPWPTPAHKRKR,APTMPWPTPAHKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,0,[],25,39,3,1,true
+1 indel,g10,TNCGWQHNIEAW,TNCGWQHNIEAW,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],86,97,2,1,true
+1 indel,g11,YGRTSKQWSEAHWFI,YGRTSKQWSEAHWFI,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],9,23,2,1,true
+1 indel,g11,YGRTSKQWSEAHWFI,YGRTSKQWSEAHWFI,Q9G011.2,Golden indel test protein 11,Homo sapiens,9606,GOLD11,0,[],9,23,4,1,true
+1 indel,g11,YGRTSKQWSEAHWFI,YYGRTSKQWSEAHWFI,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,1,i: Y[2],8,23,2,1,true
+1 indel,g11,YGRTSKQWSEAHWFI,YYGRTSKQWSEAHWFI,Q9G011.2,Golden indel test protein 11,Homo sapiens,9606,GOLD11,1,i: Y[2],8,23,4,1,true
+1 indel,g12,VWEGVAGCM,VWEGVAGCM,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],31,39,4,1,true
+1 indel,g13,YSFAFMIAPPADSVK,YSFAFMIAPPADSAVK,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: A[14],22,37,2,1,true
+1 indel,g13,YSFAFMIAPPADSVK,YSFAFMIAPPADSAVK,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,i: A[14],22,37,1,1,true
+1 indel,g14,EAPTMPWPPA,EAPTMPWPTPA,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,1,i: T[9],24,34,3,1,true
+1 indel,g15,CPEEPEPE,CPEPEPE,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,1,"d: E[3,4]",30,36,4,1,true
+1 indel,g15,CPEEPEPE,CPEPEPEPE,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,1,i: P[4],30,38,4,1,true
+1 indel,g16,KQPFQQVYPP,KQPFQQVRYPP,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,i: R[8],94,104,2,1,true
+1 indel,g17,IYTKANIVGICKR,IYTKANIGICKR,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,d: V[8],50,61,2,1,true
+1 indel,g18,GCFNGDFVWEGVA,GFNGDFVWEGVA,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,d: C[2],25,36,4,1,true
+1 indel,g19,IENMFIDVTCQ,IENMFIDVTQ,Q9G008.1,Golden indel test protein 8,Homo sapiens,9606,GOLD8,1,d: C[10],2,11,1,1,true
+1 indel,g20,IYPGGRAVNDWMH,IYPGGRVNDWMH,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,d: A[7],129,140,2,1,true
+1 indel,g21,YPKFCYWYNCQT,,,,,,,,,,,,,
+1 indel,g22,TPAHKRRKK,,,,,,,,,,,,,
+1 indel,g23,CVWWGWIREHTI,,,,,,,,,,,,,
+1 indel,g24,DKVFHDFMH,,,,,,,,,,,,,
+1 indel,g25,PKENPHAHGV,,,,,,,,,,,,,
+1 indel,g26,TNTATNILLLLLAPLLMPSS,,,,,,,,,,,,,
+1 indel,g27,GEGHWCNLAIN,,,,,,,,,,,,,
+1 indel,g28,NNHSFMTGFNGD,,,,,,,,,,,,,
+1 indel,g29,MYYQQHQQQQQQQ,MYYQQQQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,d: H[6],38,49,2,1,true
+1 indel,g29,MYYQQHQQQQQQQ,MYYQQQQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,d: H[6],38,49,1,1,true
+1 indel,g30,FLMKEKEKKE,,,,,,,,,,,,,
+1 indel,g31,AIHGSGSGGSG,AIHGSGGSGGSG,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,"i: G[6,7]",48,59,4,1,true
+1 indel,g32,VFWGAAAAAAAAW,VWGAAAAAAAAW,Q9G004.1,Golden indel test protein 4,Homo sapiens,9606,GOLD4,1,d: F[2],18,29,1,1,true
+1 indel,g33,AHKRKRKRRKR,AHKRKRKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,1,"d: R[8,9]",34,43,3,1,true
+1 indel,g33,AHKRKRKRRKR,AHKRKRKRKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,1,i: K[9],34,45,3,1,true
+1 indel,g34,ANDRLIMRKIM,ANDRLIMRIM,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,d: K[9],1,10,4,1,true
+1 indel,g35,NDWSAPFPW,NDWSAPFPW,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,0,[],11,19,3,1,true
+1 indel,g35,NDWSAPFPW,NDWSAPFPW,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,0,[],38,46,3,1,true
+1 indel,g36,TQDCMVGWIRE,TQDCMVWGWIRE,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,1,i: W[7],39,50,2,1,true
+1 indel,g37,IGICKRSNTQDCMVWIREHV,,,,,,,,,,,,,
+1 indel,g39,FCHAYQW,FCHAYQW,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],103,109,4,1,true
+1 indel,g39,FCHAYQW,FCHAYQWW,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,i: W[7],103,110,4,1,true
+1 indel,g40,MLWFPNH,MLWFPNH,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],95,101,4,1,true
+1 indel,g41,KNGEYP,KNGEYP,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,0,[],56,61,4,1,true
+1 indel,g43,VAGCMWG,VAGCMWG,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],35,41,4,1,true
+1 indel,g44,PILTPT,,,,,,,,,,,,,
+1 indel,g45,CGTAGN,,,,,,,,,,,,,
+1 indel,g46,LALPASNTYGCQHI,,,,,,,,,,,,,
+1 indel,g47,QEMSCQYGF,,,,,,,,,,,,,
+1 indel,g48,QQQGFDQHQGG,QQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],48,58,2,1,true
+1 indel,g48,QQQGFDQHQGG,QQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,3]",49,58,2,1,true
+1 indel,g48,QQQGFDQHQGG,QQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,d: G[10],48,57,2,1,true
+1 indel,g48,QQQGFDQHQGG,QQQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,4]",47,58,2,1,true
+1 indel,g49,PADSAVKMYYQQ,PADSAVKMYYQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],31,42,2,1,true
+1 indel,g49,PADSAVKMYYQQ,PADSAVKMYYQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,d: Q[11],31,41,2,1,true
+1 indel,g49,PADSAVKMYYQQ,PPADSAVKMYYQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: P[2],30,42,2,1,true
+1 indel,g49,PADSAVKMYYQQ,PADSAVKMYYQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[11,12]",31,43,2,1,true
+1 indel,g49,PADSAVKMYYQQ,PADSAVKMYYQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],31,42,1,1,true
+1 indel,g49,PADSAVKMYYQQ,PADSAVKMYYQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,d: Q[11],31,41,1,1,true
+1 indel,g49,PADSAVKMYYQQ,PPADSAVKMYYQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,i: P[2],30,42,1,1,true
+1 indel,g49,PADSAVKMYYQQ,PADSAVKMYYQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[11,12]",31,43,1,1,true
+1 indel,g50,QQQGFDQHQG,QQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],48,57,2,1,true
+1 indel,g50,QQQGFDQHQG,QQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,3]",49,57,2,1,true
+1 indel,g50,QQQGFDQHQG,QQQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,4]",47,57,2,1,true
+1 indel,g50,QQQGFDQHQG,QQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: G[10],48,58,2,1,true
+1 indel,g51,QWSEAH,QWSEAH,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],15,20,2,1,true
+1 indel,g51,QWSEAH,QWSEAH,Q9G011.2,Golden indel test protein 11,Homo sapiens,9606,GOLD11,0,[],15,20,4,1,true
+1 indel,g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],41,46,2,1,true
+1 indel,g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",41,45,2,1,true
+1 indel,g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",41,47,2,1,true
+1 indel,g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],42,47,2,1,true
+1 indel,g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",42,46,2,1,true
+1 indel,g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",42,48,2,1,true
+1 indel,g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],43,48,2,1,true
+1 indel,g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",43,47,2,1,true
+1 indel,g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",43,49,2,1,true
+1 indel,g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],44,49,2,1,true
+1 indel,g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",44,48,2,1,true
+1 indel,g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",44,50,2,1,true
+1 indel,g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],45,50,2,1,true
+1 indel,g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",45,49,2,1,true
+1 indel,g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",46,50,2,1,true
+1 indel,g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],41,46,1,1,true
+1 indel,g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",41,45,1,1,true
+1 indel,g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",41,47,1,1,true
+1 indel,g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],42,47,1,1,true
+1 indel,g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",42,46,1,1,true
+1 indel,g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",42,48,1,1,true
+1 indel,g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],43,48,1,1,true
+1 indel,g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",43,47,1,1,true
+1 indel,g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",43,49,1,1,true
+1 indel,g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],44,49,1,1,true
+1 indel,g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",44,48,1,1,true
+1 indel,g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",44,50,1,1,true
+1 indel,g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],45,50,1,1,true
+1 indel,g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",45,49,1,1,true
+1 indel,g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",46,50,1,1,true
+1 indel,g53,QGFDQH,QGFDQH,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],50,55,2,1,true
+1 indel,g53,QGFDQH,QGFDQH,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],50,55,1,1,true
+1 indel,g53,QGFDQH,QQGFDQH,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: Q[2],49,55,2,1,true
+1 indel,g53,QGFDQH,QQGFDQH,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,i: Q[2],49,55,1,1,true
+2 indels,g2,EAVNIMLW,EAVNIMLW,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],90,97,4,1,true
+2 indels,g4,KMYYQQQQ,KMYYQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],37,44,2,1,true
+2 indels,g4,KMYYQQQQ,KMYYQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[5,7]",37,43,2,1,true
+2 indels,g4,KMYYQQQQ,KMYYQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[5,6]",37,42,2,1,true
+2 indels,g4,KMYYQQQQ,KMYYQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[5,8]",37,45,2,1,true
+2 indels,g4,KMYYQQQQ,KMYYQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[5,8]",37,46,2,1,true
+2 indels,g4,KMYYQQQQ,KMYYQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],37,44,1,1,true
+2 indels,g4,KMYYQQQQ,KMYYQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[5,7]",37,43,1,1,true
+2 indels,g4,KMYYQQQQ,KMYYQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[5,6]",37,42,1,1,true
+2 indels,g4,KMYYQQQQ,KMYYQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[5,8]",37,45,1,1,true
+2 indels,g4,KMYYQQQQ,KMYYQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"i: QQ[5,8]",37,46,1,1,true
+2 indels,g15,CPEEPEPE,CPEPEPE,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,1,"d: E[3,4]",30,36,4,1,true
+2 indels,g15,CPEEPEPE,CPEPEPEPE,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,1,i: P[4],30,38,4,1,true
+2 indels,g38,SAVK,SAVK,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],34,37,2,1,true
+2 indels,g38,SAVK,SAVK,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],34,37,1,1,true
+2 indels,g39,FCHAYQW,FCHAYQW,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],103,109,4,1,true
+2 indels,g39,FCHAYQW,FCHAYQWW,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,i: W[7],103,110,4,1,true
+2 indels,g40,MLWFPNH,MLWFPNH,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],95,101,4,1,true
+2 indels,g41,KNGEYP,KNGEYP,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,0,[],56,61,4,1,true
+2 indels,g42,EHVT,EHVT,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],50,53,2,1,true
+2 indels,g42,EHVT,EHVT,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,0,[],76,79,2,1,true
+2 indels,g43,VAGCMWG,VAGCMWG,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],35,41,4,1,true
+2 indels,g44,PILTPT,,,,,,,,,,,,,
+2 indels,g45,CGTAGN,,,,,,,,,,,,,
+2 indels,g51,QWSEAH,QWSEAH,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],15,20,2,1,true
+2 indels,g51,QWSEAH,QWSEAH,Q9G011.2,Golden indel test protein 11,Homo sapiens,9606,GOLD11,0,[],15,20,4,1,true
+2 indels,g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],41,46,2,1,true
+2 indels,g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",41,45,2,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",41,44,2,1,true
+2 indels,g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",41,47,2,1,true
+2 indels,g52,QQQQQQ,QQQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[2,6]",41,48,2,1,true
+2 indels,g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],42,47,2,1,true
+2 indels,g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",42,46,2,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",42,45,2,1,true
+2 indels,g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",42,48,2,1,true
+2 indels,g52,QQQQQQ,QQQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[2,6]",42,49,2,1,true
+2 indels,g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],43,48,2,1,true
+2 indels,g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",43,47,2,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",43,46,2,1,true
+2 indels,g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",43,49,2,1,true
+2 indels,g52,QQQQQQ,QQQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[2,6]",43,50,2,1,true
+2 indels,g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],44,49,2,1,true
+2 indels,g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",44,48,2,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",44,47,2,1,true
+2 indels,g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",44,50,2,1,true
+2 indels,g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],45,50,2,1,true
+2 indels,g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",45,49,2,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",45,48,2,1,true
+2 indels,g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",46,50,2,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",46,49,2,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",47,50,2,1,true
+2 indels,g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],41,46,1,1,true
+2 indels,g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",41,45,1,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",41,44,1,1,true
+2 indels,g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",41,47,1,1,true
+2 indels,g52,QQQQQQ,QQQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"i: QQ[2,6]",41,48,1,1,true
+2 indels,g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],42,47,1,1,true
+2 indels,g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",42,46,1,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",42,45,1,1,true
+2 indels,g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",42,48,1,1,true
+2 indels,g52,QQQQQQ,QQQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"i: QQ[2,6]",42,49,1,1,true
+2 indels,g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],43,48,1,1,true
+2 indels,g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",43,47,1,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",43,46,1,1,true
+2 indels,g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",43,49,1,1,true
+2 indels,g52,QQQQQQ,QQQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"i: QQ[2,6]",43,50,1,1,true
+2 indels,g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],44,49,1,1,true
+2 indels,g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",44,48,1,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",44,47,1,1,true
+2 indels,g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",44,50,1,1,true
+2 indels,g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],45,50,1,1,true
+2 indels,g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",45,49,1,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",45,48,1,1,true
+2 indels,g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",46,50,1,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",46,49,1,1,true
+2 indels,g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",47,50,1,1,true
+2 indels,g53,QGFDQH,QGFDQH,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],50,55,2,1,true
+2 indels,g53,QGFDQH,QGFDQH,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],50,55,1,1,true
+2 indels,g53,QGFDQH,QQGFDQH,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: Q[2],49,55,2,1,true
+2 indels,g53,QGFDQH,QQQGFDQH,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,i: QQ[2],48,55,2,1,true
+2 indels,g53,QGFDQH,QQGFDQH,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,i: Q[2],49,55,1,1,true
+2 indels,g53,QGFDQH,QQQGFDQH,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,i: QQ[2],48,55,1,1,true
+2 indels,g1,CNRCKLNCTLSNIPMTTVPE,CNRCKLNCTLSNIPMTTVPE,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,0,[],5,24,3,1,true
+2 indels,g3,LRPWGSWCDECPEPEPEPEP,LRPWGSWCDECPEPEPEPEP,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,0,[],20,39,4,1,true
+2 indels,g3,LRPWGSWCDECPEPEPEPEP,LRPWGSWCDECPEPEPEP,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,2,"d: PE[12], d: EP[13], d: PE[14], d: EP[15], d: PE[16], d: EP[17], d: PE[18]",20,37,4,1,true
+2 indels,g5,AHISICRVSRRRNDW,AHISICRVSRRRNDW,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,0,[],26,40,3,1,true
+2 indels,g6,RIFQHSTMM,RIFQHSTMM,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,0,[],47,55,4,1,true
+2 indels,g6,RIFQHSTMM,RIFQHSTM,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,1,d: M[8],47,54,4,1,true
+2 indels,g7,YTKANIGICKRSNTQ,YTKANIGICKRSNTQ,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,0,[],51,65,2,1,true
+2 indels,g8,KQPFQQVRYPPWYCS,KQPFQQVRYPPWYCS,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,0,[],94,108,2,1,true
+2 indels,g8,KQPFQQVRYPPWYCS,KKQPFQQVRYPPWYCS,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,i: K[2],93,108,2,1,true
+2 indels,g9,APTMPWPTPAHKRKR,APTMPWPTPAHKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,0,[],25,39,3,1,true
+2 indels,g9,APTMPWPTPAHKRKR,APTMPWPTPAHKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,2,"d: KR[12], d: RK[13]",25,37,3,1,true
+2 indels,g9,APTMPWPTPAHKRKR,APTMPWPTPAHKRKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,2,"i: KR[12], i: RK[13], i: KR[14], i: RK[15]",25,41,3,1,true
+2 indels,g10,TNCGWQHNIEAW,TNCGWQHNIEAW,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],86,97,2,1,true
+2 indels,g11,YGRTSKQWSEAHWFI,YGRTSKQWSEAHWFI,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],9,23,2,1,true
+2 indels,g11,YGRTSKQWSEAHWFI,YGRTSKQWSEAHWFI,Q9G011.2,Golden indel test protein 11,Homo sapiens,9606,GOLD11,0,[],9,23,4,1,true
+2 indels,g11,YGRTSKQWSEAHWFI,YYGRTSKQWSEAHWFI,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,1,i: Y[2],8,23,2,1,true
+2 indels,g11,YGRTSKQWSEAHWFI,YYGRTSKQWSEAHWFI,Q9G011.2,Golden indel test protein 11,Homo sapiens,9606,GOLD11,1,i: Y[2],8,23,4,1,true
+2 indels,g12,VWEGVAGCM,VWEGVAGCM,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],31,39,4,1,true
+2 indels,g13,YSFAFMIAPPADSVK,YSFAFMIAPPADSAVK,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: A[14],22,37,2,1,true
+2 indels,g13,YSFAFMIAPPADSVK,YSFAFMIAPPADSAVK,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,i: A[14],22,37,1,1,true
+2 indels,g14,EAPTMPWPPA,EAPTMPWPTPA,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,1,i: T[9],24,34,3,1,true
+2 indels,g16,KQPFQQVYPP,KQPFQQVRYPP,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,i: R[8],94,104,2,1,true
+2 indels,g16,KQPFQQVYPP,KKQPFQQVRYPP,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,2,"i: K[2], i: R[8]",93,104,2,1,true
+2 indels,g17,IYTKANIVGICKR,IYTKANIGICKR,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,d: V[8],50,61,2,1,true
+2 indels,g18,GCFNGDFVWEGVA,GFNGDFVWEGVA,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,d: C[2],25,36,4,1,true
+2 indels,g19,IENMFIDVTCQ,IENMFIDVTQ,Q9G008.1,Golden indel test protein 8,Homo sapiens,9606,GOLD8,1,d: C[10],2,11,1,1,true
+2 indels,g20,IYPGGRAVNDWMH,IYPGGRVNDWMH,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,d: A[7],129,140,2,1,true
+2 indels,g21,YPKFCYWYNCQT,YPKTFLCYWYNCQT,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,2,"i: T[4], i: L[5]",60,73,4,1,true
+2 indels,g22,TPAHKRRKK,TPAHKRK,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,2,d: RK[7],32,38,3,1,true
+2 indels,g22,TPAHKRRKK,TPAHKRKRKRK,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,2,"i: K[7], i: R[9]",32,42,3,1,true
+2 indels,g23,CVWWGWIREHTI,CMVWWGWIREHVTI,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,2,"i: M[2], i: V[11]",67,80,2,1,true
+2 indels,g24,DKVFHDFMH,DIKVFHDFRMH,Q9G004.1,Golden indel test protein 4,Homo sapiens,9606,GOLD4,2,"i: I[2], i: R[8]",65,75,1,1,true
+2 indels,g25,PKENPHAHGV,PEPHAHGV,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,2,"d: K[2], d: N[4]",37,44,4,1,true
+2 indels,g26,TNTATNILLLLLAPLLMPSS,TNTATNILLLLLLLMPSS,Q9G004.1,Golden indel test protein 4,Homo sapiens,9606,GOLD4,2,d: AP[13],44,61,1,1,true
+2 indels,g27,GEGHWCNLAIN,GEGHWNAIN,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,2,"d: C[6], d: L[8]",54,62,3,1,true
+2 indels,g28,NNHSFMTGFNGD,NNHMTGFNGD,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,2,d: SF[4],20,29,4,1,true
+2 indels,g29,MYYQQHQQQQQQQ,MYYQQQQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,d: H[6],38,49,2,1,true
+2 indels,g29,MYYQQHQQQQQQQ,MYYQQQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QH[5], d: HQ[6]",38,48,2,1,true
+2 indels,g29,MYYQQHQQQQQQQ,MYYQQQQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,d: H[6],38,49,1,1,true
+2 indels,g29,MYYQQHQQQQQQQ,MYYQQQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QH[5], d: HQ[6]",38,48,1,1,true
+2 indels,g30,FLMKEKEKKE,FLMEKEKE,Q9G002.1,Golden indel test protein 2,Homo sapiens,9606,GOLD2,2,"d: K[4], d: K[8,9]",23,30,3,1,true
+2 indels,g30,FLMKEKEKKE,FLMEKEKEKEKE,Q9G002.1,Golden indel test protein 2,Homo sapiens,9606,GOLD2,2,"i: E[4], i: E[9]",23,34,3,1,true
+2 indels,g31,AIHGSGSGGSG,AIHGSGGSG,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,2,"d: GS[4], d: SG[5], d: GS[6], d: SG[7]",48,56,4,1,true
+2 indels,g31,AIHGSGSGGSG,AIHGSGGSGGSG,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,"i: G[6,7]",48,59,4,1,true
+2 indels,g31,AIHGSGSGGSG,AIHGSGGSGGSGG,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,2,"i: G[6,7], i: G[11]",48,60,4,1,true
+2 indels,g32,VFWGAAAAAAAAW,VWGAAAAAAAAW,Q9G004.1,Golden indel test protein 4,Homo sapiens,9606,GOLD4,1,d: F[2],18,29,1,1,true
+2 indels,g33,AHKRKRKRRKR,AHKRKRKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,1,"d: R[8,9]",34,43,3,1,true
+2 indels,g33,AHKRKRKRRKR,AHKRKRKRKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,1,i: K[9],34,45,3,1,true
+2 indels,g34,ANDRLIMRKIM,ANDRLIMRIM,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,d: K[9],1,10,4,1,true
+2 indels,g35,NDWSAPFPW,NDWSAPFPW,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,0,[],11,19,3,1,true
+2 indels,g35,NDWSAPFPW,NDWSAPFPW,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,0,[],38,46,3,1,true
+2 indels,g36,TQDCMVGWIRE,TQDCMVWGWIRE,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,1,i: W[7],39,50,2,1,true
+2 indels,g36,TQDCMVGWIRE,TQDCMVWWGWIRE,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,2,i: WW[7],64,76,2,1,true
+2 indels,g37,IGICKRSNTQDCMVWIREHV,IGICKRSNTQDCMVWGWIREHV,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,2,"i: WG[15], i: GW[16]",31,52,2,1,true
+2 indels,g46,LALPASNTYGCQHI,,,,,,,,,,,,,
+2 indels,g47,QEMSCQYGF,,,,,,,,,,,,,
+2 indels,g48,QQQGFDQHQGG,QQQQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[2,4]",46,58,2,1,true
+2 indels,g48,QQQGFDQHQGG,QQQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,4]",47,58,2,1,true
+2 indels,g48,QQQGFDQHQGG,QQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],48,58,2,1,true
+2 indels,g48,QQQGFDQHQGG,QQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,d: G[10],48,57,2,1,true
+2 indels,g48,QQQGFDQHQGG,QQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,3]",49,58,2,1,true
+2 indels,g48,QQQGFDQHQGG,QGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,d: QQ[2],50,58,2,1,true
+2 indels,g48,QQQGFDQHQGG,QQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: Q[2,3], d: G[10]",49,57,2,1,true
+2 indels,g49,PADSAVKMYYQQ,PADSAVKMYYQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],31,42,2,1,true
+2 indels,g49,PADSAVKMYYQQ,PADSAVKMYYQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,d: Q[11],31,41,2,1,true
+2 indels,g49,PADSAVKMYYQQ,PPADSAVKMYYQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: P[2],30,42,2,1,true
+2 indels,g49,PADSAVKMYYQQ,PADSAVKMYYQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[11,12]",31,43,2,1,true
+2 indels,g49,PADSAVKMYYQQ,PPADSAVKMYYQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: P[2], i: Q[11,12]",30,43,2,1,true
+2 indels,g49,PADSAVKMYYQQ,PADSAVKMYYQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[11,12]",31,44,2,1,true
+2 indels,g49,PADSAVKMYYQQ,PADSAVKMYYQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],31,42,1,1,true
+2 indels,g49,PADSAVKMYYQQ,PADSAVKMYYQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,d: Q[11],31,41,1,1,true
+2 indels,g49,PADSAVKMYYQQ,PPADSAVKMYYQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,i: P[2],30,42,1,1,true
+2 indels,g49,PADSAVKMYYQQ,PADSAVKMYYQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[11,12]",31,43,1,1,true
+2 indels,g49,PADSAVKMYYQQ,PPADSAVKMYYQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"i: P[2], i: Q[11,12]",30,43,1,1,true
+2 indels,g49,PADSAVKMYYQQ,PADSAVKMYYQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"i: QQ[11,12]",31,44,1,1,true
+2 indels,g50,QQQGFDQHQG,QQQQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[2,4]",46,57,2,1,true
+2 indels,g50,QQQGFDQHQG,QQQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,4]",47,57,2,1,true
+2 indels,g50,QQQGFDQHQG,QQQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: Q[2,4], i: G[10]",47,58,2,1,true
+2 indels,g50,QQQGFDQHQG,QQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],48,57,2,1,true
+2 indels,g50,QQQGFDQHQG,QQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: G[10],48,58,2,1,true
+2 indels,g50,QQQGFDQHQG,QQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,3]",49,57,2,1,true
+2 indels,g50,QQQGFDQHQG,QGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,d: QQ[2],50,57,2,1,true
+"1 indel, k=2",g38,SAVK,SAVK,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],34,37,2,1,true
+"1 indel, k=2",g38,SAVK,SAVK,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],34,37,1,1,true
+"1 indel, k=2",g42,EHVT,EHVT,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],50,53,2,1,true
+"1 indel, k=2",g42,EHVT,EHVT,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,0,[],76,79,2,1,true
+"1 indel, k=2",g1,CNRCKLNCTLSNIPMTTVPE,CNRCKLNCTLSNIPMTTVPE,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,0,[],5,24,3,1,true
+"1 indel, k=2",g2,EAVNIMLW,EAVNIMLW,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],90,97,4,1,true
+"1 indel, k=2",g3,LRPWGSWCDECPEPEPEPEP,LRPWGSWCDECPEPEPEPEP,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,0,[],20,39,4,1,true
+"1 indel, k=2",g4,KMYYQQQQ,KMYYQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],37,44,2,1,true
+"1 indel, k=2",g4,KMYYQQQQ,KMYYQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[5,7]",37,43,2,1,true
+"1 indel, k=2",g4,KMYYQQQQ,KMYYQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[5,8]",37,45,2,1,true
+"1 indel, k=2",g4,KMYYQQQQ,KMYYQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],37,44,1,1,true
+"1 indel, k=2",g4,KMYYQQQQ,KMYYQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[5,7]",37,43,1,1,true
+"1 indel, k=2",g4,KMYYQQQQ,KMYYQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[5,8]",37,45,1,1,true
+"1 indel, k=2",g5,AHISICRVSRRRNDW,AHISICRVSRRRNDW,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,0,[],26,40,3,1,true
+"1 indel, k=2",g6,RIFQHSTMM,RIFQHSTMM,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,0,[],47,55,4,1,true
+"1 indel, k=2",g6,RIFQHSTMM,RIFQHSTM,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,1,d: M[8],47,54,4,1,true
+"1 indel, k=2",g7,YTKANIGICKRSNTQ,YTKANIGICKRSNTQ,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,0,[],51,65,2,1,true
+"1 indel, k=2",g8,KQPFQQVRYPPWYCS,KQPFQQVRYPPWYCS,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,0,[],94,108,2,1,true
+"1 indel, k=2",g8,KQPFQQVRYPPWYCS,KKQPFQQVRYPPWYCS,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,i: K[2],93,108,2,1,true
+"1 indel, k=2",g9,APTMPWPTPAHKRKR,APTMPWPTPAHKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,0,[],25,39,3,1,true
+"1 indel, k=2",g10,TNCGWQHNIEAW,TNCGWQHNIEAW,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],86,97,2,1,true
+"1 indel, k=2",g11,YGRTSKQWSEAHWFI,YGRTSKQWSEAHWFI,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],9,23,2,1,true
+"1 indel, k=2",g11,YGRTSKQWSEAHWFI,YYGRTSKQWSEAHWFI,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,1,i: Y[2],8,23,2,1,true
+"1 indel, k=2",g11,YGRTSKQWSEAHWFI,YGRTSKQWSEAHWFI,Q9G011.2,Golden indel test protein 11,Homo sapiens,9606,GOLD11,0,[],9,23,4,1,true
+"1 indel, k=2",g11,YGRTSKQWSEAHWFI,YYGRTSKQWSEAHWFI,Q9G011.2,Golden indel test protein 11,Homo sapiens,9606,GOLD11,1,i: Y[2],8,23,4,1,true
+"1 indel, k=2",g12,VWEGVAGCM,VWEGVAGCM,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],31,39,4,1,true
+"1 indel, k=2",g13,YSFAFMIAPPADSVK,YSFAFMIAPPADSAVK,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: A[14],22,37,2,1,true
+"1 indel, k=2",g13,YSFAFMIAPPADSVK,YSFAFMIAPPADSAVK,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,i: A[14],22,37,1,1,true
+"1 indel, k=2",g14,EAPTMPWPPA,EAPTMPWPTPA,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,1,i: T[9],24,34,3,1,true
+"1 indel, k=2",g15,CPEEPEPE,CPEPEPE,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,1,"d: E[3,4]",30,36,4,1,true
+"1 indel, k=2",g15,CPEEPEPE,CPEPEPEPE,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,1,i: P[4],30,38,4,1,true
+"1 indel, k=2",g16,KQPFQQVYPP,KQPFQQVRYPP,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,i: R[8],94,104,2,1,true
+"1 indel, k=2",g17,IYTKANIVGICKR,IYTKANIGICKR,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,d: V[8],50,61,2,1,true
+"1 indel, k=2",g18,GCFNGDFVWEGVA,GFNGDFVWEGVA,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,d: C[2],25,36,4,1,true
+"1 indel, k=2",g19,IENMFIDVTCQ,IENMFIDVTQ,Q9G008.1,Golden indel test protein 8,Homo sapiens,9606,GOLD8,1,d: C[10],2,11,1,1,true
+"1 indel, k=2",g20,IYPGGRAVNDWMH,IYPGGRVNDWMH,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,d: A[7],129,140,2,1,true
+"1 indel, k=2",g21,YPKFCYWYNCQT,,,,,,,,,,,,,
+"1 indel, k=2",g22,TPAHKRRKK,,,,,,,,,,,,,
+"1 indel, k=2",g23,CVWWGWIREHTI,,,,,,,,,,,,,
+"1 indel, k=2",g24,DKVFHDFMH,,,,,,,,,,,,,
+"1 indel, k=2",g25,PKENPHAHGV,,,,,,,,,,,,,
+"1 indel, k=2",g26,TNTATNILLLLLAPLLMPSS,,,,,,,,,,,,,
+"1 indel, k=2",g27,GEGHWCNLAIN,,,,,,,,,,,,,
+"1 indel, k=2",g28,NNHSFMTGFNGD,,,,,,,,,,,,,
+"1 indel, k=2",g29,MYYQQHQQQQQQQ,MYYQQQQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,d: H[6],38,49,2,1,true
+"1 indel, k=2",g29,MYYQQHQQQQQQQ,MYYQQQQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,d: H[6],38,49,1,1,true
+"1 indel, k=2",g30,FLMKEKEKKE,,,,,,,,,,,,,
+"1 indel, k=2",g31,AIHGSGSGGSG,AIHGSGGSGGSG,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,"i: G[6,7]",48,59,4,1,true
+"1 indel, k=2",g32,VFWGAAAAAAAAW,VWGAAAAAAAAW,Q9G004.1,Golden indel test protein 4,Homo sapiens,9606,GOLD4,1,d: F[2],18,29,1,1,true
+"1 indel, k=2",g33,AHKRKRKRRKR,AHKRKRKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,1,"d: R[8,9]",34,43,3,1,true
+"1 indel, k=2",g33,AHKRKRKRRKR,AHKRKRKRKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,1,i: K[9],34,45,3,1,true
+"1 indel, k=2",g34,ANDRLIMRKIM,ANDRLIMRIM,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,d: K[9],1,10,4,1,true
+"1 indel, k=2",g35,NDWSAPFPW,NDWSAPFPW,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,0,[],11,19,3,1,true
+"1 indel, k=2",g35,NDWSAPFPW,NDWSAPFPW,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,0,[],38,46,3,1,true
+"1 indel, k=2",g36,TQDCMVGWIRE,TQDCMVWGWIRE,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,1,i: W[7],39,50,2,1,true
+"1 indel, k=2",g37,IGICKRSNTQDCMVWIREHV,,,,,,,,,,,,,
+"1 indel, k=2",g39,FCHAYQW,FCHAYQW,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],103,109,4,1,true
+"1 indel, k=2",g39,FCHAYQW,FCHAYQWW,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,i: W[7],103,110,4,1,true
+"1 indel, k=2",g40,MLWFPNH,MLWFPNH,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],95,101,4,1,true
+"1 indel, k=2",g41,KNGEYP,KNGEYP,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,0,[],56,61,4,1,true
+"1 indel, k=2",g43,VAGCMWG,VAGCMWG,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],35,41,4,1,true
+"1 indel, k=2",g44,PILTPT,,,,,,,,,,,,,
+"1 indel, k=2",g45,CGTAGN,,,,,,,,,,,,,
+"1 indel, k=2",g46,LALPASNTYGCQHI,,,,,,,,,,,,,
+"1 indel, k=2",g47,QEMSCQYGF,,,,,,,,,,,,,
+"1 indel, k=2",g48,QQQGFDQHQGG,QQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],48,58,2,1,true
+"1 indel, k=2",g48,QQQGFDQHQGG,QQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,3]",49,58,2,1,true
+"1 indel, k=2",g48,QQQGFDQHQGG,QQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,d: G[10],48,57,2,1,true
+"1 indel, k=2",g48,QQQGFDQHQGG,QQQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,4]",47,58,2,1,true
+"1 indel, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],31,42,2,1,true
+"1 indel, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,d: Q[11],31,41,2,1,true
+"1 indel, k=2",g49,PADSAVKMYYQQ,PPADSAVKMYYQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: P[2],30,42,2,1,true
+"1 indel, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[11,12]",31,43,2,1,true
+"1 indel, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],31,42,1,1,true
+"1 indel, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,d: Q[11],31,41,1,1,true
+"1 indel, k=2",g49,PADSAVKMYYQQ,PPADSAVKMYYQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,i: P[2],30,42,1,1,true
+"1 indel, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[11,12]",31,43,1,1,true
+"1 indel, k=2",g50,QQQGFDQHQG,QQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],48,57,2,1,true
+"1 indel, k=2",g50,QQQGFDQHQG,QQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,3]",49,57,2,1,true
+"1 indel, k=2",g50,QQQGFDQHQG,QQQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,4]",47,57,2,1,true
+"1 indel, k=2",g50,QQQGFDQHQG,QQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: G[10],48,58,2,1,true
+"1 indel, k=2",g51,QWSEAH,QWSEAH,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],15,20,2,1,true
+"1 indel, k=2",g51,QWSEAH,QWSEAH,Q9G011.2,Golden indel test protein 11,Homo sapiens,9606,GOLD11,0,[],15,20,4,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],41,46,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",41,45,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",41,47,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],42,47,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",42,46,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",42,48,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],43,48,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",43,47,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",43,49,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],44,49,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",44,48,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",44,50,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],45,50,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",45,49,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",46,50,2,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],41,46,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",41,45,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",41,47,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],42,47,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",42,46,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",42,48,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],43,48,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",43,47,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",43,49,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],44,49,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",44,48,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",44,50,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],45,50,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",45,49,1,1,true
+"1 indel, k=2",g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",46,50,1,1,true
+"1 indel, k=2",g53,QGFDQH,QGFDQH,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],50,55,2,1,true
+"1 indel, k=2",g53,QGFDQH,QGFDQH,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],50,55,1,1,true
+"1 indel, k=2",g53,QGFDQH,QQGFDQH,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: Q[2],49,55,2,1,true
+"1 indel, k=2",g53,QGFDQH,QQGFDQH,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,i: Q[2],49,55,1,1,true
+"2 indels, k=2",g2,EAVNIMLW,EAVNIMLW,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],90,97,4,1,true
+"2 indels, k=2",g4,KMYYQQQQ,KMYYQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],37,44,2,1,true
+"2 indels, k=2",g4,KMYYQQQQ,KMYYQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[5,7]",37,43,2,1,true
+"2 indels, k=2",g4,KMYYQQQQ,KMYYQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[5,6]",37,42,2,1,true
+"2 indels, k=2",g4,KMYYQQQQ,KMYYQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[5,8]",37,45,2,1,true
+"2 indels, k=2",g4,KMYYQQQQ,KMYYQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[5,8]",37,46,2,1,true
+"2 indels, k=2",g4,KMYYQQQQ,KMYYQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],37,44,1,1,true
+"2 indels, k=2",g4,KMYYQQQQ,KMYYQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[5,7]",37,43,1,1,true
+"2 indels, k=2",g4,KMYYQQQQ,KMYYQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[5,6]",37,42,1,1,true
+"2 indels, k=2",g4,KMYYQQQQ,KMYYQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[5,8]",37,45,1,1,true
+"2 indels, k=2",g4,KMYYQQQQ,KMYYQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"i: QQ[5,8]",37,46,1,1,true
+"2 indels, k=2",g15,CPEEPEPE,CPEPEPE,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,1,"d: E[3,4]",30,36,4,1,true
+"2 indels, k=2",g15,CPEEPEPE,CPEPEPEPE,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,1,i: P[4],30,38,4,1,true
+"2 indels, k=2",g38,SAVK,SAVK,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],34,37,2,1,true
+"2 indels, k=2",g38,SAVK,SAVK,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],34,37,1,1,true
+"2 indels, k=2",g39,FCHAYQW,FCHAYQW,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],103,109,4,1,true
+"2 indels, k=2",g39,FCHAYQW,FCHAYQWW,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,i: W[7],103,110,4,1,true
+"2 indels, k=2",g40,MLWFPNH,MLWFPNH,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],95,101,4,1,true
+"2 indels, k=2",g41,KNGEYP,KNGEYP,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,0,[],56,61,4,1,true
+"2 indels, k=2",g42,EHVT,EHVT,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],50,53,2,1,true
+"2 indels, k=2",g42,EHVT,EHVT,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,0,[],76,79,2,1,true
+"2 indels, k=2",g43,VAGCMWG,VAGCMWG,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],35,41,4,1,true
+"2 indels, k=2",g44,PILTPT,,,,,,,,,,,,,
+"2 indels, k=2",g45,CGTAGN,,,,,,,,,,,,,
+"2 indels, k=2",g51,QWSEAH,QWSEAH,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],15,20,2,1,true
+"2 indels, k=2",g51,QWSEAH,QWSEAH,Q9G011.2,Golden indel test protein 11,Homo sapiens,9606,GOLD11,0,[],15,20,4,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],41,46,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",41,45,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",41,44,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",41,47,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[2,6]",41,48,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],42,47,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",42,46,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",42,45,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",42,48,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[2,6]",42,49,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],43,48,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",43,47,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",43,46,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",43,49,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[2,6]",43,50,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],44,49,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",44,48,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",44,47,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,6]",44,50,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],45,50,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",45,49,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",45,48,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,5]",46,50,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",46,49,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QQ[2,4]",47,50,2,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],41,46,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",41,45,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",41,44,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",41,47,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"i: QQ[2,6]",41,48,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],42,47,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",42,46,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",42,45,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",42,48,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"i: QQ[2,6]",42,49,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],43,48,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",43,47,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",43,46,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",43,49,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"i: QQ[2,6]",43,50,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],44,49,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",44,48,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",44,47,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[2,6]",44,50,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],45,50,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",45,49,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",45,48,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"d: Q[2,5]",46,50,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",46,49,1,1,true
+"2 indels, k=2",g52,QQQQQQ,QQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QQ[2,4]",47,50,1,1,true
+"2 indels, k=2",g53,QGFDQH,QGFDQH,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],50,55,2,1,true
+"2 indels, k=2",g53,QGFDQH,QGFDQH,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],50,55,1,1,true
+"2 indels, k=2",g53,QGFDQH,QQGFDQH,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: Q[2],49,55,2,1,true
+"2 indels, k=2",g53,QGFDQH,QQQGFDQH,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,i: QQ[2],48,55,2,1,true
+"2 indels, k=2",g53,QGFDQH,QQGFDQH,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,i: Q[2],49,55,1,1,true
+"2 indels, k=2",g53,QGFDQH,QQQGFDQH,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,i: QQ[2],48,55,1,1,true
+"2 indels, k=2",g1,CNRCKLNCTLSNIPMTTVPE,CNRCKLNCTLSNIPMTTVPE,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,0,[],5,24,3,1,true
+"2 indels, k=2",g3,LRPWGSWCDECPEPEPEPEP,LRPWGSWCDECPEPEPEPEP,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,0,[],20,39,4,1,true
+"2 indels, k=2",g3,LRPWGSWCDECPEPEPEPEP,LRPWGSWCDECPEPEPEP,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,2,"d: PE[12], d: EP[13], d: PE[14], d: EP[15], d: PE[16], d: EP[17], d: PE[18]",20,37,4,1,true
+"2 indels, k=2",g5,AHISICRVSRRRNDW,AHISICRVSRRRNDW,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,0,[],26,40,3,1,true
+"2 indels, k=2",g6,RIFQHSTMM,RIFQHSTMM,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,0,[],47,55,4,1,true
+"2 indels, k=2",g6,RIFQHSTMM,RIFQHSTM,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,1,d: M[8],47,54,4,1,true
+"2 indels, k=2",g7,YTKANIGICKRSNTQ,YTKANIGICKRSNTQ,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,0,[],51,65,2,1,true
+"2 indels, k=2",g8,KQPFQQVRYPPWYCS,KQPFQQVRYPPWYCS,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,0,[],94,108,2,1,true
+"2 indels, k=2",g8,KQPFQQVRYPPWYCS,KKQPFQQVRYPPWYCS,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,i: K[2],93,108,2,1,true
+"2 indels, k=2",g9,APTMPWPTPAHKRKR,APTMPWPTPAHKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,0,[],25,39,3,1,true
+"2 indels, k=2",g9,APTMPWPTPAHKRKR,APTMPWPTPAHKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,2,"d: KR[12], d: RK[13]",25,37,3,1,true
+"2 indels, k=2",g9,APTMPWPTPAHKRKR,APTMPWPTPAHKRKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,2,"i: KR[12], i: RK[13], i: KR[14], i: RK[15]",25,41,3,1,true
+"2 indels, k=2",g10,TNCGWQHNIEAW,TNCGWQHNIEAW,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],86,97,2,1,true
+"2 indels, k=2",g11,YGRTSKQWSEAHWFI,YGRTSKQWSEAHWFI,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,0,[],9,23,2,1,true
+"2 indels, k=2",g11,YGRTSKQWSEAHWFI,YGRTSKQWSEAHWFI,Q9G011.2,Golden indel test protein 11,Homo sapiens,9606,GOLD11,0,[],9,23,4,1,true
+"2 indels, k=2",g11,YGRTSKQWSEAHWFI,YYGRTSKQWSEAHWFI,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,1,i: Y[2],8,23,2,1,true
+"2 indels, k=2",g11,YGRTSKQWSEAHWFI,YYGRTSKQWSEAHWFI,Q9G011.2,Golden indel test protein 11,Homo sapiens,9606,GOLD11,1,i: Y[2],8,23,4,1,true
+"2 indels, k=2",g12,VWEGVAGCM,VWEGVAGCM,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,0,[],31,39,4,1,true
+"2 indels, k=2",g13,YSFAFMIAPPADSVK,YSFAFMIAPPADSAVK,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: A[14],22,37,2,1,true
+"2 indels, k=2",g13,YSFAFMIAPPADSVK,YSFAFMIAPPADSAVK,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,i: A[14],22,37,1,1,true
+"2 indels, k=2",g14,EAPTMPWPPA,EAPTMPWPTPA,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,1,i: T[9],24,34,3,1,true
+"2 indels, k=2",g16,KQPFQQVYPP,KQPFQQVRYPP,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,i: R[8],94,104,2,1,true
+"2 indels, k=2",g16,KQPFQQVYPP,KKQPFQQVRYPP,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,2,"i: K[2], i: R[8]",93,104,2,1,true
+"2 indels, k=2",g17,IYTKANIVGICKR,IYTKANIGICKR,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,d: V[8],50,61,2,1,true
+"2 indels, k=2",g18,GCFNGDFVWEGVA,GFNGDFVWEGVA,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,d: C[2],25,36,4,1,true
+"2 indels, k=2",g19,IENMFIDVTCQ,IENMFIDVTQ,Q9G008.1,Golden indel test protein 8,Homo sapiens,9606,GOLD8,1,d: C[10],2,11,1,1,true
+"2 indels, k=2",g20,IYPGGRAVNDWMH,IYPGGRVNDWMH,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,1,d: A[7],129,140,2,1,true
+"2 indels, k=2",g21,YPKFCYWYNCQT,YPKTFLCYWYNCQT,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,2,"i: T[4], i: L[5]",60,73,4,1,true
+"2 indels, k=2",g22,TPAHKRRKK,TPAHKRK,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,2,d: RK[7],32,38,3,1,true
+"2 indels, k=2",g22,TPAHKRRKK,TPAHKRKRKRK,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,2,"i: K[7], i: R[9]",32,42,3,1,true
+"2 indels, k=2",g23,CVWWGWIREHTI,CMVWWGWIREHVTI,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,2,"i: M[2], i: V[11]",67,80,2,1,true
+"2 indels, k=2",g24,DKVFHDFMH,DIKVFHDFRMH,Q9G004.1,Golden indel test protein 4,Homo sapiens,9606,GOLD4,2,"i: I[2], i: R[8]",65,75,1,1,true
+"2 indels, k=2",g25,PKENPHAHGV,PEPHAHGV,Q9G007.2,Golden indel test protein 7,Homo sapiens,9606,GOLD7,2,"d: K[2], d: N[4]",37,44,4,1,true
+"2 indels, k=2",g26,TNTATNILLLLLAPLLMPSS,TNTATNILLLLLLLMPSS,Q9G004.1,Golden indel test protein 4,Homo sapiens,9606,GOLD4,2,d: AP[13],44,61,1,1,true
+"2 indels, k=2",g27,GEGHWCNLAIN,GEGHWNAIN,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,2,"d: C[6], d: L[8]",54,62,3,1,true
+"2 indels, k=2",g28,NNHSFMTGFNGD,NNHMTGFNGD,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,2,d: SF[4],20,29,4,1,true
+"2 indels, k=2",g29,MYYQQHQQQQQQQ,MYYQQQQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,d: H[6],38,49,2,1,true
+"2 indels, k=2",g29,MYYQQHQQQQQQQ,MYYQQQQQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: QH[5], d: HQ[6]",38,48,2,1,true
+"2 indels, k=2",g29,MYYQQHQQQQQQQ,MYYQQQQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,d: H[6],38,49,1,1,true
+"2 indels, k=2",g29,MYYQQHQQQQQQQ,MYYQQQQQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"d: QH[5], d: HQ[6]",38,48,1,1,true
+"2 indels, k=2",g30,FLMKEKEKKE,FLMEKEKE,Q9G002.1,Golden indel test protein 2,Homo sapiens,9606,GOLD2,2,"d: K[4], d: K[8,9]",23,30,3,1,true
+"2 indels, k=2",g30,FLMKEKEKKE,FLMEKEKEKEKE,Q9G002.1,Golden indel test protein 2,Homo sapiens,9606,GOLD2,2,"i: E[4], i: E[9]",23,34,3,1,true
+"2 indels, k=2",g31,AIHGSGSGGSG,AIHGSGGSG,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,2,"d: GS[4], d: SG[5], d: GS[6], d: SG[7]",48,56,4,1,true
+"2 indels, k=2",g31,AIHGSGSGGSG,AIHGSGGSGGSG,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,"i: G[6,7]",48,59,4,1,true
+"2 indels, k=2",g31,AIHGSGSGGSG,AIHGSGGSGGSGG,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,2,"i: G[6,7], i: G[11]",48,60,4,1,true
+"2 indels, k=2",g32,VFWGAAAAAAAAW,VWGAAAAAAAAW,Q9G004.1,Golden indel test protein 4,Homo sapiens,9606,GOLD4,1,d: F[2],18,29,1,1,true
+"2 indels, k=2",g33,AHKRKRKRRKR,AHKRKRKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,1,"d: R[8,9]",34,43,3,1,true
+"2 indels, k=2",g33,AHKRKRKRRKR,AHKRKRKRKRKR,Q9G010.1,Golden indel test protein 10,Homo sapiens,9606,GOLD10,1,i: K[9],34,45,3,1,true
+"2 indels, k=2",g34,ANDRLIMRKIM,ANDRLIMRIM,Q9G003.2,Golden indel test protein 3,Homo sapiens,9606,GOLD3,1,d: K[9],1,10,4,1,true
+"2 indels, k=2",g35,NDWSAPFPW,NDWSAPFPW,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,0,[],11,19,3,1,true
+"2 indels, k=2",g35,NDWSAPFPW,NDWSAPFPW,Q9G006.1,Golden indel test protein 6,Homo sapiens,9606,GOLD6,0,[],38,46,3,1,true
+"2 indels, k=2",g36,TQDCMVGWIRE,TQDCMVWGWIRE,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,1,i: W[7],39,50,2,1,true
+"2 indels, k=2",g36,TQDCMVGWIRE,TQDCMVWWGWIRE,Q9G009.2,Golden indel test protein 9,Homo sapiens,9606,GOLD9,2,i: WW[7],64,76,2,1,true
+"2 indels, k=2",g37,IGICKRSNTQDCMVWIREHV,IGICKRSNTQDCMVWGWIREHV,Q9G005.2,Golden indel test protein 5,Homo sapiens,9606,GOLD5,2,"i: WG[15], i: GW[16]",31,52,2,1,true
+"2 indels, k=2",g46,LALPASNTYGCQHI,,,,,,,,,,,,,
+"2 indels, k=2",g47,QEMSCQYGF,,,,,,,,,,,,,
+"2 indels, k=2",g48,QQQGFDQHQGG,QQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],48,58,2,1,true
+"2 indels, k=2",g48,QQQGFDQHQGG,QQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,3]",49,58,2,1,true
+"2 indels, k=2",g48,QQQGFDQHQGG,QQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,d: G[10],48,57,2,1,true
+"2 indels, k=2",g48,QQQGFDQHQGG,QQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"d: Q[2,3], d: G[10]",49,57,2,1,true
+"2 indels, k=2",g48,QQQGFDQHQGG,QQQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,4]",47,58,2,1,true
+"2 indels, k=2",g48,QQQGFDQHQGG,QQQQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[2,4]",46,58,2,1,true
+"2 indels, k=2",g48,QQQGFDQHQGG,QGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,d: QQ[2],50,58,2,1,true
+"2 indels, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],31,42,2,1,true
+"2 indels, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,d: Q[11],31,41,2,1,true
+"2 indels, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[11,12]",31,43,2,1,true
+"2 indels, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[11,12]",31,44,2,1,true
+"2 indels, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,0,[],31,42,1,1,true
+"2 indels, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,d: Q[11],31,41,1,1,true
+"2 indels, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,"i: Q[11,12]",31,43,1,1,true
+"2 indels, k=2",g49,PADSAVKMYYQQ,PADSAVKMYYQQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"i: QQ[11,12]",31,44,1,1,true
+"2 indels, k=2",g49,PADSAVKMYYQQ,PPADSAVKMYYQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: P[2],30,42,2,1,true
+"2 indels, k=2",g49,PADSAVKMYYQQ,PPADSAVKMYYQQQ,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: P[2], i: Q[11,12]",30,43,2,1,true
+"2 indels, k=2",g49,PADSAVKMYYQQ,PPADSAVKMYYQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,1,i: P[2],30,42,1,1,true
+"2 indels, k=2",g49,PADSAVKMYYQQ,PPADSAVKMYYQQQ,Q9G012.1,Golden indel test protein 12,Homo sapiens,9606,GOLD12,2,"i: P[2], i: Q[11,12]",30,43,1,1,true
+"2 indels, k=2",g50,QQQGFDQHQG,QQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,0,[],48,57,2,1,true
+"2 indels, k=2",g50,QQQGFDQHQG,QQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"d: Q[2,3]",49,57,2,1,true
+"2 indels, k=2",g50,QQQGFDQHQG,QQQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,"i: Q[2,4]",47,57,2,1,true
+"2 indels, k=2",g50,QQQGFDQHQG,QQQQQGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: QQ[2,4]",46,57,2,1,true
+"2 indels, k=2",g50,QQQGFDQHQG,QQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,1,i: G[10],48,58,2,1,true
+"2 indels, k=2",g50,QQQGFDQHQG,QQQQGFDQHQGG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,"i: Q[2,4], i: G[10]",47,58,2,1,true
+"2 indels, k=2",g50,QQQGFDQHQG,QGFDQHQG,Q9G001.2,Golden indel test protein 1,Homo sapiens,9606,GOLD1,2,d: QQ[2],50,57,2,1,true

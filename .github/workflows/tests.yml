@@ -40,6 +40,8 @@ jobs:
             test-file: pepmatch/tests/test_metadata_rows.py
           - name: Indel Golden Output
             test-file: pepmatch/tests/test_indel_golden.py
+          - name: K Limit
+            test-file: pepmatch/tests/test_k_limit.py
 
     steps:
     - name: Checkout Code

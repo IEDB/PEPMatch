@@ -65,7 +65,7 @@ pepmatch-preprocess -p human.fasta -k 5
 #### Flags
 
 * `-p`, `--proteome` (Required): Path to the proteome FASTA file.
-* `-k`, `--kmer_size` (Required): The k-mer size for indexing.
+* `-k`, `--kmer_size` (Required): The k-mer size for indexing, from 2 to 16.
 * `-n`, `--proteome_name`: Custom name for the proteome.
 * `-P`, `--preprocessed_files_path`: Directory to save preprocessed files.
 
@@ -178,7 +178,7 @@ pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
 * `-p`, `--proteome_file` (Required): Path to the proteome FASTA file.
 * `-m`, `--max_mismatches`: Maximum mismatches allowed (default: 0).
 * `-i`, `--max_indels`: Maximum indels allowed (default: 0). Supports 1 or 2, and mutually exclusive with `-m`. At 2, a match uses two insertions or two deletions, never one of each.
-* `-k`, `--kmer_size`: K-mer size (default: 5).
+* `-k`, `--kmer_size`: K-mer size, from 2 to 16 (default: chosen from the query lengths, the largest that guarantees complete recall, up to 16).
 * `-P`, `--preprocessed_files_path`: Directory containing preprocessed files.
 * `-b`, `--best_match`: Enable best match mode.
 * `-f`, `--output_format`: Output format — `csv`, `tsv`, `xlsx`, `json` (default: `csv`).

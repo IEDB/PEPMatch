@@ -2,6 +2,10 @@ import os
 from pathlib import Path
 from ._rs import rs_preprocess
 
+# preprocess.rs packs each k-mer into a u128, one byte per residue, so no index can be
+# built for k above 16.
+MAX_INDEX_K = 16
+
 class Preprocessor:
   """Preprocesses a proteome FASTA file into a .pepidx binary index
   optimized for fast peptide searching. The index stores k-mer positions,
@@ -29,6 +33,8 @@ class Preprocessor:
     """Build the k-mer index and write it to <proteome_name>_<k>mers.pepidx."""
     if k < 2:
       raise ValueError('k must be >= 2.')
+    if k > MAX_INDEX_K:
+      raise ValueError(f'k must be <= {MAX_INDEX_K}, the longest k-mer the index can store.')
     output_path = os.path.join(
       self.preprocessed_files_path, f'{self.proteome_name}_{k}mers.pepidx'
     )

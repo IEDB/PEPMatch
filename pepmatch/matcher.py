@@ -2,6 +2,7 @@ import os
 import polars as pl
 from pathlib import Path
 from Bio import SeqIO
+from .preprocessor import MAX_INDEX_K
 from ._rs import rs_preprocess, rs_match, rs_discontinuous, rs_metadata, rs_match_counts, rs_indel_match
 
 VALID_OUTPUT_FORMATS = ['dataframe', 'polars', 'pandas', 'csv', 'tsv', 'xlsx', 'json']
@@ -178,6 +179,9 @@ class Matcher:
     if k != 0 and k < 2:
       raise ValueError('k must be >= 2.')
 
+    if k > MAX_INDEX_K:
+      raise ValueError(f'k must be <= {MAX_INDEX_K}, the longest k-mer the index can store.')
+
     if max_indels > 2:
       raise ValueError('max_indels > 2 is not yet supported. Only max_indels<=2 has been validated.')
 
@@ -334,7 +338,7 @@ class Matcher:
     if short:
       groups.setdefault(self._clamp_k(2), []).extend(short)
     if rest:
-      rest_optimal = max(2, min(len(s) for _, s in rest) // (n + 1))
+      rest_optimal = min(MAX_INDEX_K, max(2, min(len(s) for _, s in rest) // (n + 1)))
       groups.setdefault(self._clamp_k(rest_optimal), []).extend(rest)
 
     frames = []
@@ -376,9 +380,10 @@ class Matcher:
   def _auto_k(self, edits):
     """Largest k that still guarantees recall (pigeonhole): floor(L / (edits + 1)) taken
     on the shortest query peptide, so every peptide splits into edits+1 disjoint seeds.
-    Floored at 2, the preprocessor minimum."""
+    Floored at 2, the preprocessor minimum, and capped at MAX_INDEX_K, the longest k-mer the
+    index can store: a smaller k only adds seeds, so recall still holds."""
     min_len = min(len(seq) for _, seq in self.query)
-    return max(2, min_len // (edits + 1))
+    return min(MAX_INDEX_K, max(2, min_len // (edits + 1)))
 
   def _pepidx_path(self, k):
     return os.path.join(
@@ -439,7 +444,7 @@ class Matcher:
           matched_ids.add(cols[0][i])
       return matched_ids
 
-    initial_k = min(len(seq) for _, seq in peptides_remaining)
+    initial_k = min(MAX_INDEX_K, min(len(seq) for _, seq in peptides_remaining))
     ks = [initial_k]
     while initial_k > 2:
       initial_k //= 2

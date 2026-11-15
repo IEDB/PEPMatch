@@ -279,3 +279,68 @@ def test_tie_break_keeps_one_row_when_every_dimension_ties(tmp_path):
   df = run_best_match(tmp_path, fasta, [PEPTIDE])
   assert df.height == 1
   assert df.row(0, named=True)['Mismatches'] == 0
+
+
+# ---------------------------------------------------------------------------
+# C. bookkeeping: labels come from the index that found the hit; Query IDs need not be unique
+# ---------------------------------------------------------------------------
+
+def write_fasta(path, records):
+  path.write_text(''.join(f'{h}\n{s}\n' for h, s in records))
+
+
+ALPHA = (header('PA0001', 'Alpha protein', gene='AAA'), 'MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ')
+BETA = (header('PB0001', 'Beta protein', gene='BBB'), 'WWDDWWDDWWDDHHCCHHCCHHCCMMNNMMNN')
+
+
+def test_each_round_is_labeled_from_the_index_that_found_it(tmp_path):
+  # Protein numbers are each index's own FASTA ordinals. The k=9 index is built while Alpha
+  # is protein 1; the FASTA is then reordered, so the later rounds' index has Beta first.
+  # MKTAYIAKQ is found in the k=9 round, SHFSRQAEE (one mismatch from Alpha's SHFSRQLEE) in a
+  # later one. Both lie in Alpha only, so neither may be labeled Beta.
+  fasta = tmp_path / 'proteome.fasta'
+  write_fasta(fasta, [ALPHA, BETA])
+  Matcher(query=['MKTAYIAKQ'], proteome_file=str(fasta), k=9, preprocessed_files_path=str(tmp_path)).match()
+  write_fasta(fasta, [BETA, ALPHA])
+  df = Matcher(
+    query=['MKTAYIAKQ', 'SHFSRQAEE'], proteome_file=str(fasta), best_match=True,
+    preprocessed_files_path=str(tmp_path),
+  ).match()
+  assert dict(zip(df['Query Sequence'], df['Protein ID'])) == {'MKTAYIAKQ': 'PA0001.1', 'SHFSRQAEE': 'PA0001.1'}
+  assert set(df['Gene']) == {'AAA'}
+
+
+DUPLICATE_ID_QUERIES = [
+  ('pep', 'MKTAYIAKQ'),   # exact in Alpha
+  ('pep', 'WWDDWWDDW'),   # exact in Beta, same FASTA ID as the first record
+  ('other', 'SHFSRQLEE'),
+]
+
+
+@pytest.mark.parametrize('k', [0, 3])
+def test_records_sharing_a_query_id_each_get_their_own_row(tmp_path, k):
+  # FASTA IDs need not be unique. Each record is its own query: one row each, in input order.
+  fasta = tmp_path / 'proteome.fasta'
+  write_fasta(fasta, [ALPHA, BETA])
+  queries = tmp_path / 'queries.fasta'
+  write_fasta(queries, [(f'>{qid}', seq) for qid, seq in DUPLICATE_ID_QUERIES])
+  df = Matcher(
+    query=str(queries), proteome_file=str(fasta), best_match=True, k=k,
+    preprocessed_files_path=str(tmp_path),
+  ).match()
+  rows = sorted(zip(df['Query ID'], df['Query Sequence'], df['Matched Sequence'], df['Gene']))
+  assert rows == sorted([
+    ('pep', 'MKTAYIAKQ', 'MKTAYIAKQ', 'AAA'),
+    ('pep', 'WWDDWWDDW', 'WWDDWWDDW', 'BBB'),
+    ('other', 'SHFSRQLEE', 'SHFSRQLEE', 'AAA'),
+  ])
+
+
+def test_an_unmatched_record_sharing_a_query_id_keeps_its_miss_row(tmp_path):
+  fasta = tmp_path / 'proteome.fasta'
+  write_fasta(fasta, [ALPHA, BETA])
+  queries = tmp_path / 'queries.fasta'
+  write_fasta(queries, [('>pep', 'MKTAYIAKQ'), ('>pep', 'YYYYYYYYY')])
+  df = Matcher(query=str(queries), proteome_file=str(fasta), best_match=True, preprocessed_files_path=str(tmp_path)).match()
+  assert sorted(zip(df['Query ID'], df['Query Sequence'])) == [('pep', 'MKTAYIAKQ'), ('pep', 'YYYYYYYYY')]
+  assert df.filter(pl.col('Query Sequence') == 'YYYYYYYYY')['Matched Sequence'].to_list() == [None]

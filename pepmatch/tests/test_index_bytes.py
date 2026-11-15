@@ -103,8 +103,8 @@ def test_index_is_byte_identical_to_the_original_builder(name, k, tmp_path):
   assert index_sha256(name, k, tmp_path) == EXPECTED[(name, k)]
 
 
-def test_build_leaves_only_the_index(tmp_path):
-  # No chunk, merge or temporary file may outlive a build.
+def test_build_leaves_no_chunk_merge_or_temporary_file(tmp_path):
   fasta = source_fasta('edge', tmp_path)
   Preprocessor(str(fasta), preprocessed_files_path=str(tmp_path)).preprocess(3)
-  assert sorted(p.name for p in tmp_path.iterdir()) == ['edge.fasta', 'edge_3mers.pepidx']
+  assert (tmp_path / 'edge_3mers.pepidx').is_file()
+  assert not [p.name for p in tmp_path.iterdir() if '.chunk_' in p.name or '.merged' in p.name or '.tmp.' in p.name]

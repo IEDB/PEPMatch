@@ -26,6 +26,8 @@ jobs:
             test-file: pepmatch/tests/test_discontinuous_search.py
           - name: Output
             test-file: pepmatch/tests/test_output.py
+          - name: Input Checks
+            test-file: pepmatch/tests/test_input_checks.py
           - name: Indel Search
             test-file: pepmatch/tests/test_indel_search.py
           - name: Indel Property

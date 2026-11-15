@@ -302,6 +302,9 @@ def test_each_round_is_labeled_from_the_index_that_found_it(tmp_path):
   write_fasta(fasta, [ALPHA, BETA])
   Matcher(query=['MKTAYIAKQ'], proteome_file=str(fasta), k=9, preprocessed_files_path=str(tmp_path)).match()
   write_fasta(fasta, [BETA, ALPHA])
+  # Rewriting the FASTA would rebuild the k=9 index. Without its source record it is kept,
+  # since the reordered FASTA has the same protein count and length: the stale index stays.
+  (tmp_path / 'proteome_9mers.pepidx.source').unlink(missing_ok=True)
   df = Matcher(
     query=['MKTAYIAKQ', 'SHFSRQAEE'], proteome_file=str(fasta), best_match=True,
     preprocessed_files_path=str(tmp_path),

@@ -26,34 +26,25 @@ struct Metadata {
     swissprot: String,
 }
 
+/// Every `>` line starts a record, even one with an empty header, so records never merge.
+/// Lines before the first header belong to no record and are left out (the Python side warns).
+/// Sequences are uppercased because queries are.
 fn parse_fasta(path: &str) -> Vec<Protein> {
     let file = File::open(path).expect("Cannot open FASTA file");
     let reader = BufReader::new(file);
     let mut proteins: Vec<Protein> = Vec::new();
-    let mut current_header = String::new();
-    let mut current_seq = String::new();
+    let mut current: Option<Protein> = None;
 
     for line in reader.lines() {
         let line = line.expect("Cannot read line");
-        if line.starts_with('>') {
-            if !current_header.is_empty() {
-                proteins.push(Protein {
-                    header: current_header.clone(),
-                    sequence: current_seq.clone(),
-                });
-                current_seq.clear();
-            }
-            current_header = line[1..].to_string();
-        } else {
-            current_seq.push_str(line.trim());
+        if let Some(header) = line.strip_prefix('>') {
+            proteins.extend(current.take());
+            current = Some(Protein { header: header.to_string(), sequence: String::new() });
+        } else if let Some(protein) = current.as_mut() {
+            protein.sequence.push_str(&line.trim().to_ascii_uppercase());
         }
     }
-    if !current_header.is_empty() {
-        proteins.push(Protein {
-            header: current_header,
-            sequence: current_seq,
-        });
-    }
+    proteins.extend(current);
     proteins
 }
 

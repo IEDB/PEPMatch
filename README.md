@@ -184,6 +184,7 @@ pepmatch-match -q peptides.fasta -p human.fasta -m 0 -k 5
 * `-f`, `--output_format`: Output format — `csv`, `tsv`, `xlsx`, `json` (default: `csv`).
 * `-o`, `--output_name`: Output file name (without extension).
 * `-v`, `--sequence_version`: Disable sequence versioning on protein IDs.
+* `-n`, `--proteome_name`: Name of the preprocessed index, if it was built with a custom `--proteome_name` (default: the proteome file's name).
 
 ### Output Formats
 

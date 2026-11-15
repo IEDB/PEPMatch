@@ -1,9 +1,10 @@
 import os
+import re
 import polars as pl
 from pathlib import Path
 from Bio import SeqIO
-from .preprocessor import MAX_INDEX_K
-from ._rs import rs_preprocess, rs_match, rs_discontinuous, rs_metadata, rs_match_counts, rs_indel_match
+from .preprocessor import MAX_INDEX_K, build_index, built_from, check_index
+from ._rs import rs_match, rs_discontinuous, rs_metadata, rs_match_counts, rs_indel_match
 
 VALID_OUTPUT_FORMATS = ['dataframe', 'polars', 'pandas', 'csv', 'tsv', 'xlsx', 'json']
 DATAFRAME_OUTPUT_FORMATS = frozenset({'dataframe', 'polars', 'pandas'})
@@ -167,6 +168,7 @@ class Matcher:
     output_name='',
     sequence_version=True,
     counts_only=False,
+    proteome_name='',
   ):
 
     if k == 0:
@@ -181,6 +183,9 @@ class Matcher:
 
     if k > MAX_INDEX_K:
       raise ValueError(f'k must be <= {MAX_INDEX_K}, the longest k-mer the index can store.')
+
+    if max_mismatches < 0 or max_indels < 0:
+      raise ValueError('max_mismatches and max_indels must be >= 0.')
 
     if max_indels > 2:
       raise ValueError('max_indels > 2 is not yet supported. Only max_indels<=2 has been validated.')
@@ -205,7 +210,8 @@ class Matcher:
       raise ValueError('counts_only is not supported with best_match.')
 
     self.proteome_file = str(proteome_file)
-    self.proteome_name = Path(proteome_file).stem
+    # A custom name must match the one given to Preprocessor, which names the index files.
+    self.proteome_name = proteome_name or Path(proteome_file).stem
     self.max_mismatches = max_mismatches
     self.preprocessed_files_path = preprocessed_files_path
     self.best_match = best_match
@@ -219,7 +225,8 @@ class Matcher:
     if self.max_indels > 0 and self.discontinuous_epitopes:
       raise ValueError('max_indels and discontinuous epitopes are not supported together.')
     self.query = self._clean_query()
-    if not self.query and not self.discontinuous_epitopes:
+    self.unsearchable = self._set_aside_unsearchable()
+    if not self.query and not self.discontinuous_epitopes and not self.unsearchable:
       raise ValueError('Query is empty.')
 
     if self.k_specified and self.query:
@@ -255,14 +262,22 @@ class Matcher:
     )
 
   def _find_discontinuous_epitopes(self):
-    """Pick out the queries written as residue/position lists, e.g. 'N1, A3, L5'."""
+    """Pick out the queries written as residue/position lists, e.g. 'N1, A3, L5' or
+    'N1,A3,L5'. No peptide contains a comma, so either spacing is unambiguous. An epitope
+    with a negative position is noted for _set_aside_unsearchable."""
     discontinuous_epitopes = {}
+    self._negative_epitopes = set()
     for query_id, peptide in self.query:
+      if len(peptide) < 2 or peptide[1] not in '-0123456789':   # an epitope starts with a residue and its position
+        continue
       try:
-        epitope = [(x[0], int(x[1:])) for x in peptide.split(', ')]
-        discontinuous_epitopes[query_id] = epitope
+        epitope = [(x[0], int(x[1:])) for x in re.split(r'\s*,\s*', peptide.strip())]
       except (ValueError, IndexError):
         continue
+      if any(position < 0 for _, position in epitope):
+        self._negative_epitopes.add((query_id, peptide))
+        continue
+      discontinuous_epitopes[query_id] = epitope
     return discontinuous_epitopes
 
   def _clean_query(self):
@@ -273,18 +288,54 @@ class Matcher:
       if qid not in discontinuous_ids
     ]
 
+  def _set_aside_unsearchable(self):
+    """Remove the linear queries that cannot be searched -- empty, containing whitespace, or
+    an epitope with a negative position -- and warn about them. They are reported as misses
+    instead of stopping the run, and they take no part in choosing k, so one bad entry in a
+    large file cannot drag every other query down to a small k."""
+    searchable, unsearchable = [], []
+    for qid, seq in self.query:
+      if (qid, seq) in self._negative_epitopes:
+        unsearchable.append((qid, seq, 'lists a negative position (positions are 1-based)'))
+      elif seq.split() != [seq]:   # empty, or whitespace anywhere
+        unsearchable.append((qid, seq, 'is empty or contains whitespace'))
+      else:
+        searchable.append((qid, seq))
+    if unsearchable:
+      print(f'Warning: {len(unsearchable)} query(s) cannot be searched and are reported as misses:')
+      for qid, seq, reason in unsearchable[:10]:
+        print(f'  {qid} ({seq!r}) {reason}')
+      if len(unsearchable) > 10:
+        print(f'  ... and {len(unsearchable) - 10} more')
+    self.query = searchable
+    return unsearchable
+
+  def _add_unsearchable_misses(self, df):
+    """`df` with a miss row for each query _set_aside_unsearchable removed."""
+    if not self.unsearchable:
+      return df
+    is_indels = self.max_indels > 0
+    if not df.width:
+      df = self._to_dataframe(tuple([] for _ in range(8)), None, is_indels)
+    misses = pl.DataFrame(
+      {'Query ID': [q for q, _, _ in self.unsearchable], 'Query Sequence': [s for _, s, _ in self.unsearchable]},
+      schema={'Query ID': pl.Utf8, 'Query Sequence': pl.Utf8},
+    )
+    if not is_indels:
+      misses = misses.with_columns(pl.lit('[]').alias('Mutated Positions'))
+    return pl.concat([df, misses], how='diagonal_relaxed').select(df.columns)
+
   def match(self):
     """Run the search, returning a DataFrame or writing the results to `output_name`."""
     linear_df = pl.DataFrame()
     discontinuous_df = pl.DataFrame()
 
     if self.counts_only:
+      if not self.query:   # counts are kept only for linear peptides with hits
+        return self._finish(self._counts_to_dataframe(([], [], [], [])))
       k = self.k if self.k_specified else self._auto_k(self.max_mismatches)
       self._recall_warning(k, self.max_mismatches)
-      df = self._counts_to_dataframe(self._search_counts(k, self.max_mismatches))
-      if self.output_format in DATAFRAME_OUTPUT_FORMATS:
-        return _return_dataframe(df, self.output_format)
-      return output_matches(df, self.output_format, self.output_name)
+      return self._finish(self._counts_to_dataframe(self._search_counts(k, self.max_mismatches)))
 
     if self.query:
       if self.max_indels > 0:
@@ -299,11 +350,10 @@ class Matcher:
         self._recall_warning(k, self.max_mismatches)
         results, pepidx_path = self._search(k, self.max_mismatches)
         linear_df = self._to_dataframe(results, pepidx_path)
+    linear_df = self._add_unsearchable_misses(linear_df)
 
     if self.discontinuous_epitopes:
-      pepidx_path = self._pepidx_path(2)
-      if not os.path.isfile(pepidx_path):
-        rs_preprocess(self.proteome_file, 2, pepidx_path)
+      pepidx_path = self._index(2)
       epitopes = [
         (qid, residues) for qid, residues in self.discontinuous_epitopes.items()
       ]
@@ -312,7 +362,10 @@ class Matcher:
 
     dfs = [d for d in [linear_df, discontinuous_df] if d.height > 0]
     df = pl.concat(dfs, how="vertical_relaxed") if dfs else linear_df
+    return self._finish(df)
 
+  def _finish(self, df):
+    """Return the results as a DataFrame or write them to `output_name`."""
     if self.output_format in DATAFRAME_OUTPUT_FORMATS:
       return _return_dataframe(df, self.output_format)
     output_matches(df, self.output_format, self.output_name)
@@ -344,11 +397,7 @@ class Matcher:
     frames = []
     for k, queries in sorted(groups.items()):
       self._recall_warning(k, n, queries)
-      pepidx_path = self._pepidx_path(k)
-      if not os.path.isfile(pepidx_path):
-        print(f"No preprocessed file found for k={k}, building index now "
-              f"(this may take a moment)...")
-        rs_preprocess(self.proteome_file, k, pepidx_path)
+      pepidx_path = self._index(k)
       print(f"Searching {len(queries)} peptides against {self.proteome_name} "
             f"(k={k}, max_indels={n})...")
       results = rs_indel_match(pepidx_path, queries, n)
@@ -390,24 +439,34 @@ class Matcher:
       self.preprocessed_files_path, f'{self.proteome_name}_{k}mers.pepidx'
     )
 
+  def _index(self, k):
+    """Path of this proteome's k-mer index after checking it is complete, built if it is
+    missing and rebuilt if the FASTA's content changed since (see built_from). An index
+    whose FASTA is gone is used as it is."""
+    path = self._pepidx_path(k)
+    if os.path.isfile(path):
+      check_index(path, k)
+      if not os.path.isfile(self.proteome_file) or built_from(path, self.proteome_file):
+        return path
+      print(f"{self.proteome_file} changed since {path} was built; rebuilding it...")
+    else:
+      print(f"No preprocessed file found for k={k}, building index now (this may take a moment)...")
+    build_index(self.proteome_file, k, path)
+    check_index(path, k)
+    return path
+
   def _search(self, k, max_mismatches, peptides=None):
     """Search `peptides` (default: the whole query) at k, building the index if absent.
     Returns the hit columns and the .pepidx they came from, so the metadata join reads
     the index this search used rather than rediscovering one by name."""
-    pepidx_path = self._pepidx_path(k)
-    if not os.path.isfile(pepidx_path):
-      print(f"Preprocessing {self.proteome_name} with k={k}...")
-      rs_preprocess(self.proteome_file, k, pepidx_path)
+    pepidx_path = self._index(k)
     query = peptides or self.query
     print(f"Searching {len(query)} peptides against {self.proteome_name} (k={k}, max_mismatches={max_mismatches})...")
     return rs_match(pepidx_path, query, k, max_mismatches), pepidx_path
 
   def _search_counts(self, k, max_mismatches):
     """Count hits per (peptide, mismatch level) at k, building the index if absent."""
-    pepidx_path = self._pepidx_path(k)
-    if not os.path.isfile(pepidx_path):
-      print(f"Preprocessing {self.proteome_name} with k={k}...")
-      rs_preprocess(self.proteome_file, k, pepidx_path)
+    pepidx_path = self._index(k)
     print(f"Counting {len(self.query)} peptides against {self.proteome_name} (k={k}, max_mismatches={max_mismatches})...")
     return rs_match_counts(pepidx_path, self.query, k, max_mismatches)
 

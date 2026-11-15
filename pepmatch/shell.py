@@ -28,6 +28,7 @@ def run_matcher():
   parser.add_argument('-f', '--output_format', default='csv')
   parser.add_argument('-o', '--output_name', default='')
   parser.add_argument('-v', '--sequence_version', action='store_false', default=True)
+  parser.add_argument('-n', '--proteome_name', default='')
   args = parser.parse_args()
 
   Matcher(
@@ -41,4 +42,5 @@ def run_matcher():
     output_format=args.output_format,
     output_name=args.output_name,
     sequence_version=args.sequence_version,
+    proteome_name=args.proteome_name,
   ).match()

@@ -5,9 +5,15 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write, BufWriter, Read, Seek, SeekFrom};
 
+use rayon::prelude::*;
+
 // Every k-mer occurrence is stored as ONE u64: protein_number * MULTIPLIER + offset, so the
 // multiplier is also the hard cap on protein length.
 const PROTEIN_INDEX_MULTIPLIER: u64 = 100_000_000;
+
+// The sorting build holds one 24-byte record per k-mer occurrence (0.7 GB for the human
+// proteome). Above this many occurrences the batched build is used instead.
+const SORT_BUILD_MAX_OCCURRENCES: usize = 200_000_000;
 
 struct Protein {
     header: String,
@@ -426,8 +432,131 @@ fn write_pepidx(path: &str, k: usize, proteins: &[Protein], metadata_list: &[Met
     writer.flush().unwrap();
 }
 
+/// One k-mer occurrence. The k-mer is packed big-endian into (hi, lo), so the derived order is
+/// the k-mers' byte order and then position order: the order the index stores them in.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct Occurrence {
+    hi: u64,
+    lo: u64,
+    position: u64,
+}
+
+/// End of the run of occurrences that share the k-mer at `start`.
+fn kmer_run_end(occurrences: &[Occurrence], start: usize) -> usize {
+    let first = occurrences[start];
+    let mut end = start + 1;
+    while end < occurrences.len() && occurrences[end].hi == first.hi && occurrences[end].lo == first.lo {
+        end += 1;
+    }
+    end
+}
+
+/// Writes the same file as `write_pepidx`, byte for byte, by sorting every k-mer occurrence
+/// in one flat array on all cores instead of hashing them per batch and merging chunk files.
+/// The index is written once, to a temporary name, and renamed into place when complete, so
+/// an interrupted build never leaves a partial .pepidx behind.
+fn write_pepidx_sorted(path: &str, k: usize, proteins: &[Protein], metadata_list: &[Metadata]) {
+    let mut concat_seq = Vec::new();
+    let mut protein_offsets: Vec<u64> = Vec::with_capacity(proteins.len());
+    for protein in proteins {
+        protein_offsets.push(concat_seq.len() as u64);
+        concat_seq.extend_from_slice(protein.sequence.as_bytes());
+    }
+
+    let total: usize = proteins.iter().map(|p| (p.sequence.len() + 1).saturating_sub(k)).sum();
+    let mut occurrences: Vec<Occurrence> = Vec::with_capacity(total);
+    let mask: u128 = if k == 16 { u128::MAX } else { (1u128 << (8 * k)) - 1 };
+    for (protein_count, protein) in proteins.iter().enumerate() {
+        let seq = protein.sequence.as_bytes();
+        if seq.len() < k {
+            continue;
+        }
+        let protein_number = (protein_count + 1) as u64;
+        // Rolling pack: each residue shifts in and the mask drops the one that left the k-mer.
+        let mut kmer_val: u128 = 0;
+        for (j, &b) in seq.iter().enumerate() {
+            kmer_val = ((kmer_val << 8) | b as u128) & mask;
+            if j + 1 >= k {
+                occurrences.push(Occurrence {
+                    hi: (kmer_val >> 64) as u64,
+                    lo: kmer_val as u64,
+                    position: protein_number * PROTEIN_INDEX_MULTIPLIER + (j + 1 - k) as u64,
+                });
+            }
+        }
+    }
+    occurrences.par_sort_unstable();
+
+    // Sorted, each k-mer is one contiguous run, so its record's offset is the bytes before it.
+    let mut kmer_offsets: Vec<u64> = Vec::new();
+    let mut kmer_data_len: u64 = 0;
+    let mut start = 0;
+    while start < occurrences.len() {
+        let end = kmer_run_end(&occurrences, start);
+        kmer_offsets.push(kmer_data_len);
+        kmer_data_len += (k + 4 + 8 * (end - start)) as u64;
+        start = end;
+    }
+
+    let mut metadata_buf: Vec<u8> = Vec::new();
+    let mut metadata_offsets: Vec<u64> = Vec::with_capacity(proteins.len());
+    for meta in metadata_list {
+        metadata_offsets.push(metadata_buf.len() as u64);
+        write_length_prefixed(&mut metadata_buf, &meta.protein_id);
+        write_length_prefixed(&mut metadata_buf, &meta.protein_name);
+        write_length_prefixed(&mut metadata_buf, &meta.species);
+        write_length_prefixed(&mut metadata_buf, &meta.taxon_id);
+        write_length_prefixed(&mut metadata_buf, &meta.gene);
+        write_length_prefixed(&mut metadata_buf, &meta.pe_level);
+        write_length_prefixed(&mut metadata_buf, &meta.sequence_version);
+        write_length_prefixed(&mut metadata_buf, &meta.gene_priority);
+        write_length_prefixed(&mut metadata_buf, &meta.swissprot);
+    }
+
+    let tmp_path = format!("{}.tmp.{}", path, std::process::id());
+    let file = File::create(&tmp_path).expect("Cannot create output file");
+    let mut writer = BufWriter::new(file);
+    writer.write_all(b"PEPIDX05").unwrap();
+    writer.write_all(&(k as u8).to_le_bytes()).unwrap();
+    writer.write_all(&(proteins.len() as u32).to_le_bytes()).unwrap();
+    writer.write_all(&(concat_seq.len() as u64).to_le_bytes()).unwrap();
+    writer.write_all(&(kmer_offsets.len() as u64).to_le_bytes()).unwrap();
+    writer.write_all(&(occurrences.len() as u64).to_le_bytes()).unwrap();
+    writer.write_all(&(metadata_buf.len() as u64).to_le_bytes()).unwrap();
+    writer.write_all(&concat_seq).unwrap();
+    for &offset in &protein_offsets {
+        writer.write_all(&offset.to_le_bytes()).unwrap();
+    }
+    for &offset in &metadata_offsets {
+        writer.write_all(&offset.to_le_bytes()).unwrap();
+    }
+    writer.write_all(&metadata_buf).unwrap();
+    for &offset in &kmer_offsets {
+        writer.write_all(&offset.to_le_bytes()).unwrap();
+    }
+    let mut start = 0;
+    while start < occurrences.len() {
+        let end = kmer_run_end(&occurrences, start);
+        let kmer = ((occurrences[start].hi as u128) << 64) | occurrences[start].lo as u128;
+        writer.write_all(&kmer.to_be_bytes()[16 - k..]).unwrap();
+        writer.write_all(&((end - start) as u32).to_le_bytes()).unwrap();
+        for occurrence in &occurrences[start..end] {
+            writer.write_all(&occurrence.position.to_le_bytes()).unwrap();
+        }
+        start = end;
+    }
+    writer.flush().unwrap();
+    drop(writer);
+    std::fs::rename(&tmp_path, path).expect("Cannot move the finished index into place");
+}
+
 pub(crate) fn run(fasta_path: &str, k: usize, output_path: &str) {
     let proteins = parse_fasta(fasta_path);
     let metadata_list = extract_all_metadata(&proteins);
-    write_pepidx(output_path, k, &proteins, &metadata_list);
+    let occurrences: usize = proteins.iter().map(|p| (p.sequence.len() + 1).saturating_sub(k)).sum();
+    if occurrences <= SORT_BUILD_MAX_OCCURRENCES {
+        write_pepidx_sorted(output_path, k, &proteins, &metadata_list);
+    } else {
+        write_pepidx(output_path, k, &proteins, &metadata_list);
+    }
 }

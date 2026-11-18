@@ -290,8 +290,8 @@ class Matcher:
       if self.max_indels > 0:
         linear_df = self.indel_search()
       elif self.best_match and self.k_specified:
-        results, pepidx_path = self._search(self.k, self.max_mismatches)
-        linear_df = self._best_match_filter(self._to_dataframe(results, pepidx_path))
+        results, pepidx_path = self._search(self.k, self.max_mismatches, self._positional_query())
+        linear_df = self._restore_query_ids(self._best_match_filter(self._to_dataframe(results, pepidx_path)))
       elif self.best_match:
         linear_df = self.best_match_search()
       else:
@@ -427,22 +427,28 @@ class Matcher:
       'Count': pl.Series(count, dtype=pl.UInt64),
     })
 
+  def _positional_query(self):
+    """The query with each peptide's position as its ID. Best match tracks and groups
+    peptides by ID, and FASTA IDs need not be unique, so it works on positions and
+    _restore_query_ids puts the real IDs back at the end."""
+    return [(str(i), seq) for i, (_, seq) in enumerate(self.query)]
+
+  def _restore_query_ids(self, df):
+    ids = {str(i): qid for i, (qid, _) in enumerate(self.query)}
+    return df.with_columns(pl.col('Query ID').replace_strict(ids, return_dtype=pl.Utf8))
+
   def best_match_search(self):
     """Closest match per peptide, walking k down and the mismatch budget up until
-    nothing is left unmatched."""
-    peptides_remaining = self.query.copy()
-    acc = tuple([] for _ in range(8))   # 8 columnar accumulators
+    nothing is left unmatched. Each round's hits are labeled from the index that round
+    searched: protein numbers are that index's own FASTA ordinals."""
+    peptides_remaining = self._positional_query()
+    frames = []
     pepidx_path = None
 
-    def collect_matched(cols):
-      matched_ids = set()
-      matched_col = cols[2]
-      for i in range(len(cols[0])):
-        if matched_col[i] is not None:
-          for j in range(8):
-            acc[j].append(cols[j][i])
-          matched_ids.add(cols[0][i])
-      return matched_ids
+    def collect_matched(cols, pepidx_path):
+      hits = self._to_dataframe(cols, pepidx_path).filter(pl.col('Matched Sequence').is_not_null())
+      frames.append(hits)
+      return set(hits['Query ID'])
 
     initial_k = min(MAX_INDEX_K, min(len(seq) for _, seq in peptides_remaining))
     ks = [initial_k]
@@ -459,7 +465,7 @@ class Matcher:
       if max_mm < 0:
         max_mm = 0
       results, pepidx_path = self._search(k, max_mm, peptides_remaining)
-      matched_ids = collect_matched(results)
+      matched_ids = collect_matched(results, pepidx_path)
       peptides_remaining = [
         (qid, seq) for qid, seq in peptides_remaining if qid not in matched_ids
       ]
@@ -473,18 +479,20 @@ class Matcher:
           break
         max_mm += 1
         results, pepidx_path = self._search(2, max_mm, peptides_remaining)
-        matched_ids = collect_matched(results)
+        matched_ids = collect_matched(results, pepidx_path)
         peptides_remaining = [
           (qid, seq) for qid, seq in peptides_remaining if qid not in matched_ids
         ]
         print(f"  -> k=2, mismatches<={max_mm}: {len(peptides_remaining)} remaining")
 
-    for qid, seq in peptides_remaining:   # leftover unmatched
-      for j, val in enumerate((qid, seq, None, None, None, "[]", None, None)):
-        acc[j].append(val)
+    if peptides_remaining:   # leftover unmatched
+      n = len(peptides_remaining)
+      misses = ([q for q, _ in peptides_remaining], [s for _, s in peptides_remaining],
+                [None] * n, [None] * n, [None] * n, ['[]'] * n, [None] * n, [None] * n)
+      frames.append(self._to_dataframe(misses, pepidx_path))
 
-    df = self._to_dataframe(acc, pepidx_path)
-    return self._best_match_filter(df)
+    df = pl.concat(frames, how='vertical_relaxed')
+    return self._restore_query_ids(self._best_match_filter(df))
 
   def _best_match_filter(self, df):
     """Keep one row per query, breaking ties in order: fewest mismatches, gene priority,

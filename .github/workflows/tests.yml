@@ -42,6 +42,8 @@ jobs:
             test-file: pepmatch/tests/test_indel_golden.py
           - name: K Limit
             test-file: pepmatch/tests/test_k_limit.py
+          - name: Index Bytes
+            test-file: pepmatch/tests/test_index_bytes.py
 
     steps:
     - name: Checkout Code

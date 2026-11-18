@@ -5,7 +5,7 @@ import os
 @pytest.fixture(autouse=True, scope="session")
 def cleanup_pepidx():
   yield
-  for f in glob.glob("*.pepidx"):
+  for f in glob.glob("*.pepidx") + glob.glob("*.pepidx.source"):
     os.remove(f)
   for f in glob.glob("PEPMatch_results.*"):
     os.remove(f)

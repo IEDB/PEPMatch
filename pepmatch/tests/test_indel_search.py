@@ -2,6 +2,7 @@ import pytest
 import polars as pl
 import polars.testing as plt
 from pathlib import Path
+from pepmatch.preprocessor import record_source
 from pepmatch import Matcher, Preprocessor
 from pepmatch.matcher import format_indel_positions
 
@@ -478,6 +479,9 @@ def test_indel_batch_labels_each_hit_from_the_index_that_found_it(tmp_path):
   Preprocessor(str(proteome_path), preprocessed_files_path=str(tmp_path)).preprocess(5)
   proteome_path.write_text(delta + alpha)
   Preprocessor(str(proteome_path), preprocessed_files_path=str(tmp_path)).preprocess(2)
+  # A rewritten FASTA rebuilds its indexes, so record the 5-mer table as current to keep it
+  # stale: an index copied in with a record from elsewhere, which the check cannot see.
+  record_source(tmp_path / 'proteome_5mers.pepidx', proteome_path)
 
   df = Matcher(query=['YYWWC', 'MKVLATGGWQ'], proteome_file=str(proteome_path), max_indels=1,
                preprocessed_files_path=str(tmp_path), output_format='dataframe').match()

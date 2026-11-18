@@ -44,6 +44,10 @@ jobs:
             test-file: pepmatch/tests/test_k_limit.py
           - name: Index Bytes
             test-file: pepmatch/tests/test_index_bytes.py
+          - name: Auto K Completeness
+            test-file: pepmatch/tests/test_auto_k_completeness.py
+          - name: Mismatch Seed Reduction
+            test-file: pepmatch/tests/test_mismatch_seed_reduction.py
 
     steps:
     - name: Checkout Code

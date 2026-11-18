@@ -67,27 +67,30 @@ impl PepIndex {
         u64::from_le_bytes(self.mmap[pos..pos + 8].try_into().unwrap())
     }
 
-    fn resolve(&self, encoded_idx: u64) -> Option<&[u8]> {
-        let protein_number = (encoded_idx / PROTEIN_INDEX_MULTIPLIER) as usize;
-        let position = (encoded_idx % PROTEIN_INDEX_MULTIPLIER) as usize;
-        if protein_number == 0 || protein_number > self.num_proteins {
-            return None;
-        }
+    /// (start, end) of a protein within the concatenated sequences.
+    fn protein_bounds(&self, protein_number: usize) -> (usize, usize) {
         let base = self.protein_offset(protein_number) as usize;
-        // Bound the k-mer by THIS protein, not by the whole concatenated buffer: proteins
-        // are stored end to end, so a position past this one's last residue would silently
-        // read the next protein's sequence and report it as a hit here.
-        let protein_end = if protein_number < self.num_proteins {
+        let end = if protein_number < self.num_proteins {
             self.protein_offset(protein_number + 1) as usize
         } else {
             self.seq_len
         };
-        if position + self.k > protein_end - base {
+        (base, end)
+    }
+
+    /// The `len` residues of a protein from `position`, or None unless they all lie inside
+    /// THIS protein: proteins are stored end to end, so a window past this one's last residue
+    /// would silently read the next protein's sequence and report it as a hit here.
+    fn window(&self, protein_number: usize, position: usize, len: usize) -> Option<&[u8]> {
+        if protein_number == 0 || protein_number > self.num_proteins {
+            return None;
+        }
+        let (base, end) = self.protein_bounds(protein_number);
+        if position + len > end - base {
             return None;
         }
         let start = self.seq_offset + base + position;
-        let end = start + self.k;
-        Some(&self.mmap[start..end])
+        Some(&self.mmap[start..start + len])
     }
 
     /// The offset table entry for k-mer `i` points at
@@ -181,10 +184,6 @@ impl PepIndex {
     }
 }
 
-fn hamming(a: &[u8], b: &[u8]) -> usize {
-    a.iter().zip(b).filter(|(x, y)| x != y).count()
-}
-
 fn exact_match(peptide: &str, k: usize, index: &PepIndex) -> Vec<u64> {
     let pep_bytes = peptide.as_bytes();
     if pep_bytes.len() < k {
@@ -224,170 +223,91 @@ fn exact_match(peptide: &str, k: usize, index: &PepIndex) -> Vec<u64> {
         .collect()
 }
 
-/// Verification helpers for the mismatch search: walk outward from a confirmed seed hit and
-/// accumulate mismatches, returning the sentinel 100 for "reject" (budget blown, or the
-/// alignment ran off a protein edge).
+/// The seed offsets of the full seeding: disjoint tiles when k divides the length, every
+/// offset otherwise.
+fn full_seed_offsets(len: usize, k: usize) -> impl Iterator<Item = usize> {
+    let step = if len % k == 0 { k } else { 1 };
+    (0..=len - k).step_by(step)
+}
+
+/// Mismatch search core, shared by the row and counts-only paths: calls
+/// `found(encoded start, mismatches, protein window)` once per distinct proteome window within
+/// `max_mismatches` of the peptide.
 ///
-/// The `_neighbors` pair compares whole k-mer tiles, usable only when k divides the peptide
-/// length; the `_residues` pair walks overlapping k-mers comparing the single residue each
-/// contributes, which is what handles the lengths tiles cannot partition.
-fn check_left_neighbors(
-    pep_bytes: &[u8], idx: usize, kmer_hit: u64, index: &PepIndex,
-    k: usize, max_mismatches: usize, mut mismatches: usize,
-) -> usize {
-    let mut i = 0;
-    while i < idx {
-        if mismatches > max_mismatches { return 100; }
-        let check_idx = (kmer_hit as i64 + i as i64 - idx as i64) as u64;
-        match index.resolve(check_idx) {
-            Some(kmer) => mismatches += hamming(kmer, &pep_bytes[i..i + k]),
-            None => return 100,
-        }
-        i += k;
+/// Seeding relies on the pigeonhole principle: within the mismatch budget at least one of the
+/// peptide's k-mers is exact, so every index hit is a candidate start. A peptide holding
+/// max_mismatches + 1 disjoint k-mers needs only that many seeds (the mismatches damage at
+/// most max_mismatches of them), so it looks up its rarest max_mismatches + 1 tiles, as indel
+/// search does. A shorter peptide has no such guarantee and keeps the full seeding, so what
+/// it finds is unchanged. A candidate is verified with one bounds lookup for its whole window
+/// and a plain comparison that stops once the budget is blown; a window that would run off
+/// its protein is rejected.
+fn for_each_mismatch_hit<'a>(
+    pep_bytes: &[u8],
+    k: usize,
+    max_mismatches: usize,
+    index: &'a PepIndex,
+    mut found: impl FnMut(u64, usize, &'a [u8]),
+) {
+    let peptide_len = pep_bytes.len();
+    if peptide_len < k {
+        return;
     }
-    mismatches
-}
+    let seeds: Vec<usize> = if peptide_len >= k * (max_mismatches + 1) {
+        rarest_pigeonhole_seeds(pep_bytes, k, max_mismatches, index).into_iter().map(|(_, idx)| idx).collect()
+    } else {
+        full_seed_offsets(peptide_len, k).collect()
+    };
+    let mut seen: HashSet<u64> = HashSet::new();
 
-fn check_right_neighbors(
-    pep_bytes: &[u8], idx: usize, kmer_hit: u64, index: &PepIndex,
-    k: usize, max_mismatches: usize, mut mismatches: usize,
-) -> usize {
-    let mut i = k + idx;
-    while i + k <= pep_bytes.len() {
-        if mismatches > max_mismatches { return 100; }
-        let check_idx = (kmer_hit as i64 + i as i64 - idx as i64) as u64;
-        match index.resolve(check_idx) {
-            Some(kmer) => mismatches += hamming(kmer, &pep_bytes[i..i + k]),
-            None => return 100,
-        }
-        i += k;
-    }
-    mismatches
-}
-
-fn check_left_residues(
-    pep_bytes: &[u8], idx: usize, kmer_hit: u64, index: &PepIndex,
-    max_mismatches: usize, mut mismatches: usize,
-) -> usize {
-    for i in 0..idx {
-        if mismatches > max_mismatches { return 100; }
-        let check_idx = (kmer_hit as i64 + i as i64 - idx as i64) as u64;
-        match index.resolve(check_idx) {
-            Some(kmer) => { if kmer[0] != pep_bytes[i] { mismatches += 1; } }
-            None => return 100,
-        }
-    }
-    mismatches
-}
-
-fn check_right_residues(
-    pep_bytes: &[u8], idx: usize, kmer_hit: u64, index: &PepIndex,
-    k: usize, max_mismatches: usize, mut mismatches: usize,
-) -> usize {
-    let num_kmers = pep_bytes.len() - k + 1;
-    for i in (idx + 1)..num_kmers {
-        if mismatches > max_mismatches { return 100; }
-        let check_idx = (kmer_hit as i64 + i as i64 - idx as i64) as u64;
-        match index.resolve(check_idx) {
-            Some(kmer) => { if kmer[k - 1] != pep_bytes[i + k - 1] { mismatches += 1; } }
-            None => return 100,
+    for idx in seeds {
+        let Some(positions) = index.lookup(&pep_bytes[idx..idx + k]) else { continue };
+        for kmer_hit in positions {
+            let position = (kmer_hit % PROTEIN_INDEX_MULTIPLIER) as usize;
+            if position < idx {
+                continue;
+            }
+            let protein_number = (kmer_hit / PROTEIN_INDEX_MULTIPLIER) as usize;
+            let Some(window) = index.window(protein_number, position - idx, peptide_len) else { continue };
+            let mut mismatches = 0;
+            for (a, b) in window.iter().zip(pep_bytes) {
+                if a != b {
+                    mismatches += 1;
+                    if mismatches > max_mismatches {
+                        break;
+                    }
+                }
+            }
+            if mismatches > max_mismatches {
+                continue;
+            }
+            // Several seeds in one peptide imply the same start; report it once.
+            let start = kmer_hit - idx as u64;
+            if seen.insert(start) {
+                found(start, mismatches, window);
+            }
         }
     }
-    mismatches
 }
 
 /// Mismatch search -> (matched sequence, mismatch count, encoded start) per hit.
 ///
-/// Seeding relies on the pigeonhole principle: within the mismatch budget at least one of the
-/// peptide's k-mers is exact, so every index hit is a candidate start, verified by extension.
+/// Rows keep the order of the full seeding, which found each hit from the first of its seeds
+/// that the hit contains exactly and, within a seed, in position order. Sorting on that pair
+/// gives the same rows in the same order whichever seeds were actually looked up.
 fn mismatch_match(peptide: &str, k: usize, max_mismatches: usize, index: &PepIndex) -> Vec<(String, usize, u64)> {
     let pep_bytes = peptide.as_bytes();
-    if pep_bytes.len() < k { return vec![]; }
-
-    let num_kmers = pep_bytes.len() - k + 1;
-    let peptide_len = pep_bytes.len();
-    let mut matches: Vec<(String, usize, u64)> = Vec::new();
-    let mut seen: HashSet<u64> = HashSet::new();
-
-    // k divides the length: disjoint tiles cover the peptide, so seeds step by k and
-    // verification compares whole tiles.
-    if peptide_len % k == 0 {
-        let mut idx = 0;
-        while idx < num_kmers {
-            let kmer = &pep_bytes[idx..idx + k];
-            if let Some(positions) = index.lookup(kmer) {
-                for kmer_hit in positions {
-                    let start = (kmer_hit as i64 - idx as i64) as u64;
-                    // Several seeds in one peptide imply the same start; keep one row each.
-                    if seen.contains(&start) { continue; }
-                    let mismatches = check_left_neighbors(pep_bytes, idx, kmer_hit, index, k, max_mismatches, 0);
-                    let mismatches = check_right_neighbors(pep_bytes, idx, kmer_hit, index, k, max_mismatches, mismatches);
-                    if mismatches <= max_mismatches {
-                        // Rebuild the database sequence tile by tile; a tile that fails to
-                        // resolve means the match would cross a protein boundary.
-                        let mut matched = Vec::with_capacity(peptide_len);
-                        let mut i = 0;
-                        let mut valid = true;
-                        while i < peptide_len {
-                            match index.resolve(start + i as u64) {
-                                Some(km) => matched.extend_from_slice(km),
-                                None => { valid = false; break; }
-                            }
-                            i += k;
-                        }
-                        if valid {
-                            seen.insert(start);
-                            matches.push((String::from_utf8(matched).unwrap_or_default(), mismatches, start));
-                        }
-                    }
-                }
-            }
-            idx += k;
-        }
-    } else {
-        // k does not divide the length, so tiles cannot partition the peptide: every offset
-        // is a seed and verification walks residue by residue.
-        for idx in 0..num_kmers {
-            let kmer = &pep_bytes[idx..idx + k];
-            if let Some(positions) = index.lookup(kmer) {
-                for kmer_hit in positions {
-                    let start = (kmer_hit as i64 - idx as i64) as u64;
-                    if seen.contains(&start) { continue; }
-                    let mismatches = check_left_residues(pep_bytes, idx, kmer_hit, index, max_mismatches, 0);
-                    let mismatches = check_right_residues(pep_bytes, idx, kmer_hit, index, k, max_mismatches, mismatches);
-                    if mismatches <= max_mismatches {
-                        let mut matched = Vec::with_capacity(peptide_len);
-                        let mut i = 0;
-                        let mut valid = true;
-                        while i < peptide_len {
-                            // Final tile would overrun the peptide, so step `back` residues
-                            // earlier and keep only the tail we still need.
-                            if i + k > peptide_len {
-                                let remaining = peptide_len - i;
-                                let back = k - remaining;
-                                match index.resolve(start + i as u64 - back as u64) {
-                                    Some(km) => matched.extend_from_slice(&km[back..]),
-                                    None => { valid = false; break; }
-                                }
-                            } else {
-                                match index.resolve(start + i as u64) {
-                                    Some(km) => matched.extend_from_slice(km),
-                                    None => { valid = false; break; }
-                                }
-                            }
-                            i += k;
-                        }
-                        if valid {
-                            seen.insert(start);
-                            matches.push((String::from_utf8(matched).unwrap_or_default(), mismatches, start));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    matches
+    let mut hits: Vec<(usize, u64, usize, &[u8])> = Vec::new();
+    for_each_mismatch_hit(pep_bytes, k, max_mismatches, index, |start, mismatches, window| {
+        let first_seed = full_seed_offsets(pep_bytes.len(), k)
+            .find(|&idx| window[idx..idx + k] == pep_bytes[idx..idx + k])
+            .expect("a hit contains at least one seed of the full seeding");
+        hits.push((first_seed, start, mismatches, window));
+    });
+    hits.sort_unstable_by_key(|&(first_seed, start, _, _)| (first_seed, start));
+    hits.into_iter()
+        .map(|(_, start, mismatches, window)| (String::from_utf8(window.to_vec()).unwrap_or_default(), mismatches, start))
+        .collect()
 }
 
 struct HitRecord {
@@ -610,7 +530,7 @@ fn metadata_columns(index: &PepIndex, wanted: Option<Vec<u32>>) -> Result<MetaCo
     Ok((pnum, a, b, c, d, e, g, h, i, j))
 }
 
-/// Seeds for indel search: the n+1 disjoint query tiles with the FEWEST proteome
+/// Seeds for indel and mismatch search: the n+1 disjoint query tiles with the FEWEST proteome
 /// occurrences. Only n+1 disjoint seeds are needed for complete recall (n edits damage at
 /// most n of them, so at least one survives any <=n-indel match and anchors it; extension
 /// then reconstructs the full alignment from that anchor). Any n+1 disjoint seeds satisfy
@@ -896,74 +816,12 @@ pub(crate) fn run(pepidx_path: &str, peptides: Vec<(String, String)>, k: usize, 
 // hits, so memory scales with queries rather than hits. ──
 pub(crate) type CountColumns = (Vec<String>, Vec<String>, Vec<i64>, Vec<u64>);
 
-/// Tally accepted matches per mismatch level for one peptide, mirroring
-/// mismatch_match's dedup + validity walk exactly but without building the
-/// matched sequence, metadata, or any per-hit row.
+/// Tally accepted matches per mismatch level for one peptide: the same search as
+/// mismatch_match, through the same core, without building any per-hit row.
 fn mismatch_count(peptide: &str, k: usize, max_mismatches: usize, index: &PepIndex, counts: &mut [u64]) {
-    let pep_bytes = peptide.as_bytes();
-    if pep_bytes.len() < k { return; }
-
-    let num_kmers = pep_bytes.len() - k + 1;
-    let peptide_len = pep_bytes.len();
-    let mut seen: HashSet<u64> = HashSet::new();
-
-    if peptide_len % k == 0 {
-        let mut idx = 0;
-        while idx < num_kmers {
-            let kmer = &pep_bytes[idx..idx + k];
-            if let Some(positions) = index.lookup(kmer) {
-                for kmer_hit in positions {
-                    let start = (kmer_hit as i64 - idx as i64) as u64;
-                    if seen.contains(&start) { continue; }
-                    let mismatches = check_left_neighbors(pep_bytes, idx, kmer_hit, index, k, max_mismatches, 0);
-                    let mismatches = check_right_neighbors(pep_bytes, idx, kmer_hit, index, k, max_mismatches, mismatches);
-                    if mismatches <= max_mismatches {
-                        let mut i = 0;
-                        let mut valid = true;
-                        while i < peptide_len {
-                            if index.resolve(start + i as u64).is_none() { valid = false; break; }
-                            i += k;
-                        }
-                        if valid {
-                            seen.insert(start);
-                            counts[mismatches] += 1;
-                        }
-                    }
-                }
-            }
-            idx += k;
-        }
-    } else {
-        for idx in 0..num_kmers {
-            let kmer = &pep_bytes[idx..idx + k];
-            if let Some(positions) = index.lookup(kmer) {
-                for kmer_hit in positions {
-                    let start = (kmer_hit as i64 - idx as i64) as u64;
-                    if seen.contains(&start) { continue; }
-                    let mismatches = check_left_residues(pep_bytes, idx, kmer_hit, index, max_mismatches, 0);
-                    let mismatches = check_right_residues(pep_bytes, idx, kmer_hit, index, k, max_mismatches, mismatches);
-                    if mismatches <= max_mismatches {
-                        let mut i = 0;
-                        let mut valid = true;
-                        while i < peptide_len {
-                            if i + k > peptide_len {
-                                let remaining = peptide_len - i;
-                                let back = k - remaining;
-                                if index.resolve(start + i as u64 - back as u64).is_none() { valid = false; break; }
-                            } else if index.resolve(start + i as u64).is_none() {
-                                valid = false; break;
-                            }
-                            i += k;
-                        }
-                        if valid {
-                            seen.insert(start);
-                            counts[mismatches] += 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
+    for_each_mismatch_hit(peptide.as_bytes(), k, max_mismatches, index, |_, mismatches, _| {
+        counts[mismatches] += 1;
+    });
 }
 
 fn count_peptide(query_id: &str, peptide: &str, k: usize, max_mismatches: usize, index: &PepIndex) -> Vec<(String, String, i64, u64)> {
